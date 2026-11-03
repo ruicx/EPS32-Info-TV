@@ -60,7 +60,7 @@ python -m esptool --chip esp32s3 --port COM6 --baud 460800 write-flash --flash-m
 | Panel and backlight initialization | User saw INFO TV and text | Passed |
 | Default screen direction | User confirmed correct orientation | Passed |
 | Native USB protocol | Actual Hello, snapshot Accepted, ongoing heartbeats | Passed |
-| HTTP-to-device task flow | Production FastAPI service and `demo_task.py`, 0..100% | Passed |
+| HTTP-to-device task flow | Production FastAPI service and the script now located at `demos/demo_task.py`, 0..100% | Passed |
 | Visible card feedback | Actual card/revision Presented after panel DMA completion | Passed |
 | Completion notice | Device returned independent Accepted/Presented | Passed |
 | Notice end and overview restoration | User confirmed the second replay switched normally after approximately five seconds | Passed |

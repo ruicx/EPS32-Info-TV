@@ -17,6 +17,11 @@ dev = ["pytest>=8,<10", "httpx>=0.28,<1", "ty", "grpcio-tools>=1.73,<1.78", "nan
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = ["--strict-markers", "-m", "not hardware"]
+markers = [
+    "hardware: requires a physical device and explicit hardware test selection",
+    "integration: exercises multiple components, including the native firmware bridge",
+]
 
 [tool.ty.src]
 exclude = ["src/info_tv_service/device/generated/device_pb2.py"]

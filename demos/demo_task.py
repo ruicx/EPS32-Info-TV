@@ -1,4 +1,4 @@
-"""Send one task run through the production local HTTP interface."""
+"""Demonstrate task progress and completion through the production HTTP API."""
 
 import argparse
 import json

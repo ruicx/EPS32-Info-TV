@@ -16,7 +16,8 @@ overview restoration, and powered serial reconnection passed. See the
 | `host/` | Python 3.12, FastAPI, uv; portable core, initially tested on Windows |
 | `firmware/` | ESP-IDF 6.1, FreeRTOS, C++, LVGL 9.3, ST7789 |
 | `protocol/` | Shared schema, Nanopb bounds, and compatibility vector |
-| `scripts/` | Protocol generation and example producer |
+| `scripts/` | Protocol generation and development operations |
+| `demos/` | Manual physical-display demonstrations using the production HTTP API |
 | `docs/` | Requirements, hardware evidence, and implementation design |
 
 See [implementation and class design](docs/demo-implementation.md),
@@ -40,13 +41,16 @@ retries an unavailable device while continuing to accept task state.
 Check `GET /v1/device` for `state: online`. In another terminal:
 
 ```powershell
-uv run --project host python scripts/demo_task.py
+uv run --project host python demos/demo_task.py
 ```
 
 The script calls the real `POST /v1/task-events` endpoint. It submits one unique
 run, advances from 0% to 100%, and generates a completion notice. Service
 acceptance does not mean the screen has shown the content. Inspect
 `GET /v1/tasks` and `GET /v1/device` for Accepted/Presented feedback.
+
+See [physical display demos](demos/README.md) for setup, expected behavior, and
+the current task-retention limit.
 
 The API supports `running`, `waiting_input`, `completed`, and `failed`. Retries
 retain their UUID `event_id` and content. Updates for one `(source, task_id)`
@@ -86,7 +90,7 @@ Run Python checks **from `host/`**, so pytest uses that project's configuration:
 ```powershell
 cd host
 uv run pytest
-uv run ty check . ../scripts
+uv run ty check . ../scripts ../demos
 uv run python ../scripts/generate_protocol.py --check
 ```
 
@@ -96,7 +100,35 @@ Run these commands from the repository root:
 ```powershell
 cmake -S firmware/tests -B build/native-tests
 cmake --build build/native-tests --config Debug
-ctest --test-dir build/native-tests -C Debug --output-on-failure
+ctest --test-dir build/native-tests -C Debug --show-only
+ctest --test-dir build/native-tests -C Debug -LE hardware --output-on-failure
+```
+
+CTest discovers the registered C++ tests; the current three tests have the
+`unit` label and run entirely on the desktop. `protocol_bridge` is a helper
+executable driven by the Python integration test, not a standalone CTest case.
+
+Hardware-dependent C++ cases must use the `hardware` CTest label, and Python
+cases must use `@pytest.mark.hardware`. There are currently no registered
+hardware-dependent cases in either suite; the earlier physical checks used
+the local manual harness described in the validation record.
+
+Pytest registers strict `hardware` and `integration` markers. Its default
+selection excludes `hardware`; the native bridge test is marked `integration`
+and requires a compiled executable, without requiring an ESP32. Useful filters:
+
+```powershell
+# From the repository root: discover/run C++ cases without hardware.
+ctest --test-dir build/native-tests -C Debug -N -LE hardware
+ctest --test-dir build/native-tests -C Debug -LE hardware --output-on-failure
+
+# From host/: run the desktop integration test.
+uv run pytest -m "integration and not hardware"
+
+# Explicit opt-in, when physical-device cases have been added.
+uv run pytest -m hardware
+# From the repository root:
+ctest --test-dir build/native-tests -C Debug -L hardware --output-on-failure
 ```
 
 On Windows with multiple Visual Studio installations, configure with

@@ -213,6 +213,7 @@ The user confirmed a single repository with two independently built subprojects 
 ```text
 info_tv/
 ├── docs/
+├── demos/
 ├── protocol/
 │   └── device.proto
 ├── host/
@@ -229,10 +230,11 @@ info_tv/
 This layout is now implemented, using the platform-independent `host/` name selected for the demo. Both subprojects remain independently buildable.
 
 - `docs/` contains product requirements, architecture, hardware findings, and protocol design.
+- `demos/` contains manual physical-display scenarios and their usage instructions.
 - `protocol/` is the authoritative source of device-facing `.proto` definitions. Generate both sides from it; do not maintain separate hand-written protocol definitions.
 - `host/` owns the Python service, its dependencies, checks, and build/release workflow.
 - `firmware/` owns the ESP-IDF application, firmware dependencies, checks, and build/release workflow.
-- `scripts/` contains shared development operations such as protocol generation when implemented.
+- `scripts/` contains shared development operations such as protocol generation.
 
 The root is a repository container rather than a shared Python or ESP-IDF application environment. Protocol and paired implementation changes can be reviewed together, while each subproject remains independently buildable and releasable. Sharing a repository does not require lockstep upgrades; protocol compatibility still needs explicit design.
 

@@ -8,8 +8,12 @@ Updated: 2026-11-03
 
 The production host framework accepts task events and maintains business state.
 The firmware renders source-independent status cards and temporary notifications.
-Only `scripts/demo_task.py` supplies artificial events. There is no demo-specific
+Only `demos/demo_task.py` supplies artificial events. There is no demo-specific
 server endpoint or firmware mode.
+
+Manual physical-display scenarios live in `demos/`, with their setup and expected
+screen behavior documented there. `scripts/` retains development operations such
+as protocol generation. Demos are not collected as automated pytest/CTest cases.
 
 The host is named by its role rather than `windows/`. Its Python core and
 pySerial transport accept platform-specific port paths. Only Windows has been
@@ -123,6 +127,13 @@ Native tests cover stream recovery, Python-generated compatibility input, atomic
 snapshot rejection, notifications, expiry, revisions, and presentation. The bridge
 runs actual host HTTP and firmware codec/presentation code together with simulated
 first-refresh completion.
+
+C++ cases are registered with CTest and currently labeled `unit`. The Python
+native bridge case is marked `integration`; it does not require a physical
+device. Python declares a strict `hardware` marker and excludes it by default.
+Future physical-device C++ cases must carry the `hardware` CTest label. Neither
+suite currently contains a registered hardware case; the physical validation
+record refers to a separate local manual harness.
 
 Basic orientation, text, backlight, USB traffic, presentation feedback, notification
 restoration, and powered serial recovery have passed. The user confirmed the

@@ -82,6 +82,7 @@ class FirmwareBridgeTransport:
             self._process = None
 
 
+@pytest.mark.integration
 def test_http_to_cpp_firmware_core() -> None:
     """Verify actual Python/C++ codec compatibility and separate UI milestones."""
     root = Path(__file__).resolve().parents[2]
