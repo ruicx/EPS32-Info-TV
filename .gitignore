@@ -66,3 +66,15 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# Python and ESP-IDF local state
+.venv/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+managed_components/
+sdkconfig
+sdkconfig.old
+
+# Local device backups and hardware-validation evidence
+.local/

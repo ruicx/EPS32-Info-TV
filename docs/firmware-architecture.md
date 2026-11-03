@@ -1,8 +1,10 @@
 # ESP32 Firmware Architecture
 
-Status: ESP-IDF, integrated FreeRTOS, C++, LVGL, ST7789 integration through esp_lcd, and the initial communication/UI task split are confirmed. Versions, task resource settings, and detailed protocols remain open.
+Status: Minimal USB firmware implemented, built, flashed, and validated using ESP-IDF 6.1, LVGL 9.3.0, and Nanopb 0.4.9.1. Resource/performance tuning remains pending.
 
 Updated: 2026-11-03
+
+See [Minimal Demo Implementation](demo-implementation.md) for the actual file/class structure, direct UI loop, task settings, buffers, and temporary policies. Broader media/touch/network recommendations below remain future work. The current wire contract is in [Device Protocol](device-protocol.md).
 
 ## 1. Purpose and Scope
 
@@ -19,7 +21,7 @@ The firmware receives source-independent display content, retains the state need
 | Runtime | ESP-IDF's integrated FreeRTOS | Confirmed | Provide task scheduling, queues, synchronization, and timing within the firmware |
 | GUI | LVGL | Confirmed | Build reusable text, list, status, and media views while iterating layout and style |
 | Screen access | `esp_lcd` with its ST7789 driver | Confirmed | Reuse the official panel interface and the documented board configuration |
-| Initial transport | USB Serial/JTAG | Proposed | Start with the diagnostic connection already observed on the physical device |
+| Initial transport | USB Serial/JTAG | Implemented; hardware validation pending | Reuses the diagnostic connection observed on the physical device |
 
 The user confirmed the ESP-IDF/FreeRTOS runtime choice on 2026-11-03. FreeRTOS is integrated into ESP-IDF and compiled with the application into the firmware; it is not a separately installed operating-system image. ESP-IDF starts the scheduler automatically and invokes the application entry point. See the [official FreeRTOS overview](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/system/freertos.html).
 
@@ -27,7 +29,7 @@ The user also confirmed C++, LVGL, `esp_lcd` ST7789 integration, and the communi
 
 ESP-IDF documents the [common LCD API and ST7789 support](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/lcd/index.html). Its LCD examples also demonstrate LVGL integration. The vendor Arduino project remains the reference for wiring, inversion, backlight polarity, and initialization behavior; this proposal does not require retaining its weather application.
 
-Exact ESP-IDF and LVGL versions and their compatibility must be checked and pinned during implementation setup. Component selection does not imply the latest published version will be adopted automatically.
+ESP-IDF 6.1 and LVGL 9.3.0 are pinned for the demo. Basic screen operation and DMA-correlated presentation feedback passed actual-device validation; see [Hardware Validation](hardware-validation.md).
 
 ## 3. Logical Modules
 
@@ -84,7 +86,7 @@ Local timing and view styling remain adjustable for rendered/device evaluation u
 
 ## 6. Synchronization and Feedback
 
-Binary Protobuf, the envelope/operation/view structure, card/notification separation, overview-only snapshots, service-session rule, and Accepted/Presented milestones are confirmed. The contract and binary framing options are tracked in [Windows-to-ESP32 Message Format](device-protocol.md). Nanopb remains recommended for evaluation; concrete fields, handshake mechanics, ordering representations, and feedback correlation remain open.
+Binary Protobuf, the envelope/operation/view structure, card/notification separation, overview-only snapshots, service-session rule, and Accepted/Presented milestones are confirmed. The demo uses Nanopb with bounded static fields and COBS/CRC framing; see [Device Protocol](device-protocol.md) for the implemented contract.
 
 - On connection or device restart, establish the connection under the Windows service session and obtain a current valid overview snapshot before treating that content as synchronized. The snapshot does not replay notification history; a Windows service process restart creates a new service-session identity.
 - Distinguish local last-known content from synchronized current content. Remain responsive and indicate disconnection or staleness while showing cached information when powered.
@@ -92,7 +94,7 @@ Binary Protobuf, the envelope/operation/view structure, card/notification separa
 - Use Accepted after the UI owner applies state or admits a notification, and Presented after the content becomes visible and the agreed first-refresh milestone completes. Decode success alone is neither milestone. The precise refresh event and feedback correlation remain design details.
 - Retain the agreed reconnection behavior: current state replaces obsolete progress, and expired reminders are not replayed.
 
-Protocol versions, capability negotiation, snapshot application, feedback fields, and retry/session details require subsequent design. Disk/Flash persistence across power loss and pending-notification retention remain deferred; this proposal does not turn powered offline caching into a durable-storage requirement.
+The version-1 handshake, snapshot, feedback, retry, and session behavior are implemented; broader capability negotiation remains future work. Disk/Flash persistence across power loss remains deferred. Powered offline caching is not durable storage.
 
 ## 7. Memory, Media, and Hardware Access
 
@@ -106,9 +108,9 @@ USB Serial/JTAG has an official [bidirectional serial interface](https://docs.es
 
 ## 8. Decisions to Review Next
 
-1. Compatible ESP-IDF/LVGL versions and whether to use `esp_lvgl_port` or a directly owned UI loop while preserving the confirmed single UI owner.
-2. Task priorities, stack sizes, core placement, and command/feedback handoff limits for the confirmed communication/UI split.
-3. Supported device messages, view templates, limits, identity/revision semantics, and synchronization/feedback behavior.
-4. Partial-buffer sizing, asset representation, touch handling, and on-device performance validation.
+1. Verify the built ESP-IDF/LVGL integration and real first-refresh completion on hardware.
+2. Measure task stack headroom and queue pressure using the selected initial settings.
+3. Extend the implemented status-card protocol with future view/content types when needed.
+4. Evaluate partial-buffer performance, asset representation, and touch handling.
 
-No firmware has been implemented or flashed as part of this architecture documentation.
+The minimal firmware has been flashed and validated for display, application USB, notifications, restoration, and powered serial recovery. Runtime stack/heap headroom and refresh performance still require measurement.

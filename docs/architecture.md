@@ -1,8 +1,12 @@
 # Software Architecture
 
-Status: Overall framework confirmed; Python/FastAPI selected for Windows; ESP-IDF/FreeRTOS, C++, LVGL, esp_lcd/ST7789, and communication/UI tasks selected for ESP32. Supporting integration details, versions, protocols, and deployment remain open.
+Status: Minimal host/firmware USB implementation built, tested, and validated on the board. Remaining product capabilities and performance tuning are pending.
 
 Updated: 2026-11-03
+
+The implemented baseline is described in [Minimal Demo Implementation](demo-implementation.md) and the current [Device Protocol](device-protocol.md). The host is now organized under `host/`: Python core code is portable, with Windows tested first. Earlier references to Windows describe the initial deployment context. Proposed sections below retain the broader product design; the implementation document takes precedence for concrete demo choices.
+
+[Hardware Validation](hardware-validation.md) records the successful first flash, actual USB/display feedback, user visual confirmation, and powered serial-recovery test.
 
 ## 1. Related Documents
 
@@ -89,12 +93,12 @@ Ordinary display updates carry structured content rather than full-screen image 
 
 ## 6. Proposed Interface and Transport Direction
 
-Binary Protobuf is selected for Windows-to-ESP32 messages and device feedback. The envelope/operation/view structure, separate card updates and notifications, overview-only snapshots, new service sessions after Windows service restart, and Accepted/Presented feedback milestones are also confirmed. See [Windows-to-ESP32 Message Format](device-protocol.md) for these decisions, runtime recommendations, and proposed binary framing. Concrete schemas, handshake mechanics, limits, and transport bindings remain open.
+Binary Protobuf is selected for host-to-ESP32 messages and device feedback. The envelope/operation/view structure, separate card updates and notifications, overview-only snapshots, new service sessions after host restart, and Accepted/Presented feedback milestones are confirmed. [Device Protocol](device-protocol.md) defines the implemented USB subset, concrete schema, handshake, limits, and feedback. Wi-Fi/BLE transport bindings remain future work.
 
 | Boundary | Proposal | Reason |
 | --- | --- | --- |
 | Local software to Windows | A loopback HTTP interface with JSON submissions | Provides a common entry point for scripts and hook senders |
-| Windows to ESP32 over USB | A serial connection carrying binary Protobuf with explicit bounded framing; framing details remain open | Supports the first connected prototype while keeping framing separate from message semantics |
+| Host to ESP32 over USB | Implemented native serial connection carrying Protobuf with COBS/CRC framing | Keeps framing separate from message semantics |
 | Windows to ESP32 over Wi-Fi | A bidirectional WebSocket connection carrying the same device-message semantics | Supports push, session status, and feedback over one connection |
 | Windows to ESP32 over BLE | GATT transfer with explicit fragmentation and reassembly of the same device messages | Adapts message delivery to the BLE transport |
 
@@ -104,7 +108,7 @@ FastAPI is selected to implement Windows message ingestion. Exact routes, reques
 
 The loopback producer interface and the device-facing network connection are separate boundaries. If the ESP32 initiates a Wi-Fi connection to Windows, Windows needs a separately scoped device endpoint reachable on the LAN. That endpoint must not expose local producer submission to LAN callers. Connection direction and device authentication remain design choices.
 
-Messages need bounded size and complete binary framing on each transport. The earlier device-side JSON and RFC 7464 framing proposals are superseded by the Protobuf decision; exact binary framing remains open. Do not assume a serial read, BLE fragment, or network receive callback contains one complete application message.
+Messages need bounded size and complete framing on each transport. Device-side JSON/RFC 7464 proposals are superseded. USB now uses bounded COBS/CRC frames; Wi-Fi/BLE framing is still proposed. Do not assume a serial read, BLE fragment, or network receive callback contains one complete application message.
 
 Espressif provides an [official WebSocket client component](https://docs.espressif.com/projects/esp-protocols/esp_websocket_client/docs/latest/index.html) if a device-initiated Wi-Fi session is chosen.
 
@@ -125,7 +129,7 @@ These boundaries map to the confirmed communication task and single UI task. Que
 
 Windows determines current task/content state, coalesces updates, and assigns agreed priority metadata. The device alone decides when received content actually takes the screen and runs its local timing. Windows does not report a message as displayed solely because it sent or the device received it. This boundary also allows cached content, the clock, and animations to continue during disconnection.
 
-The confirmed firmware stack is ESP-IDF with integrated FreeRTOS, C++, LVGL, and [`esp_lcd` with ST7789 support](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/lcd/index.html). Communication and UI are the confirmed initial application tasks, with the UI task owning rendering and visible state. Exact versions, LVGL port integration, and task resource settings remain open; retain the vendor Arduino configuration as the board reference.
+The firmware uses ESP-IDF 6.1 with integrated FreeRTOS, C++, LVGL 9.3.0, and [`esp_lcd` with ST7789 support](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/lcd/index.html). Communication and UI are the application tasks; the directly owned UI loop controls rendering and visible state. Task resources are recorded in the implementation document. The vendor Arduino configuration remains the board reference.
 
 Keep the few timing and retention choices under evaluation separate from content processing and rendering code so they can be adjusted during trials. The configuration mechanism is not selected, and no general-purpose rule engine is required by the current scope.
 
@@ -153,7 +157,7 @@ An HTTP request validates and admits a message into the service's processing pat
 
 Start and supervise ongoing processing tasks through the application's lifespan, retaining ownership until shutdown. FastAPI [BackgroundTasks](https://fastapi.tiangolo.com/tutorial/background-tasks/) executes work after a response; use lifespan-managed tasks for the proposed long-running device session and processing loops.
 
-Create mutable service state within the application lifecycle and pass it explicitly to the modules or through dependencies. Do not introduce module-level mutable queues, task dictionaries, or device connections. Keep blocking device I/O off the event loop using an appropriate adapter or owned I/O thread; the specific transport libraries remain open. Python documents [asyncio task and thread integration](https://docs.python.org/3/library/asyncio-task.html).
+Create mutable service state within the application lifecycle and pass it explicitly to modules or dependencies. Do not introduce module-level mutable queues, task dictionaries, or connections. The USB implementation uses pySerial in an owned I/O thread to keep blocking calls off the event loop. Python documents [asyncio task and thread integration](https://docs.python.org/3/library/asyncio-task.html).
 
 Run one Uvicorn worker for this design. FastAPI's [deployment concepts](https://fastapi.tiangolo.com/deployment/concepts/#memory-per-process) explain that worker processes normally do not share memory. Multiple workers would create independent task state and device-session owners in the proposed in-process design, so worker replication is not an appropriate scaling setting here. Automatic reload is only a development option, since reloading interrupts the service and its device connection.
 
@@ -161,16 +165,16 @@ Bind the producer API to loopback to preserve the confirmed same-computer scope.
 
 ### 8.4 Confirmed Python Project Management: uv
 
-The user confirmed uv on 2026-11-03 for the Windows Python application's environment, dependencies, lockfile, and project commands. Manage the independent Python project under `windows/` using uv.
+The user confirmed uv on 2026-11-03 for the host Python application's environment, dependencies, lockfile, and project commands. Manage the independent Python project under `host/` using uv.
 
-Place `pyproject.toml` in `windows/`, keep `windows/uv.lock` under version control, and keep the local `.venv/` out of version control. The official [project layout guide](https://docs.astral.sh/uv/concepts/projects/layout/) describes these files and recommends committing the lockfile for reproducible environments.
+Place `pyproject.toml` in `host/`, keep `host/uv.lock` under version control, and keep the local `.venv/` out of version control. The official [project layout guide](https://docs.astral.sh/uv/concepts/projects/layout/) describes these files and recommends committing the lockfile for reproducible environments.
 
 | Workflow | Confirmed convention |
 | --- | --- |
-| Dependency declarations | Maintain runtime requirements and development tools in `windows/pyproject.toml` |
-| Resolved versions | Commit `windows/uv.lock`; update dependencies deliberately |
+| Dependency declarations | Maintain runtime requirements and development tools in `host/pyproject.toml` |
+| Resolved versions | Commit `host/uv.lock`; update dependencies deliberately |
 | Local environment | Use an isolated Windows-service project environment |
-| Routine commands | Run commands through `uv run` from `windows/`; include the required `uv run ty check` static analysis |
+| Routine commands | Run commands through `uv run` from `host/`; include the required `uv run ty check` static analysis |
 | Repeatable verification/install | Use `uv sync --locked` to reject an outdated lockfile rather than silently resolve new dependencies |
 
 The [locking/syncing guide](https://docs.astral.sh/uv/concepts/projects/sync/) documents locked operation, and uv provides an [official FastAPI integration guide](https://docs.astral.sh/uv/guides/integration/fastapi/).
@@ -181,11 +185,11 @@ Keep the ESP-IDF-managed Python/tool environment independent of the Windows-serv
 
 ## 9. Open Design Decisions
 
-- Supporting Windows runtime/dependency versions, compatible ESP-IDF/LVGL versions, LVGL port integration, and firmware task resource settings. The Windows and ESP32 core stacks and the initial firmware task split are selected; the supplied Arduino project remains a board reference.
+- Physical validation of the pinned runtime, firmware resource headroom, and display timing; the supplied Arduino project remains a board reference.
 - Windows service hosting, startup, configuration, and optional tray UI; Service Control Manager registration has not been selected.
-- Local submission interface, message schema, object identity, and update ordering mechanisms.
-- Delivery acknowledgments, retry and deduplication mechanisms, queue limits, and persistence across service restarts.
-- USB, Wi-Fi, and BLE framing, discovery, reconnection, active-transport selection, and any automatic switching.
+- Producer contracts beyond task events, additional view types, and their update policies.
+- Product tuning of demo retention/limits, durable persistence, and future precise clock/expiry handling.
+- Wi-Fi/BLE framing, discovery, active-transport selection, and any automatic switching; USB uses explicit port configuration and reconnect.
 - Supported display types, their fields, asset conversion, storage, and transfer.
 
 These choices must satisfy the confirmed behaviors in the requirements document. Detailed visual presentation will be refined through rendered previews. Completed-state retention, stale-data timing, and restart retention are explicitly deferred to prototype evaluation and do not block discussion of the module boundaries.
@@ -211,7 +215,7 @@ info_tv/
 ├── docs/
 ├── protocol/
 │   └── device.proto
-├── windows/
+├── host/
 │   ├── pyproject.toml
 │   ├── src/info_tv_service/
 │   └── tests/
@@ -222,14 +226,14 @@ info_tv/
 └── scripts/
 ```
 
-This is the accepted target layout, not a claim that implementation files already exist. Record the organization now and apply directory changes when implementation starts.
+This layout is now implemented, using the platform-independent `host/` name selected for the demo. Both subprojects remain independently buildable.
 
 - `docs/` contains product requirements, architecture, hardware findings, and protocol design.
 - `protocol/` is the authoritative source of device-facing `.proto` definitions. Generate both sides from it; do not maintain separate hand-written protocol definitions.
-- `windows/` owns the Python service, its dependencies, checks, and build/release workflow.
+- `host/` owns the Python service, its dependencies, checks, and build/release workflow.
 - `firmware/` owns the ESP-IDF application, firmware dependencies, checks, and build/release workflow.
 - `scripts/` contains shared development operations such as protocol generation when implemented.
 
 The root is a repository container rather than a shared Python or ESP-IDF application environment. Protocol and paired implementation changes can be reviewed together, while each subproject remains independently buildable and releasable. Sharing a repository does not require lockstep upgrades; protocol compatibility still needs explicit design.
 
-Generated-code locations and whether generated files are committed will be selected with the code-generation workflow. Do not introduce additional Python packages or runtime dependencies solely to represent the shared schema directory.
+Generated bindings are committed under the host device package and firmware protocol directory. The shared generation script verifies them against the schema. No separate Python package is introduced solely to represent the schema directory.

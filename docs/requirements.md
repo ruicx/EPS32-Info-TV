@@ -1,6 +1,6 @@
 # info_tv Requirements Analysis
 
-Document status: Discussion draft; the implementation approach has not been finalized.
+Document status: Requirements baseline with deferred product tuning; the minimal USB demo is implemented and build-tested.
 
 Created: 2026-11-02
 
@@ -12,7 +12,7 @@ Build a desktop companion display using an ESP32-S3 with a screen to present imp
 
 Collect messages submitted by Codex CLI, Antigravity CLI, zcode, and other local producers, then present their useful information on a source-independent display. The confirmed solution direction and responsibility boundaries are recorded separately in [Software Architecture](architecture.md).
 
-This phase delivers a requirements analysis document. It does not implement the background application, communication protocol, or device firmware. In this document, **Confirmed** means explicitly stated by the user, supported by supplied source material, or observed in device diagnostics, **Proposed** means a suggestion for discussion, and **To be confirmed** means more information or a decision is needed. Chip, Flash, and USB identification have been checked on the physical device; display, touch, and PSRAM runtime operation remain untested.
+This document records product requirements rather than claiming that every capability is implemented. See [Minimal Demo Implementation](demo-implementation.md) for the implemented task/notification/USB subset and its temporary defaults, and [Hardware Validation](hardware-validation.md) for successful USB/display/recovery checks and user visual confirmation. The service directory is `host/`, with a portable Python core initially tested on Windows. In this document, **Confirmed** means explicitly stated by the user, supported by supplied source material, or observed in diagnostics, **Proposed** means a suggestion for discussion, and **To be confirmed** means more information or a decision is needed. Touch and PSRAM runtime operation remain untested.
 
 ## 2. Confirmed Information
 

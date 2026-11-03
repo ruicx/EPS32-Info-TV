@@ -1,0 +1,87 @@
+syntax = "proto3";
+package info_tv.v1;
+
+// Version 1 supports bounded status cards and independent notifications.
+message Envelope {
+  uint32 protocol_version = 1;
+  string session_id = 2;
+  string message_id = 3;
+  oneof body {
+    Hello hello = 10;
+    Snapshot snapshot = 11;
+    CardUpsert card_upsert = 12;
+    Notification notification = 13;
+    Acknowledgment acknowledgment = 14;
+    Error error = 15;
+    Ping ping = 16;
+    Pong pong = 17;
+  }
+}
+
+// Host sends an empty Hello; the device replies with its nonzero boot identity.
+message Hello { uint64 boot_id = 1; }
+message Ping {}
+message Pong {}
+
+enum Tone {
+  TONE_UNSPECIFIED = 0;
+  TONE_NEUTRAL = 1;
+  TONE_ATTENTION = 2;
+  TONE_POSITIVE = 3;
+  TONE_NEGATIVE = 4;
+}
+message StatusView {
+  string text = 1;
+  Tone tone = 2;
+  string detail = 3;
+  optional uint32 progress_percent = 4;
+}
+message View {
+  string title = 1;
+  oneof content { StatusView status = 10; }
+}
+message Card {
+  string card_id = 1;
+  uint64 revision = 2;
+  View view = 3;
+}
+message Snapshot { repeated Card cards = 1; }
+message CardUpsert { Card card = 1; }
+
+enum Priority {
+  PRIORITY_UNSPECIFIED = 0;
+  PRIORITY_ORDINARY = 1;
+  PRIORITY_IMPORTANT = 2;
+}
+message Notification {
+  string notification_id = 1;
+  Priority priority = 2;
+  optional uint32 display_duration_ms = 3;
+  // Remaining admission/start validity at transmission. Retrying may only shorten it.
+  uint32 valid_for_ms = 4;
+  View view = 5;
+}
+enum AckStage {
+  ACK_STAGE_UNSPECIFIED = 0;
+  ACK_STAGE_ACCEPTED = 1;
+  ACK_STAGE_PRESENTED = 2;
+}
+message Acknowledgment {
+  string in_reply_to = 1;
+  AckStage stage = 2;
+  // Presented identifies one actually visible card within a snapshot.
+  string card_id = 3;
+  uint64 revision = 4;
+}
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_INVALID = 1;
+  ERROR_CODE_BUSY = 2;
+  ERROR_CODE_UNSUPPORTED = 3;
+  ERROR_CODE_EXPIRED = 4;
+}
+message Error {
+  string in_reply_to = 1;
+  ErrorCode code = 2;
+  string detail = 3;
+}

@@ -1,8 +1,10 @@
 # Hardware Reference
 
-Status: Vendor source code and schematic reviewed; chip, Flash, and USB identification checked on the physical device. Display, touch input, and PSRAM runtime operation remain untested.
+Status: Vendor source/schematic reviewed; chip, Flash, USB, basic display, notifications, and powered serial recovery checked on the physical device. Touch input and PSRAM runtime operation remain untested.
 
 Reviewed: 2026-11-03
+
+The first ESP-IDF demo has now been flashed and tested. See [Hardware Validation](hardware-validation.md) for the pre-flash backup, deployed image identity, actual protocol feedback, and user visual confirmation. Historical diagnostic results below describe the earlier read-only probes.
 
 ## 1. Source Material
 
@@ -30,6 +32,7 @@ Local source links refer to the supplied package on this computer. Version numbe
 | Transport | Hardware SPI; parallel modes are disabled | S1 |
 | Pixel color order | `TFT_RGB_ORDER TFT_RGB` | S1, line 76 |
 | SPI write frequency | 27,000,000 Hz | S1, line 357 |
+| SPI mode | Mode 3; the selected ST7789 driver defaults to `SPI_MODE3` | Bundled `TFT_eSPI.h`, lines 131-135 |
 | Initialization | `tft.begin()` followed by `tft.invertDisplay(1)` | S3, lines 997-998 |
 | Rotation | Configurable through the application and persisted settings | S3 |
 
@@ -98,7 +101,7 @@ Tool: esptool 5.6.0 from the installed ESP-IDF v6.1 Python environment. The foll
 & 'C:/Espressif/tools/python/v6.1/venv/Scripts/python.exe' -m esptool --port COM6 --baud 115200 --connect-attempts 3 --no-stub flash-id
 ```
 
-The operation read chip information and Flash identification through the ROM loader, then reset the device. No firmware was flashed, no Flash sectors were erased, and no eFuses were programmed.
+Those identification probes read chip information and Flash identification through the ROM loader, then reset the device. They did not flash firmware, erase sectors, or program eFuses. The subsequent demo flash is recorded separately in Hardware Validation.
 
 | Field | Reported value | Interpretation |
 | --- | --- | --- |
@@ -133,8 +136,8 @@ The official [`esptool flash-id` documentation](https://docs.espressif.com/proje
 
 1. Verify successful initialization, usable capacity, and stability of the reported 8 MB PSRAM. Flash identification has already detected 16 MB twice; retain the advertisement discrepancy in the hardware record.
 2. Establish a reproducible build profile, including the Arduino core version and runtime USB settings. Bundled library metadata alone does not identify the complete original build environment.
-3. Validate application-level USB message reception and reconnection using the chosen firmware build settings. USB enumeration and ROM-loader diagnostics already work on the physical device.
-4. Validate display initialization, inversion, rotation, offsets, and backlight behavior with a small on-device display check.
+3. Application USB message reception and powered serial reconnection passed the demo; physical cable hot-plug and additional ports remain to be exercised.
+4. Basic display initialization, default orientation/offsets, and backlight passed. Detailed RGB and brightness calibration remain open.
 5. Validate GPIO5 touch sensing before assigning user interaction behavior.
 6. Measure memory use, refresh performance, and animation playback on the actual device before setting performance acceptance targets.
 
