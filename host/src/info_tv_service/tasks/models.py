@@ -36,6 +36,14 @@ class TaskEvent:
         Explanation within 160 UTF-8 bytes.
     progress_percent : int or None
         Optional integer progress from zero through 100.
+    conversation_id : str or None
+        Stable conversation identity within the source, independent of a run.
+    conversation_title : str
+        Short readable conversation name.
+    context : str
+        Project or workspace label.
+    run_sequence : int or None
+        Increasing execution ordinal within a conversation, required with its ID.
 
     Notes
     -----
@@ -50,6 +58,10 @@ class TaskEvent:
     title: str
     detail: str = ""
     progress_percent: int | None = None
+    conversation_id: str | None = None
+    conversation_title: str = ""
+    context: str = ""
+    run_sequence: int | None = None
 
 
 @dataclass(frozen=True)

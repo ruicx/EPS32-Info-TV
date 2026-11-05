@@ -22,5 +22,7 @@ class ScreenView {
   lv_obj_t* detail_ = nullptr;
   lv_obj_t* progress_ = nullptr;
   lv_obj_t* footer_ = nullptr;
+  std::array<lv_obj_t*, policy::kRowsPerPage> rowTitles_{};
+  std::array<lv_obj_t*, policy::kRowsPerPage> rowDetails_{};
 };
 }  // namespace info_tv

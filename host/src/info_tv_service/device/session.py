@@ -10,7 +10,7 @@ from uuid import uuid4
 
 from info_tv_service.config import (
     ACK_TIMEOUT_SECONDS, EVENT_CACHE_CAPACITY, HEARTBEAT_INTERVAL_SECONDS,
-    HEARTBEAT_TIMEOUT_SECONDS, MAX_SEND_ATTEMPTS, NOTIFICATION_QUEUE_CAPACITY,
+    HEARTBEAT_TIMEOUT_SECONDS, MAX_SEND_ATTEMPTS, MAX_TASKS, NOTIFICATION_QUEUE_CAPACITY,
     NOTIFICATION_VALIDITY_MS, RECONNECT_SECONDS,
 )
 from info_tv_service.device.codec import decode_feedback, make_envelope
@@ -263,6 +263,8 @@ class DeviceSession:
         while True:
             response = await self._receive(0.1)
             if response is not None and response.WhichOneof("body") == "hello" and response.hello.boot_id:
+                if response.hello.max_cards < MAX_TASKS:
+                    raise OSError("Device firmware lacks the eight-card overview; update firmware")
                 break
             if time.monotonic() >= deadline:
                 raise TimeoutError("Device Hello timeout")

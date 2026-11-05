@@ -1,11 +1,14 @@
 info_tv.v1.Envelope.session_id max_size:37
 info_tv.v1.Envelope.message_id max_size:37
 info_tv.v1.View.title max_size:65
+info_tv.v1.View.source max_size:65
+info_tv.v1.View.context max_size:65
 info_tv.v1.StatusView.text max_size:65
 info_tv.v1.StatusView.detail max_size:161
 info_tv.v1.Card.card_id max_size:37
-info_tv.v1.Snapshot.cards max_count:4
+info_tv.v1.Snapshot.cards max_count:8
 info_tv.v1.Notification.notification_id max_size:37
+info_tv.v1.Notification.card_id max_size:37
 info_tv.v1.Acknowledgment.in_reply_to max_size:37
 info_tv.v1.Acknowledgment.card_id max_size:37
 info_tv.v1.Error.in_reply_to max_size:37

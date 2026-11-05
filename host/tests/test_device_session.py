@@ -69,6 +69,7 @@ class PeerTransport:
             kind = command.WhichOneof("body")
             if kind == "hello":
                 response.hello.boot_id = 123
+                response.hello.max_cards = 8
             elif kind == "ping":
                 response.pong.SetInParent()
             else:

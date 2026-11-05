@@ -32,6 +32,7 @@ class Application {
   DisplayState state_;
   PresentationController presentation_{state_};
   ScreenView view_;
+  DisplayCommand uiCommand_{};
   QueueHandle_t commands_ = nullptr;
   QueueHandle_t feedback_ = nullptr;
   std::atomic<bool> feedbackOverflow_{false};

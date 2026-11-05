@@ -73,6 +73,8 @@ bool sameCard(const Card& left, const Card& right) {
   const auto& a = left.view.content.status;
   const auto& b = right.view.content.status;
   return left.revision == right.revision && !std::strcmp(left.card_id, right.card_id) &&
+         !std::strcmp(left.view.source, right.view.source) &&
+         !std::strcmp(left.view.context, right.view.context) &&
          !std::strcmp(left.view.title, right.view.title) && !std::strcmp(a.text, b.text) &&
          !std::strcmp(a.detail, b.detail) && a.tone == b.tone &&
          a.has_progress_percent == b.has_progress_percent &&

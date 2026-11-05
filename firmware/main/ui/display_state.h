@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "protocol/model.h"
+#include "config.h"
 
 namespace info_tv {
 /** Retain one current card and its actual presentation correlation. */
@@ -49,7 +50,7 @@ class DisplayState {
   /** Remove expired pending notifications without replaying them. */
   void expire(uint64_t nowMs);
   char sessionId_[37]{};
-  std::array<CardSlot, 4> cards_{};
+  std::array<CardSlot, policy::kMaxCards> cards_{};
   size_t cardCount_ = 0;
   std::array<NotificationSlot, 8> notifications_{};
   size_t notificationCount_ = 0;

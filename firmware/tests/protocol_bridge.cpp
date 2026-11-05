@@ -72,6 +72,7 @@ int main() {
     if (command.envelope.which_body == info_tv_v1_Envelope_hello_tag) {
       response.which_body = info_tv_v1_Envelope_hello_tag;
       response.body.hello.boot_id = 123;
+      response.body.hello.max_cards = info_tv::policy::kMaxCards;
       send(response, sequence);
     } else if (command.envelope.which_body == info_tv_v1_Envelope_ping_tag) {
       response.which_body = info_tv_v1_Envelope_pong_tag;
@@ -82,6 +83,6 @@ int main() {
     }
     const auto& model = controller.tick(now);
     info_tv::Feedback feedback{};
-    if (controller.onFramePresented(model.generation, now, feedback)) reply(feedback, sequence);
+    while (controller.onFramePresented(model.generation, now, feedback)) reply(feedback, sequence);
   }
 }

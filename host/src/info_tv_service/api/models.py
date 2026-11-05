@@ -1,8 +1,10 @@
 """Strict local submission schemas and wire-compatible string validation."""
 
+from __future__ import annotations
+
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from info_tv_service.tasks.models import TaskEvent, TaskState
 
@@ -19,22 +21,26 @@ class TaskEventRequest(BaseModel):
     title: str = Field(min_length=1, max_length=64)
     detail: str = Field(default="", max_length=160)
     progress_percent: int | None = Field(default=None, ge=0, le=100, strict=True)
+    conversation_id: str | None = Field(default=None, min_length=1, max_length=64)
+    conversation_title: str = Field(default="", max_length=64)
+    context: str = Field(default="", max_length=64)
+    run_sequence: int | None = Field(default=None, gt=0, le=2**63 - 1, strict=True)
 
-    @field_validator("source", "task_id", "title", "detail")
+    @field_validator("source", "task_id", "title", "detail", "conversation_id", "conversation_title", "context")
     @classmethod
-    def validate_text(cls, value: str, info: ValidationInfo) -> str:
+    def validate_text(cls, value: str | None, info: ValidationInfo) -> str | None:
         """Reject embedded NUL characters.
 
         Parameters
         ----------
-        value : str
+        value : str or None
             Submitted text.
         info : ValidationInfo
             Field identity for its encoded-byte limit.
 
         Returns
         -------
-        str
+        str or None
             Unchanged valid text.
 
         Raises
@@ -42,12 +48,34 @@ class TaskEventRequest(BaseModel):
         ValueError
             If text cannot be represented as a bounded C string.
         """
+        if value is None:
+            return None
         if "\0" in value:
             raise ValueError("NUL characters are not supported")
         limit = 160 if info.field_name == "detail" else 64
         if len(value.encode("utf-8")) > limit:
             raise ValueError(f"Text exceeds its {limit}-byte UTF-8 capacity")
         return value
+
+    @model_validator(mode="after")
+    def validate_conversation(self) -> TaskEventRequest:
+        """Require an execution ordinal whenever a conversation is identified.
+
+        Returns
+        -------
+        TaskEventRequest
+            Validated request.
+
+        Raises
+        ------
+        ValueError
+            If conversation fields cannot identify and order an execution.
+        """
+        if (self.conversation_id is None) != (self.run_sequence is None):
+            raise ValueError("conversation_id and run_sequence must be supplied together")
+        if self.conversation_title and self.conversation_id is None:
+            raise ValueError("conversation_title requires conversation_id")
+        return self
 
     def to_event(self) -> TaskEvent:
         """Construct the immutable event after encoded-length validation.
@@ -59,4 +87,5 @@ class TaskEventRequest(BaseModel):
 
         """
         return TaskEvent(self.event_id.hex, self.source, self.task_id, self.sequence,
-                         self.state, self.title, self.detail, self.progress_percent)
+                         self.state, self.title, self.detail, self.progress_percent,
+                         self.conversation_id, self.conversation_title, self.context, self.run_sequence)

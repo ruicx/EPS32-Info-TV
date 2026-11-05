@@ -19,7 +19,11 @@ message Envelope {
 }
 
 // Host sends an empty Hello; the device replies with its nonzero boot identity.
-message Hello { uint64 boot_id = 1; }
+message Hello {
+  uint64 boot_id = 1;
+  // Zero identifies older firmware without multi-conversation overview support.
+  uint32 max_cards = 2;
+}
 message Ping {}
 message Pong {}
 
@@ -38,6 +42,8 @@ message StatusView {
 }
 message View {
   string title = 1;
+  string source = 2;
+  string context = 3;
   oneof content { StatusView status = 10; }
 }
 message Card {
@@ -60,6 +66,8 @@ message Notification {
   // Remaining admission/start validity at transmission. Retrying may only shorten it.
   uint32 valid_for_ms = 4;
   View view = 5;
+  // Related persistent card to reveal when the notification finishes.
+  string card_id = 6;
 }
 enum AckStage {
   ACK_STAGE_UNSPECIFIED = 0;

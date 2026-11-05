@@ -56,6 +56,20 @@ The API supports `running`, `waiting_input`, `completed`, and `failed`. Retries
 retain their UUID `event_id` and content. Updates for one `(source, task_id)`
 use increasing positive `sequence` values. A new execution uses a new task ID.
 
+For multiple conversations, also submit `conversation_id`, `run_sequence`, and
+optionally `conversation_title` and `context`. Each conversation keeps one card
+across executions; `run_sequence` increases for each new execution, while
+`sequence` orders updates within it. Existing submissions without conversation
+fields continue to create independent task cards. See the
+[message/UI design and request example](docs/message-ui-design.md).
+
+The new overview shows three rows per page, rotating pages every six seconds.
+Waiting/failed rows sort first; all pages remain reachable. This revision passed
+desktop checks and was flashed on 2026-11-05; five cards and two notifications
+reported actual device Presented feedback. The user confirmed physical text,
+layout, and page rotation on the same date. Update the firmware together with the host: older firmware
+does not advertise the required eight-card overview capability.
+
 ## Build the firmware
 
 Use an activated **ESP-IDF v6.1** environment, separate from the host uv environment:
@@ -107,6 +121,10 @@ ctest --test-dir build/native-tests -C Debug -LE hardware --output-on-failure
 CTest discovers the registered C++ tests; the current three tests have the
 `unit` label and run entirely on the desktop. `protocol_bridge` is a helper
 executable driven by the Python integration test, not a standalone CTest case.
+After a firmware build has downloaded LVGL, configure native tests with
+`-DINFO_TV_BUILD_UI_TESTS=ON` to add the fourth desktop screen test. It renders
+the real widget layout into portable images. See
+[multi-conversation validation and screenshots](docs/multi-conversation-validation.md).
 
 Hardware-dependent C++ cases must use the `hardware` CTest label, and Python
 cases must use `@pytest.mark.hardware`. There are currently no registered
@@ -146,11 +164,14 @@ uv run --project host python scripts/generate_protocol.py
 
 ## Demo limits
 
-- One device, USB only; four task records, retained until host restart.
+- One device, USB only; eight current conversation/task cards, retained until
+  host restart. A later execution replaces its conversation's current run.
 - Eight queued notices, 30-second start validity, ordinary/important display
   defaults of 5/10 seconds. Important notices interrupt ordinary notices; an
-  interrupted ordinary notice ends. Cards rotate every four seconds.
+  interrupted ordinary notice ends. Three-row pages rotate every six seconds.
 - Offline submissions retain task state without accumulating popup history.
 - State is in memory. A USB power loss is a cold boot, not powered offline caching.
-- English demo inputs; Chinese fonts, calendar/weather producers, animation,
-  touch, Wi-Fi, BLE, and OS service registration remain future work.
+- English system labels; the bundled LVGL CJK font supports a limited character
+  subset, not arbitrary Chinese. Full Chinese font coverage, calendar/weather
+  producers, animation, touch, Wi-Fi, BLE, and OS service registration remain
+  future work. Card removal and automatic retention expiry are not implemented.

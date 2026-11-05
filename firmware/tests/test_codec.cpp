@@ -42,4 +42,31 @@ int main(int argc, char** argv) {
   note.envelope.body.notification.has_display_duration_ms = true;
   note.envelope.body.notification.display_duration_ms = 0;
   CHECK(info_tv::validateCommand(note.envelope));
+
+  // The worst-case eight-card snapshot, including metadata, fits one wire frame.
+  auto maximum = makeSnapshot("maximum");
+  auto& cards = maximum.envelope.body.snapshot;
+  cards.cards_count = 8;
+  for (size_t index = 0; index < 8; ++index) {
+    cards.cards[index] = makeCard();
+    auto& card = cards.cards[index];
+    std::memset(card.card_id, 'a' + index, sizeof(card.card_id) - 1);
+    card.revision = UINT64_MAX;
+    auto& view = card.view;
+    std::memset(view.title, 't', sizeof(view.title) - 1);
+    std::memset(view.source, 's', sizeof(view.source) - 1);
+    std::memset(view.context, 'c', sizeof(view.context) - 1);
+    std::memset(view.content.status.text, 'x', sizeof(view.content.status.text) - 1);
+    std::memset(view.content.status.detail, 'd', sizeof(view.content.status.detail) - 1);
+  }
+  static_assert(info_tv_v1_Envelope_size <= 4096);
+  const auto maximumSize = info_tv::encodeEnvelope(maximum.envelope, encoded.data(), encoded.size());
+  CHECK(maximumSize > 0 && maximumSize <= 4096);
+  CHECK(info_tv::decodeEnvelope(encoded.data(), maximumSize, roundtrip));
+  CHECK(!info_tv::validateCommand(roundtrip));
+  CHECK(roundtrip.body.snapshot.cards_count == 8);
+  auto metadata = makeCard();
+  auto changed = metadata;
+  std::strcpy(changed.view.context, "different-project");
+  CHECK(!info_tv::sameCard(metadata, changed));
 }

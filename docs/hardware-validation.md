@@ -106,3 +106,58 @@ Process metadata and logs are under `.local/run/`.
 Detailed RGB/brightness calibration, stack/heap headroom, refresh/animation
 performance, physical hot-plug/power-cycle scenarios, PSRAM, and touch input remain
 outside this initial validation. Linux/macOS and Wi-Fi/BLE have not been exercised.
+
+## 6. Multi-conversation Firmware Deployment
+
+Date: 2026-11-05. The user explicitly requested flashing the tested revision.
+
+The same ESP32-S3 was confirmed on COM6, USB VID:PID `303A:1001`, MAC
+`58:e6:c5:68:6c:70`. The previous info_tv host was stopped after its task and
+device state were captured locally. Before writing, addresses `0x0..0x10ffff`
+were read into `.local/device-backups/info-tv-before-multi-20261105.bin`:
+
+- Length: 1,114,112 bytes, including the bootloader, partition table, and complete
+  1 MiB app partition. This is a region backup, not a new full-Flash backup.
+- SHA-256: `83f5d8119b69674cf09355e06c1bcc932f17b8fddd2813bb6a649339631f6418`.
+- The previous 484,608-byte app within the backup matches the earlier deployed
+  application SHA-256 recorded above. The original full-Flash backup remains intact.
+
+Esptool 5.6.0 wrote and hash-verified all three images:
+
+| Image | Address | Length |
+| --- | --- | --- |
+| Bootloader | `0x0` | 21,120 bytes |
+| Partition table | `0x8000` | 3,072 bytes |
+| Application | `0x10000` | 682,768 bytes |
+
+Application SHA-256:
+`e11016545ae2c5c1076e7bfd2fbc8568bc842afb60309d9c02bc29624cacd7b4`.
+The device was hard-reset after writing. No eFuses were programmed.
+
+The updated host was restarted as a hidden background process at
+`http://127.0.0.1:8765`, and the device reached `online` with no reported error.
+The new eight-card capability handshake succeeded. The five-conversation demo
+then produced five individual card Presented acknowledgments, including the
+second overview page, and two independent important-notification Presented
+acknowledgments. Presented records actual UI refresh/DMA completion. On the same
+date, the user explicitly confirmed: “实屏文字、排版和轮换 正常”. This validates
+the observed text, layout, and page rotation; precise interval measurements and
+arbitrary Chinese glyph coverage are not established by that confirmation.
+
+The running host currently retains these five **simulated** conversations:
+Codex Message API (waiting input), agy Login flow (failed), Codex Unit tests
+(running), agy Documentation (running), and Codex UI review (running).
+These do not represent real agent-client integrations. The earlier single demo
+card is preserved in the pre-flash JSON record rather than restored to this demo.
+
+Local evidence:
+
+- `.local/hardware-validation/before-multi-conversation-flash.json`
+- `.local/hardware-validation/multi-conversation-flash.log`
+- `.local/hardware-validation/multi-conversation-demo.log`
+- `.local/hardware-validation/multi-conversation-device.json`
+- `.local/device-backups/info-tv-before-multi-20261105.bin.json`
+- `.local/run/host-process.json` and `host-multi.stdout.log` / `host-multi.stderr.log`
+
+The new UI's desktop screenshots and test scope are recorded in
+[Multi-conversation Validation](multi-conversation-validation.md).

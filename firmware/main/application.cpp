@@ -42,14 +42,13 @@ void Application::uiTask(void* context) {
     if (!app.display_.hasPendingFrame()) {
       const auto completed = app.display_.completedGeneration();
       if (completed && completed != acknowledged) {
-        if (app.presentation_.onFramePresented(completed, nowMs, feedback))
+        while (app.presentation_.onFramePresented(completed, nowMs, feedback))
           app.queueFeedback(feedback);
         acknowledged = completed;
       }
-      DisplayCommand command{};
-      if (uxQueueSpacesAvailable(app.feedback_) >= 2 &&
-          xQueueReceive(app.commands_, &command, 0) == pdTRUE &&
-          app.presentation_.handleCommand(command, nowMs, feedback))
+      if (uxQueueSpacesAvailable(app.feedback_) >= policy::kRowsPerPage + 1 &&
+          xQueueReceive(app.commands_, &app.uiCommand_, 0) == pdTRUE &&
+          app.presentation_.handleCommand(app.uiCommand_, nowMs, feedback))
         app.queueFeedback(feedback);
       const auto& model = app.presentation_.tick(nowMs);
       if (model.generation != rendered) {

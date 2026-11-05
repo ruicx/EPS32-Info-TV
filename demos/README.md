@@ -39,8 +39,24 @@ uv run --project host python demos/demo_task.py --url http://127.0.0.1:8766
 ```
 
 Each run creates a new task identity. Existing tasks remain visible and rotate
-in the overview. The current demo retains up to four tasks until host restart;
+in the three-row, six-second paged overview. The current demo retains up to eight
+conversation/task cards until host restart;
 restart the host to clear them before another set of demonstrations.
 
 Keep additional manual display scenarios here. Protocol generation and other
 development operations remain under `scripts/`.
+
+## Multiple conversations
+
+Use the updated host and firmware, and start with an empty host store (the demo
+adds five of its eight available cards):
+
+```powershell
+uv run --project host python demos/demo_conversations.py
+```
+
+This submits five simulated Codex/agy conversations, not real agent-client hooks.
+Two important notices show first, followed by the three-row overview across two
+pages. Waiting/failed conversations sort first. Ordinary progress does not restart
+the six-second page timer. Repeat runs create new conversation identities, so
+restart the host to clear the current demo before repeating it.

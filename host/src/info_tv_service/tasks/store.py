@@ -25,11 +25,11 @@ class AdmissionError(Exception):
 
 
 class TaskStore:
-    """Own at most four current tasks and a bounded event identity cache."""
+    """Own bounded current conversation/run cards and recent event identities."""
 
     def __init__(self) -> None:
         """Create empty state owned by the application event loop."""
-        self._tasks: dict[tuple[str, str], TaskRecord] = {}
+        self._tasks: dict[tuple[str, bool, str], TaskRecord] = {}
         self._events: OrderedDict[str, TaskEvent] = OrderedDict()
 
     def prepare(self, event: TaskEvent) -> TaskUpdate:
@@ -48,9 +48,9 @@ class TaskStore:
         Raises
         ------
         AdmissionError
-            If identities conflict, a sequence is reused, or four tasks exist.
+            If identities or ordering conflict, or current card capacity is full.
         """
-        key = (event.source, event.task_id)
+        key = (event.source, event.conversation_id is not None, event.conversation_id or event.task_id)
         previous = self._tasks.get(key)
         seen = self._events.get(event.event_id)
         if seen is not None:
@@ -58,18 +58,30 @@ class TaskStore:
                 raise AdmissionError("event_id was reused with different content")
             assert previous is not None
             return TaskUpdate("duplicate", previous)
-        if previous is not None and event.sequence <= previous.event.sequence:
+        for known in [record.event for record in self._tasks.values()] + list(self._events.values()):
+            if (known.source, known.task_id) == (event.source, event.task_id) and (
+                known.conversation_id != event.conversation_id or known.run_sequence != event.run_sequence
+            ):
+                raise AdmissionError("task_id cannot move between conversations or execution ordinals")
+        same_run = previous is not None and previous.event.task_id == event.task_id
+        if previous is not None and event.conversation_id is not None:
+            assert event.run_sequence is not None and previous.event.run_sequence is not None
+            if event.run_sequence < previous.event.run_sequence:
+                return TaskUpdate("stale", previous)
+            if (event.run_sequence == previous.event.run_sequence) != same_run:
+                raise AdmissionError("Each conversation execution ordinal must identify one task_id")
+        if same_run and previous is not None and event.sequence <= previous.event.sequence:
             if event.sequence == previous.event.sequence and event != previous.event:
                 raise AdmissionError("sequence was reused with different content")
             return TaskUpdate("stale", previous)
         if previous is None and len(self._tasks) >= MAX_TASKS:
             raise AdmissionError("Task capacity reached", 503)
-        completed = previous.completion_notified if previous else False
+        completed = previous.completion_notified if previous and same_run else False
         notify = (
             event.state == TaskState.COMPLETED and not completed
         ) or (
             event.state in (TaskState.WAITING_INPUT, TaskState.FAILED)
-            and (previous is None or previous.event.state != event.state)
+            and (not same_run or previous is None or previous.event.state != event.state)
         )
         record = TaskRecord(
             event, previous.card_id if previous else uuid4().hex,
@@ -87,7 +99,8 @@ class TaskStore:
             Accepted result returned by ``prepare`` in the same event-loop turn.
         """
         event = update.record.event
-        self._tasks[event.source, event.task_id] = update.record
+        key = (event.source, event.conversation_id is not None, event.conversation_id or event.task_id)
+        self._tasks[key] = update.record
         self._events[event.event_id] = event
         if len(self._events) > EVENT_CACHE_CAPACITY:
             self._events.popitem(last=False)

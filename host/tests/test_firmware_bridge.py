@@ -115,3 +115,32 @@ def test_http_to_cpp_firmware_core() -> None:
                 break
             assert time.monotonic() < deadline, "C++ notification was not presented"
             time.sleep(0.01)
+
+
+@pytest.mark.integration
+def test_eight_conversations_reach_the_cpp_overview_pages() -> None:
+    """Every row, including later pages, receives actual core visibility feedback."""
+    root = Path(__file__).resolve().parents[2]
+    executable = root / "build/native-tests" / ("Debug" if os.name == "nt" else "") / (
+        "protocol_bridge.exe" if os.name == "nt" else "protocol_bridge")
+    executable = Path(os.environ.get("INFO_TV_PROTOCOL_BRIDGE", str(executable)))
+    if not executable.exists():
+        pytest.skip("Build firmware/tests to enable the native cross-language integration")
+    with TestClient(create_app(Settings("native-bridge"), FirmwareBridgeTransport(executable))) as client:
+        deadline = time.monotonic() + 5
+        while client.get("/v1/device").json()["state"] != "online":
+            assert time.monotonic() < deadline
+            time.sleep(0.01)
+        for index in range(8):
+            submission = {"event_id": uuid4().hex, "source": "codex" if index % 2 else "agy",
+                          "task_id": f"run-{index}", "conversation_id": f"thread-{index}",
+                          "conversation_title": "消息接口", "context": "info_tv", "run_sequence": 1,
+                          "sequence": 1, "state": "running", "title": "Review", "detail": "Checking protocol"}
+            assert client.post("/v1/task-events", json=submission).status_code == 202
+        records = client.get("/v1/tasks").json()
+        assert len(records) == 8
+        assert len({record["card_id"] for record in records}) == 8
+        deadline = time.monotonic() + 20
+        while not all(record["delivery"].get("presented") for record in client.get("/v1/tasks").json()):
+            assert time.monotonic() < deadline, "Later overview pages never became visible"
+            time.sleep(0.02)

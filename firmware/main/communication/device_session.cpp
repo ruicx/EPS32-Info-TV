@@ -11,6 +11,7 @@
 namespace info_tv {
 DeviceSession::DeviceSession(UsbTransport& transport, QueueHandle_t commands, QueueHandle_t feedback)
     : transport_(transport), commands_(commands), feedback_(feedback) {
+  offlineCommand_.linkLost = true;
   bootId_ = (static_cast<uint64_t>(esp_random()) << 32) | esp_random();
   if (!bootId_) bootId_ = 1;
 }
@@ -58,7 +59,8 @@ void DeviceSession::sendFeedback(const Feedback& feedback) {
 }
 
 void DeviceSession::dispatch(uint64_t nowMs) {
-  command_ = DisplayCommand{};
+  // decodeEnvelope resets its payload; avoid a full-size command temporary here.
+  command_.linkLost = false;
   if (!decodeEnvelope(decoder_.data(), decoder_.size(), command_.envelope)) return;
   const auto& envelope = command_.envelope;
   if (!envelope.message_id[0]) return;
@@ -73,6 +75,7 @@ void DeviceSession::dispatch(uint64_t nowMs) {
     prepareReply("");
     reply_.which_body = info_tv_v1_Envelope_hello_tag;
     reply_.body.hello.boot_id = bootId_;
+    reply_.body.hello.max_cards = policy::kMaxCards;
     send();
     return;
   }
@@ -95,9 +98,7 @@ void DeviceSession::dispatch(uint64_t nowMs) {
     return;
   }
   if (needsOffline_) {
-    DisplayCommand offline{};
-    offline.linkLost = true;
-    if (xQueueSend(commands_, &offline, 0) != pdTRUE) {
+    if (xQueueSend(commands_, &offlineCommand_, 0) != pdTRUE) {
       reject(envelope, info_tv_v1_ErrorCode_ERROR_CODE_BUSY, "UI command queue full");
       return;
     }
@@ -124,9 +125,7 @@ void DeviceSession::poll(uint64_t nowMs) {
     needsOffline_ = true;
   }
   if (needsOffline_) {
-    DisplayCommand offline{};
-    offline.linkLost = true;
-    if (xQueueSend(commands_, &offline, 0) == pdTRUE) needsOffline_ = false;
+    if (xQueueSend(commands_, &offlineCommand_, 0) == pdTRUE) needsOffline_ = false;
   }
 }
 

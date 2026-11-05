@@ -78,10 +78,12 @@ class Envelope(_message.Message):
     def __init__(self, protocol_version: _Optional[int] = ..., session_id: _Optional[str] = ..., message_id: _Optional[str] = ..., hello: _Optional[_Union[Hello, _Mapping]] = ..., snapshot: _Optional[_Union[Snapshot, _Mapping]] = ..., card_upsert: _Optional[_Union[CardUpsert, _Mapping]] = ..., notification: _Optional[_Union[Notification, _Mapping]] = ..., acknowledgment: _Optional[_Union[Acknowledgment, _Mapping]] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., ping: _Optional[_Union[Ping, _Mapping]] = ..., pong: _Optional[_Union[Pong, _Mapping]] = ...) -> None: ...
 
 class Hello(_message.Message):
-    __slots__ = ("boot_id",)
+    __slots__ = ("boot_id", "max_cards")
     BOOT_ID_FIELD_NUMBER: _ClassVar[int]
+    MAX_CARDS_FIELD_NUMBER: _ClassVar[int]
     boot_id: int
-    def __init__(self, boot_id: _Optional[int] = ...) -> None: ...
+    max_cards: int
+    def __init__(self, boot_id: _Optional[int] = ..., max_cards: _Optional[int] = ...) -> None: ...
 
 class Ping(_message.Message):
     __slots__ = ()
@@ -104,12 +106,16 @@ class StatusView(_message.Message):
     def __init__(self, text: _Optional[str] = ..., tone: _Optional[_Union[Tone, str]] = ..., detail: _Optional[str] = ..., progress_percent: _Optional[int] = ...) -> None: ...
 
 class View(_message.Message):
-    __slots__ = ("title", "status")
+    __slots__ = ("title", "source", "context", "status")
     TITLE_FIELD_NUMBER: _ClassVar[int]
+    SOURCE_FIELD_NUMBER: _ClassVar[int]
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
     title: str
+    source: str
+    context: str
     status: StatusView
-    def __init__(self, title: _Optional[str] = ..., status: _Optional[_Union[StatusView, _Mapping]] = ...) -> None: ...
+    def __init__(self, title: _Optional[str] = ..., source: _Optional[str] = ..., context: _Optional[str] = ..., status: _Optional[_Union[StatusView, _Mapping]] = ...) -> None: ...
 
 class Card(_message.Message):
     __slots__ = ("card_id", "revision", "view")
@@ -134,18 +140,20 @@ class CardUpsert(_message.Message):
     def __init__(self, card: _Optional[_Union[Card, _Mapping]] = ...) -> None: ...
 
 class Notification(_message.Message):
-    __slots__ = ("notification_id", "priority", "display_duration_ms", "valid_for_ms", "view")
+    __slots__ = ("notification_id", "priority", "display_duration_ms", "valid_for_ms", "view", "card_id")
     NOTIFICATION_ID_FIELD_NUMBER: _ClassVar[int]
     PRIORITY_FIELD_NUMBER: _ClassVar[int]
     DISPLAY_DURATION_MS_FIELD_NUMBER: _ClassVar[int]
     VALID_FOR_MS_FIELD_NUMBER: _ClassVar[int]
     VIEW_FIELD_NUMBER: _ClassVar[int]
+    CARD_ID_FIELD_NUMBER: _ClassVar[int]
     notification_id: str
     priority: Priority
     display_duration_ms: int
     valid_for_ms: int
     view: View
-    def __init__(self, notification_id: _Optional[str] = ..., priority: _Optional[_Union[Priority, str]] = ..., display_duration_ms: _Optional[int] = ..., valid_for_ms: _Optional[int] = ..., view: _Optional[_Union[View, _Mapping]] = ...) -> None: ...
+    card_id: str
+    def __init__(self, notification_id: _Optional[str] = ..., priority: _Optional[_Union[Priority, str]] = ..., display_duration_ms: _Optional[int] = ..., valid_for_ms: _Optional[int] = ..., view: _Optional[_Union[View, _Mapping]] = ..., card_id: _Optional[str] = ...) -> None: ...
 
 class Acknowledgment(_message.Message):
     __slots__ = ("in_reply_to", "stage", "card_id", "revision")

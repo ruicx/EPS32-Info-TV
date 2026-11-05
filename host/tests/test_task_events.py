@@ -7,6 +7,7 @@ import pytest
 
 from info_tv_service.tasks.models import TaskEvent, TaskState
 from info_tv_service.tasks.store import AdmissionError, TaskStore
+from info_tv_service.config import EVENT_CACHE_CAPACITY, MAX_TASKS
 
 
 def event(sequence: int = 1, state: TaskState = TaskState.RUNNING, task_id: str = "task") -> TaskEvent:
@@ -60,11 +61,72 @@ def test_duplicate_conflict_stale_and_completion_once() -> None:
 
 
 def test_capacity_rejects_without_mutation() -> None:
-    """An unadmitted fifth task cannot alter the four accepted tasks."""
+    """An unadmitted extra task cannot alter accepted cards at capacity."""
     store = TaskStore()
-    for index in range(4):
+    for index in range(MAX_TASKS):
         store.commit(store.prepare(event(task_id=str(index))))
     before = store.list_tasks()
     with pytest.raises(AdmissionError, match="capacity"):
-        store.prepare(event(task_id="fifth"))
+        store.prepare(event(task_id="overflow"))
     assert store.list_tasks() == before
+
+
+def test_conversation_reuses_card_across_runs_and_completes_each_run_once() -> None:
+    """A new execution reuses its conversation card and resets completion state."""
+    store = TaskStore()
+    first = replace(event(state=TaskState.COMPLETED), conversation_id="thread", run_sequence=1)
+    old = store.prepare(first)
+    store.commit(old)
+    second = replace(first, event_id=uuid4().hex, task_id="run-2", run_sequence=2,
+                     state=TaskState.RUNNING)
+    update = store.prepare(second)
+    store.commit(update)
+    assert update.record.card_id == old.record.card_id
+    assert update.record.revision == 2
+    assert len(store.list_tasks()) == 1
+    complete = replace(second, event_id=uuid4().hex, sequence=2, state=TaskState.COMPLETED)
+    update = store.prepare(complete)
+    assert update.notify
+    store.commit(update)
+    assert store.prepare(complete).outcome == "duplicate"
+    assert not store.prepare(replace(complete, event_id=uuid4().hex, sequence=3)).notify
+
+
+def test_late_execution_cannot_replace_current_conversation_state() -> None:
+    """An old run, including its first delayed event, cannot overwrite a newer run."""
+    store = TaskStore()
+    current = replace(event(task_id="new"), conversation_id="thread", run_sequence=3)
+    store.commit(store.prepare(current))
+    late = replace(event(100, TaskState.FAILED, "old"), conversation_id="thread", run_sequence=2)
+    assert store.prepare(late).outcome == "stale"
+    assert store.list_tasks()[0].event == current
+    with pytest.raises(AdmissionError, match="ordinal"):
+        store.prepare(replace(late, event_id=uuid4().hex, run_sequence=3))
+    with pytest.raises(AdmissionError, match="ordinal"):
+        store.prepare(replace(current, event_id=uuid4().hex, run_sequence=4))
+
+
+def test_sources_conversations_and_legacy_tasks_have_separate_identities() -> None:
+    """Same titles, IDs, and projects do not merge unrelated conversations."""
+    store = TaskStore()
+    first = replace(event(), source="codex", conversation_id="same", run_sequence=1)
+    for submission in (first, replace(first, event_id=uuid4().hex, source="agy"),
+                       replace(first, event_id=uuid4().hex, task_id="other", conversation_id="other"),
+                       replace(event(task_id="same"), source="codex")):
+        store.commit(store.prepare(submission))
+    assert len({record.card_id for record in store.list_tasks()}) == 4
+
+
+def test_execution_identity_cannot_move_to_another_conversation() -> None:
+    """Reusing a source-scoped task ID with a new conversation is a conflict."""
+    store = TaskStore()
+    first = replace(event(), conversation_id="thread", run_sequence=1)
+    store.commit(store.prepare(first))
+    with pytest.raises(AdmissionError, match="cannot move"):
+        store.prepare(replace(first, event_id=uuid4().hex, conversation_id="other"))
+    # Current identities remain protected after their event-cache entries expire.
+    other = replace(event(task_id="busy"), conversation_id="busy-thread", run_sequence=1)
+    for sequence in range(1, EVENT_CACHE_CAPACITY + 2):
+        store.commit(store.prepare(replace(other, event_id=uuid4().hex, sequence=sequence)))
+    with pytest.raises(AdmissionError, match="cannot move"):
+        store.prepare(replace(first, event_id=uuid4().hex, conversation_id="other"))

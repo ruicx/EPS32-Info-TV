@@ -21,6 +21,10 @@ class PresentationController {
  private:
   /** Populate a feedback identity from the command without serializing it. */
   void identify(const Envelope& envelope, Feedback& feedback) const;
+  /** Order attention, running, and completed cards, preserving arrival ties. */
+  void orderCards();
+  /** Reveal the related card and grant its overview a full rotation interval. */
+  void restoreOverview(uint64_t nowMs);
   DisplayState& state_;
   RenderModel render_{};
   NotificationSlot active_{};
@@ -28,6 +32,7 @@ class PresentationController {
   bool connected_ = false;
   uint64_t activeUntilMs_ = 0;
   uint64_t nextRotationMs_ = 0;
-  size_t cardIndex_ = 0;
+  size_t pageIndex_ = 0;
+  std::array<size_t, policy::kMaxCards> order_{};
 };
 }  // namespace info_tv

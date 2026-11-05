@@ -94,10 +94,18 @@ commands and calls the LVGL timer handler. Driver completion only performs
 flush-ready notification and atomic completion publication. Feedback congestion
 requests session resynchronization rather than blocking local timers.
 
-The overview shows one task at a time, rotating every four seconds. Notifications
+The overview shows up to three conversation/task rows per page, rotating pages
+every six seconds. Waiting/failed cards sort before running and completed cards;
+all pages rotate without starvation, and progress updates do not reset the timer.
+Notifications
 temporarily replace it without deleting cards. New service sessions discard
 old-session ordering and queued events; same-session snapshots do not replay
 notification history. Waiting/failed state survives its temporary notice.
+The eight-card extension and LVGL screen have desktop verification and a firmware
+build. The new revision was flashed on 2026-11-05; five cards and two notifications
+returned device Presented feedback. The user confirmed physical text, layout,
+and page rotation on the same date; earlier
+detailed recovery evidence covers the single-card demo.
 
 ## 4. Resource and Runtime Baseline
 

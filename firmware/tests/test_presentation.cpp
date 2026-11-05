@@ -1,11 +1,67 @@
 #include "ui/presentation_controller.h"
 
+#include <cstdio>
 #include <cstring>
 
 #include "test_support.h"
 
+/** Verify multi-page priority, fairness, stable timing, and per-row visibility. */
+void testPagedOverview() {
+  info_tv::DisplayState state;
+  info_tv::PresentationController controller(state);
+  info_tv::Feedback feedback{};
+  auto snapshot = makeSnapshot();
+  snapshot.envelope.body.snapshot.cards_count = 8;
+  for (size_t index = 0; index < 8; ++index) {
+    char identity[16];
+    std::snprintf(identity, sizeof(identity), "card-%u", static_cast<unsigned>(index));
+    snapshot.envelope.body.snapshot.cards[index] = makeCard(identity);
+  }
+  snapshot.envelope.body.snapshot.cards[6].view.content.status.tone = info_tv_v1_Tone_TONE_ATTENTION;
+  snapshot.envelope.body.snapshot.cards[7].view.content.status.tone = info_tv_v1_Tone_TONE_NEGATIVE;
+  CHECK(controller.handleCommand(snapshot, 0, feedback));
+  auto model = controller.tick(0);
+  CHECK(model.pageCount == 3 && model.pageIndex == 0 && model.rowCount == 3);
+  CHECK(model.attentionCount == 2 && model.cardCount == 8);
+  CHECK(!std::strcmp(model.rows[0].card.card_id, "card-6"));
+  CHECK(!std::strcmp(model.rows[1].card.card_id, "card-7"));
+  for (size_t row = 0; row < model.rowCount; ++row) {
+    CHECK(controller.onFramePresented(model.generation, 0, feedback));
+    CHECK(!std::strcmp(feedback.cardId, model.rows[row].card.card_id));
+  }
+  CHECK(!controller.onFramePresented(model.generation, 0, feedback));
+  CHECK(!state.card(1).presented);
+
+  auto upsert = makeCommand("hidden-update");
+  upsert.envelope.which_body = info_tv_v1_Envelope_card_upsert_tag;
+  upsert.envelope.body.card_upsert.has_card = true;
+  upsert.envelope.body.card_upsert.card = makeCard("card-1", 2);
+  CHECK(controller.handleCommand(upsert, 5999, feedback));
+  CHECK(controller.tick(5999).generation == model.generation);
+  model = controller.tick(6000);
+  CHECK(model.pageIndex == 1);
+  CHECK(model.rows[0].card.revision == 2);
+  CHECK(!controller.onFramePresented(model.generation - 1, 6000, feedback));
+  CHECK(controller.onFramePresented(model.generation, 6000, feedback));
+  CHECK(!std::strcmp(feedback.messageId, "hidden-update"));
+  CHECK(controller.tick(12000).pageIndex == 2);
+  CHECK(controller.tick(18000).pageIndex == 0);
+
+  auto note = makeNotification("related", true);
+  std::strcpy(note.envelope.body.notification.card_id, "card-5");
+  CHECK(controller.handleCommand(note, 18001, feedback));
+  model = controller.tick(18001);
+  CHECK(controller.onFramePresented(model.generation, 18001, feedback));
+  CHECK(controller.tick(28000).kind == info_tv::RenderModel::Kind::kNotification);
+  model = controller.tick(28001);
+  CHECK(model.kind == info_tv::RenderModel::Kind::kOverview && model.pageIndex == 2);
+  CHECK(controller.tick(34000).pageIndex == 2);
+  CHECK(controller.tick(34001).pageIndex == 0);
+}
+
 /** Verify UI admission, actual visibility, interruption, restoration, and expiry. */
 int main() {
+  testPagedOverview();
   info_tv::DisplayState state;
   info_tv::PresentationController controller(state);
   info_tv::Feedback feedback{};
@@ -42,7 +98,7 @@ int main() {
   CHECK(controller.tick(10002).kind == info_tv::RenderModel::Kind::kNotification);
   model = controller.tick(10003);
   CHECK(model.kind == info_tv::RenderModel::Kind::kOverview);
-  CHECK(model.revision == 2);
+  CHECK(model.rows[0].card.revision == 2);
   CHECK(controller.onFramePresented(model.generation, 10003, feedback));
   CHECK(!std::strcmp(feedback.messageId, "update"));
   CHECK(controller.tick(15000).kind == info_tv::RenderModel::Kind::kOverview);

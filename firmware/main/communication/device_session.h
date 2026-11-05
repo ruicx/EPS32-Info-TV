@@ -37,6 +37,7 @@ class DeviceSession {
   QueueHandle_t feedback_;
   FrameDecoder decoder_;
   DisplayCommand command_{};
+  DisplayCommand offlineCommand_{};
   Envelope reply_{};
   std::array<uint8_t, 4096> payload_{};
   std::array<uint8_t, 4128> wire_{};

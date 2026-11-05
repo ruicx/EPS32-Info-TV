@@ -25,10 +25,13 @@ def build_card(record: TaskRecord) -> pb.Card:
         TaskState.FAILED: pb.TONE_NEGATIVE,
     }
     event = record.event
-    status = pb.StatusView(text=event.state.replace("_", " "), tone=tones[event.state], detail=event.detail)
+    status = pb.StatusView(text=event.state.replace("_", " "), tone=tones[event.state],
+                           detail=event.detail or (event.title if event.conversation_id else ""))
     if event.progress_percent is not None:
         status.progress_percent = event.progress_percent
-    return pb.Card(card_id=record.card_id, revision=record.revision, view=pb.View(title=event.title, status=status))
+    return pb.Card(card_id=record.card_id, revision=record.revision,
+                   view=pb.View(title=event.conversation_title or event.title, source=event.source,
+                                context=event.context, status=status))
 
 
 def build_notification(record: TaskRecord) -> pb.Notification:
@@ -49,4 +52,5 @@ def build_notification(record: TaskRecord) -> pb.Notification:
         priority=pb.PRIORITY_ORDINARY if record.event.state == TaskState.COMPLETED else pb.PRIORITY_IMPORTANT,
         valid_for_ms=NOTIFICATION_VALIDITY_MS,
         view=build_card(record).view,
+        card_id=record.card_id,
     )

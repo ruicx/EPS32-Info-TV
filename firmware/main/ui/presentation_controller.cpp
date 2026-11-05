@@ -1,5 +1,6 @@
 #include "ui/presentation_controller.h"
 
+#include <algorithm>
 #include <cstring>
 
 #include "protocol/codec.h"
@@ -41,7 +42,7 @@ bool PresentationController::handleCommand(const DisplayCommand& command, uint64
       if (!sameSession) hasActive_ = false;
       state_.applySnapshot(envelope);
       connected_ = true;
-      cardIndex_ = 0;
+      pageIndex_ = 0;
       nextRotationMs_ = nowMs + policy::kRotationMs;
       break;
     case info_tv_v1_Envelope_card_upsert_tag:
@@ -63,9 +64,37 @@ bool PresentationController::handleCommand(const DisplayCommand& command, uint64
   return true;
 }
 
+void PresentationController::orderCards() {
+  for (size_t index = 0; index < state_.cardCount(); ++index) order_[index] = index;
+  const auto priority = [this](size_t index) {
+    const auto tone = state_.card(index).card.view.content.status.tone;
+    if (tone == info_tv_v1_Tone_TONE_ATTENTION || tone == info_tv_v1_Tone_TONE_NEGATIVE) return 0;
+    return tone == info_tv_v1_Tone_TONE_POSITIVE ? 2 : 1;
+  };
+  std::sort(order_.begin(), order_.begin() + state_.cardCount(), [&](size_t left, size_t right) {
+    const int a = priority(left);
+    const int b = priority(right);
+    return a == b ? left < right : a < b;
+  });
+}
+
+void PresentationController::restoreOverview(uint64_t nowMs) {
+  for (size_t index = 0; index < state_.cardCount(); ++index) {
+    if (!std::strcmp(state_.card(order_[index]).card.card_id, active_.notification.card_id)) {
+      pageIndex_ = index / policy::kRowsPerPage;
+      break;
+    }
+  }
+  nextRotationMs_ = nowMs + policy::kRotationMs;
+}
+
 const RenderModel& PresentationController::tick(uint64_t nowMs) {
+  orderCards();
   if (hasActive_ && ((active_.presented && nowMs >= activeUntilMs_) ||
-                     (!active_.presented && nowMs >= active_.expiresAtMs))) hasActive_ = false;
+                     (!active_.presented && nowMs >= active_.expiresAtMs))) {
+    restoreOverview(nowMs);
+    hasActive_ = false;
+  }
   NotificationSlot next{};
   if (hasActive_ && active_.notification.priority == info_tv_v1_Priority_PRIORITY_ORDINARY &&
       state_.popNotification(nowMs, next, true)) {
@@ -79,31 +108,44 @@ const RenderModel& PresentationController::tick(uint64_t nowMs) {
   RenderModel candidate{};
   candidate.connected = connected_;
   candidate.cardCount = state_.cardCount();
+  candidate.pageCount = (state_.cardCount() + policy::kRowsPerPage - 1) / policy::kRowsPerPage;
+  for (size_t index = 0; index < state_.cardCount(); ++index) {
+    const auto tone = state_.card(index).card.view.content.status.tone;
+    if (tone == info_tv_v1_Tone_TONE_ATTENTION || tone == info_tv_v1_Tone_TONE_NEGATIVE)
+      ++candidate.attentionCount;
+  }
   std::strcpy(candidate.sessionId, state_.sessionId());
   if (hasActive_) {
     candidate.kind = RenderModel::Kind::kNotification;
     candidate.view = active_.notification.view;
+    std::strcpy(candidate.cardId, active_.notification.card_id);
     std::strcpy(candidate.messageId, active_.messageId);
     std::strcpy(candidate.sessionId, active_.sessionId);
   } else if (state_.cardCount()) {
     if (nowMs >= nextRotationMs_) {
-      cardIndex_ = (cardIndex_ + 1) % state_.cardCount();
+      pageIndex_ = (pageIndex_ + 1) % candidate.pageCount;
       nextRotationMs_ = nowMs + policy::kRotationMs;
     }
-    cardIndex_ %= state_.cardCount();
-    const auto& slot = state_.card(cardIndex_);
+    pageIndex_ %= candidate.pageCount;
     candidate.kind = RenderModel::Kind::kOverview;
-    candidate.cardIndex = cardIndex_;
-    candidate.view = slot.card.view;
-    candidate.revision = slot.card.revision;
-    std::strcpy(candidate.cardId, slot.card.card_id);
-    std::strcpy(candidate.messageId, slot.messageId);
+    candidate.pageIndex = pageIndex_;
+    const size_t first = pageIndex_ * policy::kRowsPerPage;
+    candidate.rowCount = std::min(policy::kRowsPerPage, state_.cardCount() - first);
+    for (size_t row = 0; row < candidate.rowCount; ++row) {
+      const auto& slot = state_.card(order_[first + row]);
+      candidate.rows[row].card = slot.card;
+      std::strcpy(candidate.rows[row].messageId, slot.messageId);
+    }
   }
-  const bool changed = render_.generation == 0 || candidate.kind != render_.kind ||
-      candidate.connected != render_.connected || candidate.cardIndex != render_.cardIndex ||
-      candidate.cardCount != render_.cardCount || candidate.revision != render_.revision ||
-      std::strcmp(candidate.cardId, render_.cardId) || std::strcmp(candidate.messageId, render_.messageId) ||
+  bool changed = render_.generation == 0 || candidate.kind != render_.kind ||
+      candidate.connected != render_.connected || candidate.pageIndex != render_.pageIndex ||
+      candidate.cardCount != render_.cardCount || candidate.attentionCount != render_.attentionCount ||
+      candidate.rowCount != render_.rowCount || std::strcmp(candidate.messageId, render_.messageId) ||
       std::strcmp(candidate.sessionId, render_.sessionId);
+  for (size_t row = 0; row < candidate.rowCount && !changed; ++row) {
+    changed = !sameCard(candidate.rows[row].card, render_.rows[row].card) ||
+        std::strcmp(candidate.rows[row].messageId, render_.rows[row].messageId);
+  }
   candidate.generation = render_.generation + (changed ? 1 : 0);
   render_ = candidate;
   return render_;
@@ -123,14 +165,20 @@ bool PresentationController::onFramePresented(uint32_t generation, uint64_t nowM
             policy::kImportantDurationMs : policy::kOrdinaryDurationMs));
     return true;
   }
-  if (render_.kind == RenderModel::Kind::kOverview && state_.cardCount()) {
-    auto& slot = state_.card(cardIndex_);
-    if (slot.presented || slot.card.revision != render_.revision ||
-        std::strcmp(slot.messageId, render_.messageId)) return false;
-    slot.presented = true;
-    std::strcpy(feedback.cardId, slot.card.card_id);
-    feedback.revision = slot.card.revision;
-    return true;
+  if (render_.kind == RenderModel::Kind::kOverview) {
+    for (size_t row = 0; row < render_.rowCount; ++row) {
+      const auto& visible = render_.rows[row];
+      for (size_t index = 0; index < state_.cardCount(); ++index) {
+        auto& slot = state_.card(index);
+        if (slot.presented || !sameCard(slot.card, visible.card) ||
+            std::strcmp(slot.messageId, visible.messageId)) continue;
+        slot.presented = true;
+        std::strcpy(feedback.cardId, slot.card.card_id);
+        std::strcpy(feedback.messageId, slot.messageId);
+        feedback.revision = slot.card.revision;
+        return true;
+      }
+    }
   }
   return false;
 }
