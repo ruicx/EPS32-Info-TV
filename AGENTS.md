@@ -39,6 +39,10 @@ Use four-space Python indentation, `snake_case` functions, `PascalCase` classes,
 
 For C++, use two-space indentation, Google-style conventions, `camelCase` functions/variables, `PascalCase` classes, and Doxygen comments. Prefer `nullptr`, `override`, and short functions with early returns. Keep changes focused and match surrounding code.
 
+## Documentation Language
+
+Write all documentation in English. Bilingual README files are the only exception.
+
 ## Testing Guidelines
 
 Use pytest files named `test_*.py` and native C++ files named `test_*.cpp`, registered through CMake/CTest. Default pytest runs exclude `hardware`; mark physical-device cases explicitly. Use `integration` for cross-component Python tests. Build `protocol_bridge` before bridge integration tests. No coverage threshold is configured; add regression coverage for changed behavior.

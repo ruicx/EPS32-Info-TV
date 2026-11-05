@@ -140,7 +140,8 @@ The new eight-card capability handshake succeeded. The five-conversation demo
 then produced five individual card Presented acknowledgments, including the
 second overview page, and two independent important-notification Presented
 acknowledgments. Presented records actual UI refresh/DMA completion. On the same
-date, the user explicitly confirmed: “实屏文字、排版和轮换 正常”. This validates
+date, the user explicitly confirmed (English translation): "Physical text, layout,
+and page rotation are normal." This validates
 the observed text, layout, and page rotation; precise interval measurements and
 arbitrary Chinese glyph coverage are not established by that confirmation.
 

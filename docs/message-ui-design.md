@@ -1,157 +1,158 @@
-# 消息接口与屏幕 UI 设计草案
+# Message Interface and Screen UI Design Draft
 
-状态：多会话总览方向已获同意，第一阶段已实现并通过桌面检查和固件构建；其余日程、天气、通用通知等仍为设计草案。2026-11-05 已刷写，五条卡片与两条提醒获得真实设备 Presented 回执；用户已确认实屏文字、排版和轮换正常。
+Status: The multi-conversation overview direction has been accepted. Phase one is implemented and has passed desktop checks and a firmware build; calendar, weather, and general notifications remain design proposals. The firmware was flashed on 2026-11-05. Five cards and two notifications received actual device Presented feedback, and the user confirmed that physical text, layout, and page rotation were normal.
 
-日期：2026-11-05
+Date: 2026-11-05
 
-## 1. 设计出发点
+## 1. Design Goals
 
-设备是一块 1.54 英寸、240 × 240 的桌面信息屏。用户应该能在一瞥之间回答：现在有什么事、是否需要我处理、下一件事何时发生。
+The device is a 1.54-inch, 240 × 240 desktop information display. At a glance, the user should be able to tell what is happening, whether anything needs their attention, and when the next event will occur.
 
-本稿假设：主要信息仍由 Windows 服务提供；先覆盖消息语义与屏幕布局，不实现新的信息源；屏幕不承担阅读长文、查看日志或批准 Agent 操作的工作。来源名称是内容标签，固件不根据 Codex、zcode 等来源名称分支。
+Assumptions: The Windows service remains the main source of content. This draft defines message semantics and screen layouts without implementing new producers. The screen is intended for short summaries; long-form reading, logs, and approval of agent actions remain on the computer. Source names are display labels, and firmware behavior does not branch on names such as Codex or zcode.
 
-沿用已确认的“状态与提醒分开”“同对象原位更新”“重要提醒优先”“结束后恢复总览”“重连同步有效现状”。具体保留时间、自动轮换周期和闲置动画时机继续通过试用调整。
+Keep the accepted behaviors: separate persistent state from notifications, update the same object in place, prioritize important notifications, restore the overview afterward, and synchronize current valid state after reconnection. Retention periods, rotation timing, and idle animation timing remain subject to trial tuning.
 
-## 2. 我们要展示的消息
+## 2. Messages to Display
 
-| 场景 | 屏幕需要回答的问题 | 持续内容 | 一次性提醒 |
+| Scenario | Question the screen should answer | Persistent content | One-time notification |
 | --- | --- | --- | --- |
-| Agent 正在工作 | 哪个项目、做什么、进行到哪一步？ | 来源、任务标题、当前阶段；有真实进度才显示百分比 | 普通进度变化不提醒 |
-| Agent 等待输入 | 哪件事需要我回电脑处理？ | 任务标题、等待原因、明确的下一步 | 进入等待状态时重要提醒 |
-| Agent 失败 | 什么失败、我该从哪里处理？ | 任务标题、简短原因、下一步 | 进入失败状态时重要提醒 |
-| Agent 完成 | 什么做完了、结果如何？ | 简短结果，按稍后确定的保留规则退出 | 同一任务完成提醒一次 |
-| 日程 | 下一场重要安排是什么、还有多久？ | 标题、起止时间、可选地点；总览最多三项 | 到达约定提前量时提醒 |
-| 天气 | 哪个地点、现在如何、数据是否新鲜？ | 地点、天气、温度、更新时间；按需求增加一个辅助量 | 普通刷新不提醒；是否接入天气预警另行决定 |
-| 外部通知 | 刚发生什么、是否需要处理？ | 默认不进入持续内容 | 标题、两行摘要、来源、普通或重要级别 |
-| 闲置陪伴 | 当前没有需要关注的事 | 本地时间与可选缓存动画 | 重要提醒可以打断 |
+| Agent running | Which project, what work, and which stage? | Source, task title, current stage; percentage only when real progress is available | Ordinary progress changes do not notify |
+| Agent waiting for input | What needs me to return to the computer? | Task title, reason for waiting, clear next step | Important notification on entering the waiting state |
+| Agent failed | What failed, and where should I handle it? | Task title, short reason, next step | Important notification on entering the failed state |
+| Agent completed | What finished, and what was the result? | Short result, removed according to a retention policy to be decided | Notify once per completed task |
+| Calendar | What is the next important event, and how soon? | Title, start/end time, optional location; at most three overview entries | Notify at the agreed reminder lead time |
+| Weather | Which location, what conditions, and how fresh is the data? | Location, conditions, temperature, update time; optionally one additional measure | Ordinary refreshes do not notify; weather alert integration is a separate decision |
+| External notification | What just happened, and does it need attention? | Does not enter persistent content by default | Title, two-line summary, source, ordinary or important priority |
+| Idle companion | Is there anything that needs attention? | Local time and optional cached animation | Important notifications can interrupt |
 
-建议将“等待输入”和“失败”统一纳入需关注区域，但保留各自的状态文字。错误未必都需要用户操作，下一步文案由来源如实提供。通知消失不代表任务已处理。
+Group waiting-for-input and failed tasks in an attention area while retaining their distinct status text. Not every error requires user action; the producer must provide an accurate next step. A notification disappearing does not mean the task has been resolved.
 
-不把完整聊天回复、思考过程、终端日志、堆栈或补丁放上屏幕。它们的简短结果、等待原因或失败摘要可以展示，详情回电脑查看。
+Keep full chat responses, reasoning traces, terminal logs, stack traces, and patches on the computer. The display can show their short results, waiting reasons, or failure summaries.
 
-## 3. 页面与信息层级
+## 3. Pages and Information Hierarchy
 
-### 单卡聚焦
+### Single-Card Focus
 
-一屏一件事，适合较远距离扫视，作为少量持续内容时的候选方案：
+One item per screen supports viewing from farther away and is a candidate when there are few persistent items:
 
 ```text
-┌────────────────────────┐
-│ Codex · info_tv   运行中 │ 来源与状态
-│                        │
-│ 完善消息接口             │ 主标题，最多两行
-│ 正在检查协议兼容性       │ 当前阶段或摘要，最多两行
-│                        │
-│ ━━━━━━━━━━━━━━━   65%   │ 仅有真实进度时显示
-│ 另有 2 项 · 1 项待处理   │ 全局提示
-│ USB 在线          1 / 3 │ 连接与位置
-└────────────────────────┘
++--------------------------------+
+| Codex | info_tv        Running  | Source and state
+|                                |
+| Improve message API            | Main title, at most two lines
+| Checking protocol compatibility| Stage or summary, at most two lines
+|                                |
+| ==================       65%   | Only when real progress is available
+| 2 other items | 1 needs input  | Global context
+| USB online               1 / 3 | Connection and position
++--------------------------------+
 ```
 
-有等待或失败任务时，优先呈现需关注内容，再保留其他任务的可见机会；新进度不重置轮换，不让某个高频来源长期霸屏。具体权重与轮换时长待定。
+When tasks are waiting or have failed, prioritize their content while preserving display opportunities for other tasks. Progress updates must not restart rotation or let a high-frequency producer occupy the screen indefinitely. Detailed weights and timing remain trial settings.
 
-### 三行总览
+### Three-Row Overview
 
-同屏显示最多三个简短条目，每项一个标题和一行状态；超过三项分组轮换。优点是同时看到多个任务，代价是标题与说明更短、远距离阅读更吃力。
+Show at most three short entries at once, each with a title and one status line. Rotate groups when there are more than three entries. This makes several tasks visible together but requires shorter titles and descriptions, with lower readability from a distance.
 
-两种布局都使用同一份内容模型。选择布局不应导致调用方修改提交数据，也不要求同时实现两种布局。
+Both layouts use the same content model. Choosing a layout must not require callers to change their submissions, and both layouts do not have to be implemented together.
 
-### 多个 Agent 对话同时持续更新
+### Multiple Agent Conversations Updating Continuously
 
-补充场景：用户同时打开多个 Codex、agy 对话。针对这一场景，默认页面采用会话总览；单卡用于重点内容和状态变化提醒。第一阶段实现最多八个持续条目，每页三条、六秒轮换。
+Additional scenario: The user has several Codex and agy conversations open simultaneously. The default page for this case is the conversation overview; single cards present important content and state-transition notifications. Phase one supports at most eight persistent entries, three per page, with six-second rotation.
 
-**一段对话对应一个持续展示条目。** 同一对话的多次任务更新替换这个条目；不同对话彼此独立。不能按软件名称只保留一条，也不能把每条聊天回复都新增成卡片。
+**Each conversation has one persistent display entry.** Task updates within that conversation replace its entry, while other conversations remain independent. Do not collapse all conversations from one application into one entry or create a new card for every chat response.
 
-需要区分三层身份：
+Distinguish three identity levels:
 
-| 身份 | 作用 | 生命周期 |
+| Identity | Purpose | Lifetime |
 | --- | --- | --- |
-| `source` | 生产者命名空间，如 `codex`、`agy` | 不因窗口标题变化而变化 |
-| `conversation_id`（已新增） | 稳定标识对话；与 `source` 共同作为会话展示条目的键 | 跨多轮交互保留；适配器须确保同来源的不同实例不冲突 |
-| `task_id`（已有） | 标识对话中的一次执行 | 每次新执行使用新 ID，保留现有排序和完成去重规则 |
+| `source` | Producer namespace, such as `codex` or `agy` | Unchanged when a window title changes |
+| `conversation_id` (added) | Stable conversation identity; together with `source`, identifies its display entry | Retained across interactions; adapters must prevent collisions between instances of the same source |
+| `task_id` (existing) | One execution within a conversation | New ID for each execution, preserving existing ordering and completion deduplication |
 
-原有事件仍按 `(source, task_id)` 处理。新增会话关联后，主机再把任务状态投影到 `(source, conversation_id)` 条目，不能简单把 `task_id` 改成长期对话 ID：现有完成去重针对一次执行，复用会导致后续轮次完成不再提醒。HTTP 中的 `conversation_id` 也不同于设备协议里的服务 `session_id`。
+Events are still processed by `(source, task_id)`. With conversation association, the host projects task state onto a `(source, conversation_id)` entry. Do not simply reuse a long-lived conversation ID as `task_id`: completion deduplication applies to one execution, so reuse would suppress completion notifications for later executions. HTTP `conversation_id` is also distinct from the device protocol's service `session_id`.
 
-已增加可读 `conversation_title`，用 `context` 表示项目或工作区。屏幕行主文字显示“来源 #卡片短编号 | 对话短标题”，次文字显示“项目 | 当前状态与可选进度”。短编号取服务分配卡片 UUID 的前四位，仅辅助识别，不参与身份判断或替代完整 ID。标题和路径也不参与身份判断。
+A readable `conversation_title` has been added, and `context` identifies the project or workspace. The primary row text is "source #short-card-ID | short conversation title"; the secondary text is "project | current state and optional progress". The short ID is the first four characters of the service-assigned card UUID. It is only a visual aid and does not replace the full identity. Titles and paths are not identity keys either.
 
 ```text
-┌────────────────────────┐
-│ 5 个会话 · 2 项待处理    │
-│                        │
-│ Codex · 消息接口         │
-│ info_tv · 等待确认       │
-│                        │
-│ agy · 登录问题           │
-│ webapp · 执行失败        │
-│                        │
-│ Codex · 单元测试         │
-│ info_tv · 正在运行       │
-│ USB 在线      第 1 / 2 页│
-└────────────────────────┘
++--------------------------------+
+| 5 sessions | 2 need attention   |
+|                                |
+| Codex | Message API            |
+| info_tv | Waiting for input    |
+|                                |
+| agy | Login flow               |
+| webapp | Failed                |
+|                                |
+| Codex | Unit tests             |
+| info_tv | Running              |
+| USB online          Page 1 / 2 |
++--------------------------------+
 ```
 
-显示建议：
+Display behavior:
 
-- 默认每页最多三个会话；一页能放下时保持稳定，多页时分组轮换，初次试用可先用每页 6 秒。页码说明还有其他内容，页头持续显示全局待处理数。
-- 等待输入、失败在分组排序上优先，运行中其次，近期完成最后；同组保持稳定顺序。遍历全部页面后再循环，不能因为一直存在待处理项而让其他会话永远不可见。
-- 普通进度和摘要更新仅更新原条目，不跳页、不重置轮换计时。进入等待或失败时触发一次重点提醒；提醒结束回到包含该会话的总览页，随后继续轮换。
-- 对话中某轮完成时提醒一次；同一对话下一轮启动后，原条目恢复运行状态。对话当前轮次由适配器明确关联；旧轮次的延迟结果不能覆盖新轮次的当前展示。
-- 初版按每段对话一个当前执行设计。将来如要展示对话内并行任务，需明确聚合规则，不把“最后收到的任务”自动当作整个对话的状态。
-- 关闭对话应有显式移除语义；没有新事件不能证明对话已关闭。近期完成/闲置条目的退场时间仍待试用决定；一轮完成、真正等待用户输入、长时间未更新需分别表达。
+- Show at most three conversations per page. Keep the page stable when everything fits; otherwise rotate groups, initially every six seconds. Page numbers indicate additional content, and the header always shows the global attention count.
+- Sort waiting and failed conversations first, running conversations next, and recently completed conversations last. Preserve stable ordering within each group. Visit every page before repeating so unresolved attention items cannot permanently hide other conversations.
+- Ordinary progress and summary updates change the existing entry without jumping pages or resetting the rotation timer. Entering waiting or failed state triggers one important notification. After it ends, restore the overview page containing that conversation, then continue rotation.
+- Notify once when an execution completes. When the next execution begins in the same conversation, its existing entry returns to running state. The adapter explicitly associates the current execution; delayed results from an older execution cannot replace it.
+- The first version assumes one current execution per conversation. If parallel executions within a conversation are needed later, define aggregation rules rather than treating the last received task as the state of the entire conversation.
+- Closing a conversation needs explicit removal semantics. A lack of new events does not establish closure. Retirement timing for recently completed or idle entries remains subject to trial tuning. Execution completion, an actual input request, and a long period without updates are distinct conditions.
 
-这要求主机维护“会话当前展示状态”，设备仍接收来源无关的状态/列表内容，不需要理解 Codex 或 agy。未提供会话字段的现有调用方继续按单任务独立展示。
+The host maintains each conversation's current display state. The device still receives source-independent status/list content and does not need to understand Codex or agy. Existing callers without conversation fields retain independent task-card behavior.
 
-第一阶段将主机与设备容量一起扩大到八条；八条满长度卡片的协议上限仍在 4096 字节内。满容量拒绝新增条目，已有会话的新轮次与更新仍可提交。关闭/删除与自动退场尚未实现，记录目前保留到服务重启；不能把第九个会话悄悄覆盖掉。
+Phase one increases both host and device capacity to eight entries. The protocol bound for eight maximum-length cards still fits within 4096 bytes. At capacity, new entries are rejected, while updates and new executions for existing conversations remain admissible. Closing/deletion and automatic retirement are not implemented; records remain until service restart. A ninth conversation must not silently replace another one.
 
-会话请求示例（已实现，可提交）：
+Conversation request example (implemented and accepted):
 
 ```json
 {
   "event_id": "d48b883e-d76f-4b5c-a3e6-d4a44e155746",
   "source": "codex",
   "conversation_id": "thread-01",
-  "conversation_title": "消息接口",
+  "conversation_title": "Message API",
   "context": "info_tv",
   "run_sequence": 2,
   "task_id": "run-02",
   "sequence": 1,
   "state": "running",
-  "title": "检查协议",
+  "title": "Check protocol",
   "detail": "Checking protocol compatibility"
 }
 ```
 
-`conversation_id` 与正整数 `run_sequence` 必须一起提供。`run_sequence` 在同一对话内每次新执行时递增；`sequence` 仅在该执行内递增。小于当前轮次的上报视为过时，同轮次对应不同任务或同任务迁移到其他对话返回 409。省略会话字段的原接口调用保持单任务语义。`GET /v1/tasks` 返回每个持续条目当前的执行，而非历史执行列表。
-每次上报都是完整状态，后续更新也应携带需要保留的会话标题和项目标签；接口不是局部字段补丁。
+Supply `conversation_id` together with a positive integer `run_sequence`. Increment `run_sequence` for each new execution within that conversation; increment `sequence` only within its execution. Reports from older executions are stale. Different tasks claiming the same execution ordinal, or moving a task to another conversation, return 409. Omitting conversation fields preserves the original single-task semantics. `GET /v1/tasks` returns the current execution for each persistent entry, not execution history.
 
-当前系统标签保留英文；已启用 LVGL 内置 Source Han Sans SC 16 px CJK 子集，它不能覆盖任意中文输入。完整简体中文字库仍需单独补齐；桌面截图包含可用中文示例，不代表所有中文都可显示。
+Each submission is complete state. Later updates should include any conversation title and project label that must remain visible; this API does not apply partial field patches.
 
-### 提醒页
+System labels remain English. The enabled LVGL Source Han Sans SC 16 px CJK font is a subset and cannot cover arbitrary Chinese input. Complete simplified-Chinese coverage still needs a separate font asset pass. The desktop screenshots show supported Chinese examples, not a guarantee that every Chinese character can be displayed.
 
-使用整屏重点呈现：来源、状态、任务或事件标题、两行摘要，底部显示“请回电脑处理”或“稍后返回总览”。不画确认、允许或重试按钮。
+### Notification Page
 
-普通提醒沿用 5 秒、重要提醒沿用 10 秒的初始值。同级按到达顺序；重要提醒可打断普通提醒。被打断的普通提醒是否恢复，产品规则仍待确认；现有 demo 会结束它。
+Use the full screen to emphasize the source, state, task or event title, and a two-line summary. The footer can indicate "Return to your computer" or "Returns to overview". Do not add confirmation, approval, or retry buttons.
 
-### 日常页与闲置页
+Keep the initial defaults of five seconds for ordinary notifications and ten seconds for important notifications. Equal-priority notifications retain arrival order; important notifications can interrupt ordinary ones. Whether an interrupted ordinary notification resumes remains an open product rule; the current demo ends it.
 
-日程使用短列表；天气使用一个主数值和少量辅助文字。时间与动画是闲置页内容，不占用每张任务卡的中心区域。闲置时间阈值与是否自动轮换天气、日程，待这一轮选择。
+### Daily Information and Idle Pages
 
-### 文本、颜色与失效状态
+Use a short list for calendar content and one main value with limited supporting text for weather. Time and animation belong on the idle page rather than occupying the center of every task card. The idle threshold and automatic rotation of weather/calendar pages remain to be decided.
 
-- 建议初始中文正文 16 px、主标题 20 px，240 px 原尺寸校验；实际字体与字库容量需固件验证。
-- 主标题最多两行，摘要最多两行；溢出在完整字符边界省略，默认不使用跑马灯。调用方应提供短摘要。
-- 状态同时用文字与颜色表达：运行、待处理、完成、失败；不用颜色作为唯一依据。
-- 离线是连接状态，过期是内容状态，需分别表达。天气显示“更新于 14:20 / 数据已过期”；任务离线后显示“最后上报：运行中”，不能当成仍在实时执行。
-- 时长缺乏依据时不显示。任务最后更新时间、任务执行耗时和当前阶段耗时是不同信息，不能混用。
-- 日程结束、取消或超过有效期后不继续显示为即将发生。设备断线时也需要本地有效期判定，不能只依赖下一次主机推送。
+### Text, Color, and Expiry
 
-## 4. 接口分为两个边界
+- Initial proposed sizes are 16 px for Chinese body text and 20 px for main titles, checked at the native 240 px screen size. Actual fonts and character coverage require firmware validation.
+- Limit main titles and summaries to two lines each. Truncate at complete character boundaries, with no scrolling text by default. Callers should provide short summaries.
+- Convey running, attention, completed, and failed states with both text and color. Color must not be the only indicator.
+- Disconnection is a connection condition; expiry is a content condition. Express them separately. Weather can show "Updated at 14:20 / Data expired". Offline task content should say "Last reported: running" rather than imply live execution.
+- Omit durations when there is no reliable basis. Last update time, execution elapsed time, and current-stage elapsed time are different measures.
+- Ended, canceled, or expired calendar events must not remain labeled as upcoming. The device needs local validity checks while disconnected, rather than relying solely on the next host update.
 
-### 来源 → Windows：业务事实
+## 4. Two Interface Boundaries
 
-保留 `POST /v1/task-events`，延续现有四种状态和标识语义。第一阶段已添加可选的会话字段和项目标签，详见上面的会话请求示例。`next_action`（等待或失败后的简短下一步）仍是建议，当前通过 `detail` 提供。
+### Producer to Windows: Business Facts
 
-下面的请求可被**现有接口**接收；这里用 `detail` 同时表达原因和下一步：
+Keep `POST /v1/task-events` and its four states and identity semantics. Phase one adds optional conversation fields and project labels, as shown above. A separate `next_action` field remains a proposal; use `detail` for the next step today.
+
+The following request is accepted by the **existing interface**. Its `detail` carries both the reason and next action:
 
 ```json
 {
@@ -160,72 +161,72 @@
   "task_id": "info-tv-ui-run-01",
   "sequence": 3,
   "state": "waiting_input",
-  "title": "完善消息接口",
-  "detail": "需要确认通知保留策略，请回电脑处理",
+  "title": "Improve message API",
+  "detail": "Confirm notification retention; return to your computer",
   "progress_percent": null
 }
 ```
 
-任务身份为 `(source, task_id)`。同一执行递增 `sequence`，新执行使用新 `task_id`；重试保留同一个 `event_id` 和全部内容。不知道百分比就省略或传 `null`，不能写 0 冒充未知。
+Task identity is `(source, task_id)`. Increment `sequence` within one execution and use a new `task_id` for a new execution. Retries retain the same `event_id` and all content. If the progress percentage is unknown, omit it or send `null`; zero must not stand in for unknown progress.
 
-建议新增独立 `POST /v1/notifications`，支持不属于任务的脚本、日程提醒或外部消息。以下是**待实现草案**：
+Propose a separate `POST /v1/notifications` endpoint for scripts, calendar reminders, and external messages that do not belong to a task. This is an **unimplemented draft**:
 
 ```json
 {
   "event_id": "b58b883e-d76f-4b5c-a3e6-d4a44e155744",
   "source": "calendar",
-  "title": "项目例会即将开始",
-  "detail": "15:00 开始，请回电脑加入会议",
+  "title": "Project meeting starts soon",
+  "detail": "Starts at 15:00; join from your computer",
   "priority": "important",
   "expires_at": "2026-11-05T15:05:00+08:00"
 }
 ```
 
-建议要求 `expires_at` 为带时区时间，过期通知不得开始展示；屏幕停留时长由服务默认策略决定。业务截止时间与展示 5/10 秒是两个概念。相同 `event_id` 与相同内容重试不重复提醒，相同 ID 内容不同返回冲突。
+Require a timezone-aware `expires_at` in this proposal. Expired notifications must not begin display; the service's default policy determines display duration. The business deadline and the five-/ten-second display duration are separate concepts. Retrying the same `event_id` with identical content must not repeat the notification; reusing it with different content is a conflict.
 
-任务状态迁移产生的提醒由服务生成；来源不能再为同一迁移额外发通用提醒，否则跨接口会产生重复。
+The service generates notifications for task state transitions. Producers must not also submit a general notification for the same transition, which would create duplicates across interfaces.
 
-日程与天气先确定业务数据，不急于为它们敲定 URL 或统一大接口：
+Define calendar and weather business data before freezing their URLs or introducing a universal endpoint:
 
-| 内容 | 最小业务数据建议 | 更新与撤销 |
+| Content | Proposed minimum business data | Updates and withdrawal |
 | --- | --- | --- |
-| 日程 | 来源、日程 ID、递增版本、标题、带时区的开始/结束时间、可选地点 | 同 ID 替换；取消必须有显式状态；提醒需关联该版本，改期/取消使旧提醒失效 |
-| 天气 | 来源、地点 ID、观测时间、有效截止、状况、温度与单位 | 同地点替换；旧观测不能覆盖新观测；抓取失败与旧值过期分别记录 |
+| Calendar | Source, event ID, increasing version, title, timezone-aware start/end times, optional location | Replace by ID; cancellation needs an explicit state; reminders reference the event version so rescheduling/cancellation invalidates old reminders |
+| Weather | Source, location ID, observation time, validity deadline, conditions, temperature and unit | Replace by location; older observations cannot overwrite newer ones; retrieval failure and expiry of cached values are recorded separately |
 
-本轮不增加通用 CRUD、历史查询、任意样式参数或媒体上传接口。任务保留到期、日程取消等操作确实需要设备卡片删除语义，实施这些行为时补齐。
+This phase does not add generic CRUD, history queries, arbitrary styling, or media upload APIs. Task retention expiry and calendar cancellation require device-side card removal semantics; add those when implementing the corresponding behavior.
 
-### Windows → ESP32：通用显示内容
+### Windows to ESP32: Generic Display Content
 
-保留现有 `Envelope → Snapshot / CardUpsert / Notification → View` 结构。持久卡与提醒复用 `View`，但拥有独立生命周期。
+Keep the existing `Envelope → Snapshot / CardUpsert / Notification → View` structure. Persistent cards and notifications share `View` while retaining separate lifecycles.
 
-建议按真实内容需要逐步补充显示模板：
+Add display templates incrementally as real content requires them:
 
-| 模板 | 最少显示字段 | 用途 |
+| Template | Minimum display fields | Purpose |
 | --- | --- | --- |
-| `status`（已有） | 标题、状态、说明、可选进度 | 任务与状态提醒 |
-| `text`（建议） | 标题、短正文 | 外部通知 |
-| `list`（建议） | 标题、最多三项的主次文本 | 日程或多项摘要 |
-| `metric`（建议） | 标题、主数值、单位、辅助文字 | 天气或其他测量值 |
+| `status` (existing) | Title, state, detail, optional progress | Tasks and status notifications |
+| `text` (proposed) | Title, short body | External notifications |
+| `list` (proposed) | Title, up to three entries with primary/secondary text | Calendar or multi-item summaries |
+| `metric` (proposed) | Title, main value, unit, supporting text | Weather or other measurements |
 
-来源/上下文标签、内容更新时间与有效期应是通用显示元数据，不能仅存在于业务接口里。需要把离线时的时间推进与有效期判定也传到设备；当前 USB 相对通知有效期不足以直接承诺日程绝对截止。
+Source/context labels, content update time, and validity should be generic display metadata rather than fields confined to the business API. The device also needs enough information to advance time and evaluate expiry while offline. The current relative USB notification validity is insufficient to promise absolute calendar deadlines.
 
-动画以后使用缓存资源引用，不把每帧图像混进普通消息；本轮不冻结资源协议。固件不解析原始日历、天气服务或 Agent 协议，不接收 HTML、脚本和任意坐标。
+Future animation should reference cached assets instead of sending each frame through ordinary messages. This phase does not freeze an asset protocol. Firmware does not parse raw calendar, weather-service, or agent protocols, and does not accept HTML, scripts, or arbitrary coordinates.
 
-现有 Protobuf 字段号保持不变。新增模板或元数据需同步双方绑定、能力/版本处理与兼容测试；旧固件不支持的内容应明确拒绝或由主机转换成支持的摘要，不能假称展示成功。
+Keep existing Protobuf field numbers stable. New templates or metadata require updated bindings on both sides, capability/version handling, and compatibility tests. Unsupported content on old firmware must be explicitly rejected or converted by the host into a supported summary; it must not be reported as successfully displayed.
 
-## 5. 反馈、边界与验证
+## 5. Feedback, Limits, and Validation
 
-服务收件、设备接收、首次实际显示是不同阶段。保留 HTTP 202 与设备 `Accepted` / `Presented` 的区别；屏幕显示过也不代表用户看过。通用提醒接口需要可关联 `event_id` 的投递查询，具体响应结构随接口实现确认；暂不声称已有此接口。
+Service admission, device acceptance, and first actual display are separate milestones. Preserve the distinction between HTTP 202 and device `Accepted` / `Presented`; appearing on screen does not establish that the user read it. The proposed general-notification API needs delivery queries correlated by `event_id`. Define its response structure when implementing that API; it does not exist yet.
 
-现有输入限制为标题 64 UTF-8 字节、说明 160 字节，约为 21/53 个常用汉字，混合文字以实际编码长度为准。这是传输限制，不是可读布局保证。超限输入明确拒绝，显示层只负责对合法内容做省略。
+Current input limits are 64 UTF-8 bytes for a title and 160 bytes for detail, roughly 21 and 53 common Chinese characters respectively. Mixed text must be checked by encoded byte length. These are transport bounds, not readability guarantees. Reject oversized input explicitly; the display layer only truncates otherwise valid content to fit its layout.
 
-当前设备最多八张卡、八条提醒，服务记录保留至重启。这些是实现限制，不能把任务、日程、天气直接同时装入却不定义容量行为。满容量明确拒绝新增独立条目，已有条目仍可更新；如需更多内容，先共同确定容量和选择规则。
+The device currently supports eight cards and eight notifications, and service records remain until restart. These implementation limits require an explicit capacity policy before combining tasks, calendar, and weather. At capacity, reject new independent entries while allowing updates to existing ones. Agree on capacity and selection rules before adding more content.
 
-建议验证顺序：
+Suggested validation sequence:
 
-1. 同一组真实中文内容对比两种布局 → 检查原尺寸可读性、长标题、未知进度、多来源识别。
-2. 固定任务与通用提醒的 JSON 契约 → 检查重复、乱序、过期、容量满和离线收件反馈。
-3. 补齐必要显示字段与中文字体，再实现选中的布局 → 桌面测试加实际屏幕照片；浏览器原型不等于硬件验证。
-4. 日程/天气接入前补齐更新时间、取消、删除与本地过期 → 验证改期或离线后不出现过时提醒。
+1. Compare the same real Chinese content in both layouts → Check native-size readability, long titles, unknown progress, and identification of multiple sources.
+2. Freeze task and general-notification JSON contracts → Check duplicates, ordering, expiry, full capacity, and offline admission feedback.
+3. Complete necessary display fields and Chinese fonts, then implement the chosen layout → Use desktop tests and physical screen photographs; a browser prototype does not establish hardware behavior.
+4. Add update time, cancellation, deletion, and local expiry before calendar/weather integration → Verify that rescheduling or disconnection cannot produce stale reminders.
 
-当前待选择：单卡还是三行总览；日常首页的信息组合；任务是否需要单独的项目名与下一步；顶部触摸是否仅用于切页/跳过提醒。触摸为 GPIO5 顶部电极，尚未验证，不能按触摸屏设计交互。跳过提醒也不改变业务状态。
+Design topics include the roles of single-card and three-row layouts, daily home-page content, separate project/next-action fields, and whether the top touch input only changes pages or skips notifications. The multi-conversation default and project label are implemented as described above; the remaining choices are still open. Touch is a GPIO5 top electrode and remains untested, so do not design it as a touchscreen. Skipping a notification does not change business state.
