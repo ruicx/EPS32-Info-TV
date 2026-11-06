@@ -4,6 +4,10 @@ Date: 2026-11-06
 
 Status: Implemented, desktop-tested, and firmware-built. Not flashed.
 
+The subsequent [weather extension](weather-ui-validation.md) adds local weather
+icons, daily ranges, and hazard alerts. The images below retain this styling
+revision's original weather area.
+
 ## Actual LVGL output
 
 The left image is the previous layout; the right image is this revision. Both

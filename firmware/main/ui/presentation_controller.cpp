@@ -46,7 +46,11 @@ bool PresentationController::handleCommand(const DisplayCommand& command, uint64
   bool accepted = true;
   switch (envelope.which_body) {
     case info_tv_v1_Envelope_snapshot_tag:
-      if (!sameSession) hasActive_ = false;
+      if (!sameSession) {
+        hasActive_ = false;
+        weatherAlert_ = {};
+        alertExpiresAtMs_ = 0;
+      }
       state_.applySnapshot(envelope);
       weather_ = envelope.body.snapshot.has_weather ? envelope.body.snapshot.weather : info_tv_v1_Weather{};
       weatherExpiresAtMs_ = command.receivedAtMs + weather_.valid_for_ms;
@@ -64,6 +68,23 @@ bool PresentationController::handleCommand(const DisplayCommand& command, uint64
       weather_ = envelope.body.weather;
       weatherExpiresAtMs_ = command.receivedAtMs + weather_.valid_for_ms;
       break;
+    case info_tv_v1_Envelope_weather_alert_tag: {
+      const auto& alert = envelope.body.weather_alert;
+      const bool replaceNotice = alert.notify || !alert.alert_id[0] ||
+          std::strcmp(alert.alert_id, weatherAlert_.alert_id) || alert.severity != weatherAlert_.severity;
+      if (replaceNotice) {
+        state_.clearWeatherNotification();
+        if (hasActive_ && active_.weatherAlert) {
+          restoreOverview(nowMs);
+          hasActive_ = false;
+        }
+      }
+      weatherAlert_ = alert;
+      alertExpiresAtMs_ = command.receivedAtMs + alert.valid_for_ms;
+      if (alert.notify && nowMs < alertExpiresAtMs_)
+        state_.notifyWeatherAlert(envelope, command.receivedAtMs);
+      break;
+    }
     default:
       accepted = false;
   }
@@ -103,6 +124,14 @@ void PresentationController::restoreOverview(uint64_t nowMs) {
 
 const RenderModel& PresentationController::tick(uint64_t nowMs) {
   orderCards();
+  const bool alertActive = weatherAlert_.alert_id[0] && nowMs < alertExpiresAtMs_;
+  if (!alertActive) {
+    state_.clearWeatherNotification();
+    if (hasActive_ && active_.weatherAlert) {
+      restoreOverview(nowMs);
+      hasActive_ = false;
+    }
+  }
   if (hasActive_ && ((active_.presented && nowMs >= activeUntilMs_) ||
                      (!active_.presented && nowMs >= active_.expiresAtMs))) {
     restoreOverview(nowMs);
@@ -122,6 +151,8 @@ const RenderModel& PresentationController::tick(uint64_t nowMs) {
   candidate.connected = connected_;
   candidate.weather = weather_;
   candidate.weatherFresh = weather_.has_temperature_c && nowMs < weatherExpiresAtMs_;
+  candidate.weatherAlert = weatherAlert_;
+  candidate.weatherAlertActive = alertActive;
   candidate.cardCount = state_.cardCount();
   candidate.pageCount = (state_.cardCount() + policy::kRowsPerPage - 1) / policy::kRowsPerPage;
   for (size_t index = 0; index < state_.cardCount(); ++index) {
@@ -133,6 +164,7 @@ const RenderModel& PresentationController::tick(uint64_t nowMs) {
   if (hasActive_) {
     candidate.kind = RenderModel::Kind::kNotification;
     candidate.view = active_.notification.view;
+    candidate.weatherNotification = active_.weatherAlert;
     std::strcpy(candidate.cardId, active_.notification.card_id);
     std::strcpy(candidate.messageId, active_.messageId);
     std::strcpy(candidate.sessionId, active_.sessionId);
@@ -161,6 +193,14 @@ const RenderModel& PresentationController::tick(uint64_t nowMs) {
       candidate.weather.has_temperature_c != render_.weather.has_temperature_c ||
       candidate.weather.temperature_c != render_.weather.temperature_c ||
       candidate.weather.condition != render_.weather.condition ||
+      candidate.weather.has_daily_low_c != render_.weather.has_daily_low_c ||
+      candidate.weather.has_daily_high_c != render_.weather.has_daily_high_c ||
+      candidate.weather.daily_low_c != render_.weather.daily_low_c ||
+      candidate.weather.daily_high_c != render_.weather.daily_high_c ||
+      candidate.weatherAlertActive != render_.weatherAlertActive ||
+      candidate.weatherNotification != render_.weatherNotification ||
+      candidate.weatherAlert.severity != render_.weatherAlert.severity ||
+      std::strcmp(candidate.weatherAlert.title, render_.weatherAlert.title) ||
       std::strcmp(candidate.weather.location, render_.weather.location);
   for (size_t row = 0; row < candidate.rowCount && !changed; ++row) {
     changed = !sameCard(candidate.rows[row].card, render_.rows[row].card) ||

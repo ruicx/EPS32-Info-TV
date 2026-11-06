@@ -193,3 +193,83 @@ def test_invalid_weather_does_not_replace_values(field: str, value: object) -> N
         weather[field] = value
         assert client.put("/v1/weather", json=weather).status_code == 422
         assert client.get("/v1/weather").json()["temperature_c"] == 23
+
+
+@pytest.mark.parametrize("extra", [
+    {"daily_low_c": 10}, {"daily_high_c": 20},
+    {"daily_low_c": 25, "daily_high_c": 20},
+    {"daily_low_c": True, "daily_high_c": 20},
+    {"daily_low_c": -101, "daily_high_c": 20},
+    {"daily_low_c": 10, "daily_high_c": "20"},
+])
+def test_daily_range_is_optional_paired_and_ordered(extra: dict[str, object]) -> None:
+    """Reject incomplete or malformed ranges without replacing accepted weather.
+
+    Parameters
+    ----------
+    extra : dict[str, object]
+        Invalid range fields.
+    """
+    with TestClient(create_app(Settings("unused"), OfflineTransport())) as client:
+        weather = {"location": "Harbin", "temperature_c": 0, "condition": "snow"}
+        assert client.put("/v1/weather", json=weather | {"daily_low_c": -10, "daily_high_c": 0}).status_code == 202
+        assert client.put("/v1/weather", json=weather | extra).status_code == 422
+        assert client.get("/v1/weather").json()["daily_low_c"] == -10
+        assert client.get("/v1/weather").json()["daily_high_c"] == 0
+        assert client.put("/v1/weather", json=weather).json()["daily_low_c"] is None
+
+
+def alert_body() -> dict[str, object]:
+    """Construct a synthetic alert without suggesting it is an actual warning.
+
+    Returns
+    -------
+    dict[str, object]
+        Valid producer request with a stable identity per call.
+    """
+    return {"alert_id": uuid4().hex, "sequence": 1, "title": "Rain", "source": "Demo bureau",
+            "location": "Shanghai", "severity": "orange", "detail": "Synthetic preview only.",
+            "valid_for_seconds": 3600}
+
+
+def test_alert_ordering_idempotence_and_independent_clear() -> None:
+    """Keep alerts independent of weather, task count, and identical retries."""
+    with TestClient(create_app(Settings("unused"), OfflineTransport())) as client:
+        alert = alert_body()
+        first = client.put("/v1/weather/alert", json=alert)
+        assert first.status_code == 202 and first.json()["state"] == "active"
+        assert first.json()["notification"] == "skipped_offline"
+        retry = client.put("/v1/weather/alert", json=alert)
+        assert retry.json()["valid_for_ms"] <= first.json()["valid_for_ms"]
+        assert client.put("/v1/weather/alert", json=alert | {"title": "Changed"}).status_code == 409
+        assert client.put("/v1/weather/alert", json=alert | {"sequence": 2}).status_code == 202
+        assert client.put("/v1/weather/alert", json=alert).status_code == 409
+        assert client.delete("/v1/weather").status_code == 202
+        assert client.get("/v1/weather/alert").json()["state"] == "active"
+        assert client.get("/v1/tasks").json() == []
+        assert client.delete("/v1/weather/alert").json()["state"] == "unavailable"
+    with TestClient(create_app(Settings("unused"), OfflineTransport())) as other:
+        assert other.get("/v1/weather/alert").json()["state"] == "unavailable"
+
+
+@pytest.mark.parametrize("field,value", [
+    ("alert_id", "invalid"), ("sequence", 0), ("sequence", True),
+    ("severity", "purple"), ("severity", 3), ("source", " "),
+    ("title", "\0Rain"), ("title", "界" * 22), ("location", "界" * 9),
+    ("detail", "line\nbreak"), ("valid_for_seconds", 0), ("valid_for_seconds", 86401),
+])
+def test_invalid_alert_preserves_current(field: str, value: object) -> None:
+    """Reject malformed alerts before mutating the current slot.
+
+    Parameters
+    ----------
+    field : str
+        Field to replace.
+    value : object
+        Invalid JSON value.
+    """
+    with TestClient(create_app(Settings("unused"), OfflineTransport())) as client:
+        alert = alert_body()
+        assert client.put("/v1/weather/alert", json=alert).status_code == 202
+        assert client.put("/v1/weather/alert", json=alert | {field: value}).status_code == 422
+        assert client.get("/v1/weather/alert").json()["title"] == "Rain"

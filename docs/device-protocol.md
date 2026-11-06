@@ -40,6 +40,7 @@ and a boot-local sequence. Feedback explicitly refers to the original command.
 | Notification | Host to device | Independently admit a temporary presentation |
 | DeviceSettings | Host to device | Apply an absolute device brightness setting |
 | Weather | Host to device | Replace or clear independently retained weather |
+| WeatherAlert | Host to device | Replace or clear one independent hazard alert, optionally notifying |
 | Acknowledgment | Device to host | UI Accepted, first-refresh Presented, or settings Applied |
 | Error | Device to host | Correlated rejection and diagnostic reason |
 | Ping / Pong | Host / device | Current-session liveness |
@@ -76,7 +77,7 @@ Up to eight cards are retained. UTF-8 capacities excluding C terminators are:
 title/source/context/status text 64 bytes, detail 160 bytes, identities 36 bytes, error detail
 96 bytes. Strings containing NUL are rejected by the host API.
 Shared compatibility input is under `protocol/test_vectors/`.
-The generated worst-case envelope size is 4087 bytes, within the existing
+The generated worst-case envelope size is 4093 bytes, within the existing
 4096-byte frame payload limit; the maximum eight-card snapshot is round-trip tested.
 
 ## 4. Sessions, Revisions, and Recovery
@@ -100,6 +101,16 @@ clears the persistent area. Location capacity is 24 UTF-8 bytes. Retries retain
 the original deadline; accepted duplicates never renew it. See the
 [weather API and wire behavior](companion-ui-validation.md#weather-api).
 
+Weather icons/ranges and hazard alerts additionally require
+`Hello.weather_details = true` (6). Weather fields 5/6 are optional paired
+`daily_low_c` / `daily_high_c`, each -100..100 with low <= high. Nanopb stores
+these as signed 8-bit integers to keep the maximum snapshot within one frame.
+`Envelope.weather_alert` (20) separately synchronizes one current alert after
+the snapshot/brightness handshake, with its own validity in 1..86400000 ms.
+An entirely empty alert clears it. Reconnect restores still-valid markers
+without replaying notifications. See [weather and alert validation](weather-ui-validation.md)
+for the full schema, HTTP contract, expiry, and notification rules.
+
 Each card has an independent identity and increasing nonzero revision. Older
 revisions cannot overwrite current state; equal revisions with conflicting content
 are rejected. Retries retain operation identity. Firmware remembers 64 recently
@@ -121,7 +132,11 @@ Defaults are 5/10 seconds; explicit durations must be 1..60000 ms. Capacity is e
 Notifications can include a related `card_id`; after they finish, the overview
 opens the page containing that card and grants it a full six-second interval.
 Important notices interrupt ordinary notices, ending the interrupted notice.
-Equal priorities preserve admission order.
+Equal-priority task notices preserve admission order. A separately reserved
+weather notification precedes queued tasks at equal priority, without
+interrupting an already visible important notice. Weather notification expiry
+or dismissal does not clear its still-valid persistent marker; explicit
+withdrawal or alert expiry also cancels its queued/active notification.
 
 The host starts a 30-second validity deadline when queuing a notice, drops expired
 unsent notices, and shortens remaining validity on retries. Firmware establishes

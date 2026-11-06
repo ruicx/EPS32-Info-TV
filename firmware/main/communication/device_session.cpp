@@ -83,6 +83,7 @@ void DeviceSession::dispatch(uint64_t nowMs) {
     reply_.body.hello.task_icons = true;
     reply_.body.hello.brightness_control = true;
     reply_.body.hello.weather = true;
+    reply_.body.hello.weather_details = true;
     send();
     return;
   }

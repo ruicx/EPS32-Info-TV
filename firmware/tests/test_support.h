@@ -61,3 +61,19 @@ inline info_tv::DisplayCommand makeNotification(const char* identity, bool impor
   note.view = makeCard().view;
   return command;
 }
+
+/** Construct a synthetic weather alert with independent expiry and notification. */
+inline info_tv::DisplayCommand makeWeatherAlert(const char* identity = "weather-alert") {
+  auto command = makeCommand(identity);
+  command.envelope.which_body = info_tv_v1_Envelope_weather_alert_tag;
+  auto& alert = command.envelope.body.weather_alert;
+  std::strcpy(alert.alert_id, "alert-1");
+  std::strcpy(alert.title, "Rain");
+  std::strcpy(alert.source, "Demo bureau");
+  std::strcpy(alert.location, "Shanghai");
+  std::strcpy(alert.detail, "Synthetic preview only.");
+  alert.severity = info_tv_v1_WeatherAlertSeverity_WEATHER_ALERT_SEVERITY_ORANGE;
+  alert.valid_for_ms = 60000;
+  alert.notify = true;
+  return command;
+}

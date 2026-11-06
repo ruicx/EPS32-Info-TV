@@ -104,6 +104,13 @@ class DeviceSession:
         self._weather_expires_at = 0.0
         self._weather_dirty = False
         self._weather_delivery: Delivery | None = None
+        self._weather_alert = pb.WeatherAlert()
+        self._alert_submission = b""
+        self._alert_sequence = 0
+        self._alert_expires_at = 0.0
+        self._alert_dirty = True
+        self._alert_delivery: Delivery | None = None
+        self._alert_notification = "suppressed"
         self._logger = logging.getLogger(__name__)
 
     @property
@@ -189,6 +196,8 @@ class DeviceSession:
             "state": "unavailable" if not available else "fresh" if remaining else "stale",
             "location": self._weather.location if available else None,
             "temperature_c": self._weather.temperature_c if available else None,
+            "daily_low_c": self._weather.daily_low_c if self._weather.HasField("daily_low_c") else None,
+            "daily_high_c": self._weather.daily_high_c if self._weather.HasField("daily_high_c") else None,
             "condition": pb.WeatherCondition.Name(self._weather.condition).removeprefix(
                 "WEATHER_CONDITION_").lower() if available else None,
             "valid_for_ms": remaining if available else 0,
@@ -210,6 +219,84 @@ class DeviceSession:
         result = pb.Weather()
         result.CopyFrom(self._weather)
         result.valid_for_ms = remaining
+        return result
+
+    def set_weather_alert(self, alert: pb.WeatherAlert, sequence: int) -> None:
+        """Coalesce one alert, preserving idempotence and upgrade-only notification.
+
+        Parameters
+        ----------
+        alert : WeatherAlert
+            Validated source-selected alert, or an empty withdrawal.
+        sequence : int
+            Increasing source revision for the current alert; zero for clearing.
+
+        Raises
+        ------
+        ValueError
+            If the current alert receives a stale or conflicting revision.
+
+        Notes
+        -----
+        Identical retries do not renew validity. Reconnect restores the marker
+        without replaying notifications. State lasts for this service process.
+        """
+        submission = alert.SerializeToString()
+        same = bool(alert.alert_id) and alert.alert_id == self._weather_alert.alert_id
+        if same and sequence <= self._alert_sequence:
+            if sequence == self._alert_sequence and submission == self._alert_submission:
+                return
+            raise ValueError("Stale or conflicting weather alert sequence")
+        now = time.monotonic()
+        trigger = not same or now >= self._alert_expires_at or alert.severity > self._weather_alert.severity
+        notify = bool(alert.alert_id) and self.online and (
+            trigger or (self._alert_dirty and self._weather_alert.notify))
+        self._alert_submission = submission
+        self._alert_sequence = sequence
+        self._weather_alert.CopyFrom(alert)
+        self._weather_alert.notify = notify
+        self._alert_expires_at = now + alert.valid_for_ms / 1000
+        self._alert_dirty = True
+        self._alert_delivery = None
+        self._alert_notification = "queued" if notify else "skipped_offline" if alert.alert_id and not self.online else "suppressed"
+
+    def weather_alert_status(self) -> dict[str, object]:
+        """Report alert validity separately from notification presentation.
+
+        Returns
+        -------
+        dict[str, object]
+            Current alert, source revision, validity, and correlated delivery.
+        """
+        alert = self._weather_alert
+        remaining = max(0, int((self._alert_expires_at - time.monotonic()) * 1000))
+        delivery = self._alert_delivery
+        return {
+            "state": "unavailable" if not alert.alert_id else "active" if remaining else "expired",
+            "alert_id": alert.alert_id or None, "sequence": self._alert_sequence,
+            "title": alert.title or None, "source": alert.source or None,
+            "location": alert.location or None, "detail": alert.detail,
+            "severity": pb.WeatherAlertSeverity.Name(alert.severity).removeprefix(
+                "WEATHER_ALERT_SEVERITY_").lower() if alert.alert_id else None,
+            "valid_for_ms": remaining, "notification": self._alert_notification,
+            "delivery": {"message_id": delivery.message_id, "accepted": delivery.accepted,
+                         "notification_presented": delivery.presented, "error": delivery.error}
+            if delivery else {"state": "pending"},
+        }
+
+    def _current_weather_alert(self) -> pb.WeatherAlert:
+        """Copy the current alert with its original remaining validity.
+
+        Returns
+        -------
+        WeatherAlert
+            Active alert or an explicit empty clear.
+        """
+        remaining = max(0, int((self._alert_expires_at - time.monotonic()) * 1000))
+        result = pb.WeatherAlert()
+        if remaining and self._weather_alert.alert_id:
+            result.CopyFrom(self._weather_alert)
+            result.valid_for_ms = remaining
         return result
 
     def settings_status(self) -> dict[str, object]:
@@ -245,6 +332,7 @@ class DeviceSession:
             "last_error": self._last_error,
             "settings": self.settings_status(),
             "weather": self.weather_status(),
+            "weather_alert": self.weather_alert_status(),
             "deliveries": [
                 {"message_id": key, "accepted": value.accepted, "presented": value.presented,
                  "applied": value.applied, "error": value.error}
@@ -309,6 +397,10 @@ class DeviceSession:
                 self._brightness_dirty = True
                 self._brightness_delivery = None
                 self._weather_delivery = None
+                self._alert_delivery = None
+                self._alert_dirty = True
+                self._weather_alert.notify = False
+                self._alert_notification = "suppressed"
                 await self._transport.close()
             await asyncio.sleep(RECONNECT_SECONDS)
 
@@ -373,6 +465,8 @@ class DeviceSession:
                     raise OSError("Device firmware lacks brightness control; update firmware")
                 if not response.hello.weather:
                     raise OSError("Device firmware lacks weather status; update firmware")
+                if not response.hello.weather_details:
+                    raise OSError("Device firmware lacks weather details and alerts; update firmware")
                 break
             if time.monotonic() >= deadline:
                 raise TimeoutError("Device Hello timeout")
@@ -408,7 +502,12 @@ class DeviceSession:
                 await self._start_command(command)
             elif self.online:
                 self._expire_notifications()
-                if self._weather_dirty:
+                if self._alert_dirty:
+                    command = make_envelope(self.session_id)
+                    command.weather_alert.CopyFrom(self._current_weather_alert())
+                    self._alert_dirty = False
+                    await self._start_command(command, self._alert_expires_at)
+                elif self._weather_dirty:
                     command = make_envelope(self.session_id)
                     command.weather.CopyFrom(self._current_weather())
                     self._weather_dirty = False
@@ -452,6 +551,8 @@ class DeviceSession:
             self._brightness_delivery = self._deliveries[envelope.message_id]
         if envelope.HasField("weather") or envelope.HasField("snapshot"):
             self._weather_delivery = self._deliveries[envelope.message_id]
+        if envelope.HasField("weather_alert"):
+            self._alert_delivery = self._deliveries[envelope.message_id]
         for card in cards:
             self._card_delivery[card.card_id] = (card.revision, envelope.message_id)
             self._deliveries[f"{envelope.message_id}:{card.card_id}"] = Delivery(envelope.message_id)
@@ -557,6 +658,11 @@ class DeviceSession:
                 return
             if pending.envelope.HasField("notification"):
                 pending.envelope.notification.valid_for_ms = remaining
+            elif pending.envelope.HasField("weather_alert"):
+                if remaining <= 0:
+                    pending.envelope.weather_alert.Clear()
+                elif pending.envelope.weather_alert.alert_id:
+                    pending.envelope.weather_alert.valid_for_ms = remaining
             else:
                 weather = pending.envelope.weather if pending.envelope.HasField("weather") else pending.envelope.snapshot.weather
                 if remaining <= 0:

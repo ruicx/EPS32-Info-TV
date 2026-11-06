@@ -129,6 +129,66 @@ lv_obj_t* ScreenView::progressBar(lv_obj_t* parent, int x, int y, int width) {
   return object;
 }
 
+void ScreenView::drawWeatherIcon(lv_event_t* event) {
+  const auto& view = *static_cast<ScreenView*>(lv_event_get_user_data(event));
+  auto* layer = lv_event_get_layer(event);
+  lv_area_t origin;
+  lv_obj_get_coords(view.weatherIcon_, &origin);
+  /** Paint one rounded shape relative to the icon's bounds. */
+  const auto shape = [&](int x, int y, int width, int height, int radius, uint32_t color) {
+    lv_draw_rect_dsc_t descriptor;
+    lv_draw_rect_dsc_init(&descriptor);
+    descriptor.bg_color = lv_color_hex(view.weatherIconFresh_ ? color : 0x718093);
+    descriptor.radius = radius;
+    lv_area_t area = {origin.x1 + x, origin.y1 + y, origin.x1 + x + width - 1, origin.y1 + y + height - 1};
+    lv_draw_rect(layer, &descriptor, &area);
+  };
+  /** Paint a rounded stroke inside the icon. */
+  const auto stroke = [&](int x1, int y1, int x2, int y2, uint32_t color) {
+    lv_draw_line_dsc_t descriptor;
+    lv_draw_line_dsc_init(&descriptor);
+    descriptor.p1 = {origin.x1 + x1, origin.y1 + y1};
+    descriptor.p2 = {origin.x1 + x2, origin.y1 + y2};
+    descriptor.color = lv_color_hex(view.weatherIconFresh_ ? color : 0x718093);
+    descriptor.width = 2;
+    descriptor.round_start = descriptor.round_end = true;
+    lv_draw_line(layer, &descriptor);
+  };
+  const auto condition = view.weatherCondition_;
+  if (condition == info_tv_v1_WeatherCondition_WEATHER_CONDITION_CLEAR) {
+    shape(11, 8, 11, 11, LV_RADIUS_CIRCLE, 0xffcf7a);
+    const int rays[][4] = {{16, 1, 16, 4}, {16, 23, 16, 26}, {4, 13, 7, 13}, {26, 13, 29, 13},
+        {7, 4, 9, 6}, {24, 21, 26, 23}, {7, 23, 9, 21}, {24, 6, 26, 4}};
+    for (const auto& ray : rays) stroke(ray[0], ray[1], ray[2], ray[3], 0xffcf7a);
+    return;
+  }
+  if (condition == info_tv_v1_WeatherCondition_WEATHER_CONDITION_UNKNOWN) {
+    stroke(12, 7, 17, 5, 0x9baabd);
+    stroke(17, 5, 21, 9, 0x9baabd);
+    stroke(21, 9, 16, 15, 0x9baabd);
+    stroke(16, 15, 16, 17, 0x9baabd);
+    shape(15, 22, 3, 3, LV_RADIUS_CIRCLE, 0x9baabd);
+    return;
+  }
+  shape(10, 4, 15, 15, LV_RADIUS_CIRCLE, 0xc6d6e8);
+  shape(3, 10, 13, 11, LV_RADIUS_CIRCLE, 0x9fb6d0);
+  shape(10, 12, 20, 9, 5, 0xc6d6e8);
+  if (condition == info_tv_v1_WeatherCondition_WEATHER_CONDITION_RAIN) {
+    for (int x : {9, 17, 25}) stroke(x, 23, x - 2, 26, 0x8bc5ff);
+  } else if (condition == info_tv_v1_WeatherCondition_WEATHER_CONDITION_SNOW) {
+    stroke(16, 22, 16, 27, 0xb8e4ff);
+    stroke(13, 23, 19, 26, 0xb8e4ff);
+    stroke(13, 26, 19, 23, 0xb8e4ff);
+  } else if (condition == info_tv_v1_WeatherCondition_WEATHER_CONDITION_STORM) {
+    stroke(18, 21, 14, 24, 0xffcf7a);
+    stroke(14, 24, 18, 24, 0xffcf7a);
+    stroke(18, 24, 14, 27, 0xffcf7a);
+  } else if (condition == info_tv_v1_WeatherCondition_WEATHER_CONDITION_FOG) {
+    stroke(4, 23, 27, 23, 0x9fb6d0);
+    stroke(9, 27, 23, 27, 0x9fb6d0);
+  }
+}
+
 void ScreenView::initialize() {
   auto* screen = lv_screen_active();
   lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
@@ -170,9 +230,18 @@ void ScreenView::initialize() {
   lv_image_set_src(character_, characterFrame_);
   lv_obj_set_pos(character_, 14, 152);
   location_ = label(screen, 106, 151, 122, 20);
-  temperature_ = label(screen, 106, 174, 122, 22);
+  temperature_ = label(screen, 106, 174, 86, 22);
   lv_obj_set_style_text_font(temperature_, &lv_font_montserrat_16, 0);
   conditions_ = label(screen, 106, 198, 122, 18);
+  weatherIcon_ = lv_obj_create(screen);
+  lv_obj_remove_style_all(weatherIcon_);
+  lv_obj_set_pos(weatherIcon_, 196, 169);
+  lv_obj_set_size(weatherIcon_, 32, 29);
+  lv_obj_remove_flag(weatherIcon_, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_event_cb(weatherIcon_, drawWeatherIcon, LV_EVENT_DRAW_MAIN, this);
+  weatherAlertIcon_ = label(screen, 106, 198, 16, 18);
+  lv_obj_set_style_text_font(weatherAlertIcon_, &smallFont_, 0);
+  lv_label_set_text(weatherAlertIcon_, LV_SYMBOL_WARNING);
   lv_obj_set_style_text_font(conditions_, &smallFont_, 0);
   lv_obj_set_style_text_color(location_, lv_color_hex(0xb1bdcb), 0);
   lv_obj_set_style_text_color(conditions_, lv_color_hex(0x9baabd), 0);
@@ -263,10 +332,13 @@ void ScreenView::render(const RenderModel& model) {
   } else if (notification) {
     lv_obj_remove_flag(message_, LV_OBJ_FLAG_HIDDEN);
     const auto& status = model.view.content.status;
-    std::snprintf(text, sizeof(text), "%s #%.4s%s%s", model.view.source, model.cardId,
-                  model.view.context[0] ? " | " : "", model.view.context);
+    if (model.weatherNotification)
+      std::snprintf(text, sizeof(text), "%s | %s", model.view.source, model.view.context);
+    else
+      std::snprintf(text, sizeof(text), "%s #%.4s%s%s", model.view.source, model.cardId,
+                    model.view.context[0] ? " | " : "", model.view.context);
     lv_label_set_text(sender_, text);
-    lv_label_set_text(icon_, iconSymbol(model.view.icon));
+    lv_label_set_text(icon_, model.weatherNotification ? LV_SYMBOL_WARNING : iconSymbol(model.view.icon));
     lv_label_set_text(title_, model.view.title);
     std::snprintf(text, sizeof(text), "%s%s", model.connected ? "" : "last: ", status.text);
     if (status.has_progress_percent && model.connected)
@@ -286,14 +358,42 @@ void ScreenView::render(const RenderModel& model) {
   lv_obj_set_style_bg_color(connection_, lv_color_hex(model.connected ? 0x82dcb4 : 0xffcf7a), 0);
   lv_label_set_text(footer_, model.connected ? "USB online" : "Offline");
   const auto& weather = model.weather;
-  lv_label_set_text(location_, weather.has_temperature_c ? weather.location : "Weather");
+  lv_label_set_text(location_, weather.has_temperature_c ? weather.location :
+      model.weatherAlertActive ? model.weatherAlert.location : "Weather");
+  weatherCondition_ = weather.condition;
+  weatherIconFresh_ = model.weatherFresh;
+  lv_obj_add_flag(weatherIcon_, LV_OBJ_FLAG_HIDDEN);
   if (weather.has_temperature_c) {
+    lv_obj_remove_flag(weatherIcon_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_invalidate(weatherIcon_);
     std::snprintf(text, sizeof(text), "%ld\xc2\xb0" "C", static_cast<long>(weather.temperature_c));
     lv_label_set_text(temperature_, text);
-    lv_label_set_text(conditions_, model.weatherFresh ? weatherCondition(weather.condition) : "Stale");
+    if (model.weatherFresh && weather.has_daily_low_c && weather.has_daily_high_c) {
+      std::snprintf(text, sizeof(text), "%d\xc2\xb0 / %d\xc2\xb0",
+                    static_cast<int>(weather.daily_low_c), static_cast<int>(weather.daily_high_c));
+      lv_label_set_text(conditions_, text);
+    } else {
+      lv_label_set_text(conditions_, model.weatherFresh ? weatherCondition(weather.condition) : "Stale");
+    }
   } else {
     lv_label_set_text(temperature_, "--\xc2\xb0" "C");
     lv_label_set_text(conditions_, "Not set");
+  }
+  lv_obj_add_flag(weatherAlertIcon_, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_set_pos(conditions_, 106, 198);
+  lv_obj_set_width(conditions_, 122);
+  lv_obj_set_style_text_color(conditions_, lv_color_hex(0x9baabd), 0);
+  if (model.weatherAlertActive) {
+    const auto severity = model.weatherAlert.severity;
+    const char* levels[] = {"", "BLU", "YLW", "ORG", "RED"};
+    const uint32_t colors[] = {0, 0x8bc5ff, 0xffdf7a, 0xffb16b, 0xff9b9b};
+    std::snprintf(text, sizeof(text), "%s %s", levels[severity], model.weatherAlert.title);
+    lv_label_set_text(conditions_, text);
+    lv_obj_set_pos(conditions_, 124, 198);
+    lv_obj_set_width(conditions_, 104);
+    lv_obj_remove_flag(weatherAlertIcon_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_text_color(conditions_, lv_color_hex(colors[severity]), 0);
+    lv_obj_set_style_text_color(weatherAlertIcon_, lv_color_hex(colors[severity]), 0);
   }
   lv_obj_set_style_text_color(temperature_, lv_color_hex(model.weatherFresh ? 0xf0f4f8 : 0x9baabd), 0);
   if (overview && model.pageCount > 1) {

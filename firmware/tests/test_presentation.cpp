@@ -116,6 +116,89 @@ void testWeather() {
   CHECK(feedback.error == info_tv_v1_ErrorCode_ERROR_CODE_INVALID);
 }
 
+/** Keep warning markers independent, and cancel obsolete notifications promptly. */
+void testWeatherAlerts() {
+  info_tv::DisplayState state;
+  info_tv::PresentationController controller(state);
+  info_tv::Feedback feedback{};
+  auto snapshot = makeSnapshot();
+  CHECK(controller.handleCommand(snapshot, 0, feedback));
+  auto ordinary = makeNotification("ordinary-weather-test");
+  CHECK(controller.handleCommand(ordinary, 0, feedback));
+  auto model = controller.tick(0);
+  CHECK(!model.weatherNotification);
+  auto alert = makeWeatherAlert();
+  CHECK(controller.handleCommand(alert, 1, feedback));
+  model = controller.tick(1);
+  CHECK(model.weatherNotification && model.weatherAlertActive);
+  CHECK(model.cardCount == 1 && model.attentionCount == 0);
+  CHECK(controller.onFramePresented(model.generation, 1, feedback));
+  CHECK(!std::strcmp(feedback.messageId, "weather-alert"));
+  CHECK(controller.tick(10001).kind == info_tv::RenderModel::Kind::kOverview);
+  CHECK(controller.tick(10001).weatherAlertActive);
+  alert.receivedAtMs = 50000;
+  CHECK(controller.handleCommand(alert, 50000, feedback));
+  CHECK(!controller.tick(60000).weatherAlertActive);  // Retry did not renew TTL.
+
+  alert = makeWeatherAlert("new-alert");
+  alert.receivedAtMs = 60001;
+  alert.envelope.body.weather_alert.valid_for_ms = 1000;
+  CHECK(controller.handleCommand(alert, 60001, feedback));
+  model = controller.tick(60001);
+  CHECK(model.weatherNotification);
+  CHECK(controller.onFramePresented(model.generation, 60001, feedback));
+  model = controller.tick(61001);
+  CHECK(!model.weatherAlertActive && !model.weatherNotification);
+
+  alert = makeWeatherAlert("withdraw-me");
+  alert.receivedAtMs = 61002;
+  CHECK(controller.handleCommand(alert, 61002, feedback));
+  CHECK(controller.tick(61002).weatherNotification);
+  auto clear = makeCommand("clear-alert");
+  clear.envelope.which_body = info_tv_v1_Envelope_weather_alert_tag;
+  CHECK(controller.handleCommand(clear, 61003, feedback));
+  CHECK(!controller.tick(61003).weatherNotification);
+  CHECK(!controller.tick(61003).weatherAlertActive);
+  CHECK(!controller.onFramePresented(model.generation, 61003, feedback));
+
+  // A full task notification queue cannot prevent a warning marker or notice.
+  for (int index = 0; index < 8; ++index) {
+    char identity[20];
+    std::snprintf(identity, sizeof(identity), "queued-%d", index);
+    auto note = makeNotification(identity, true);
+    note.receivedAtMs = 62000;
+    CHECK(controller.handleCommand(note, 62000, feedback));
+    CHECK(feedback.stage == info_tv_v1_AckStage_ACK_STAGE_ACCEPTED);
+  }
+  alert = makeWeatherAlert("reserved-alert");
+  alert.receivedAtMs = 62000;
+  CHECK(controller.handleCommand(alert, 62000, feedback));
+  CHECK(feedback.stage == info_tv_v1_AckStage_ACK_STAGE_ACCEPTED);
+  auto overflow = makeNotification("overflow", true);
+  overflow.receivedAtMs = 62000;
+  CHECK(controller.handleCommand(overflow, 62000, feedback));
+  CHECK(feedback.error == info_tv_v1_ErrorCode_ERROR_CODE_BUSY);
+  info_tv::NotificationSlot selected;
+  CHECK(state.popNotification(62000, selected));
+  CHECK(selected.weatherAlert);  // Warnings precede queued task notices at equal priority.
+  std::strcpy(clear.envelope.message_id, "cancel-queued-warning");
+  CHECK(controller.handleCommand(clear, 62001, feedback));
+  info_tv::NotificationSlot slot;
+  size_t count = 0;
+  while (state.popNotification(62001, slot)) {
+    CHECK(!slot.weatherAlert);
+    ++count;
+  }
+  CHECK(count == 8);
+
+  // Expired queued alert input cannot start a notification or revive the marker.
+  alert = makeWeatherAlert("already-expired");
+  alert.envelope.body.weather_alert.valid_for_ms = 1;
+  CHECK(controller.handleCommand(alert, 63000, feedback));
+  CHECK(!controller.tick(63000).weatherAlertActive);
+  CHECK(!controller.tick(63000).weatherNotification);
+}
+
 /** Admit settings independently without acknowledging hardware application. */
 void testDeviceSettings() {
   info_tv::DisplayState state;
@@ -156,6 +239,7 @@ int main() {
   testPagedOverview();
   testDeviceSettings();
   testWeather();
+  testWeatherAlerts();
   info_tv::DisplayState state;
   info_tv::PresentationController controller(state);
   info_tv::Feedback feedback{};

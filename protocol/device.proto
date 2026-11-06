@@ -17,6 +17,7 @@ message Envelope {
     Pong pong = 17;
     DeviceSettings device_settings = 18;
     Weather weather = 19;
+    WeatherAlert weather_alert = 20;
   }
 }
 
@@ -29,6 +30,7 @@ message Hello {
   bool task_icons = 3;
   bool brightness_control = 4;
   bool weather = 5;
+  bool weather_details = 6;
 }
 message Ping {}
 message Pong {}
@@ -87,6 +89,27 @@ message Weather {
   WeatherCondition condition = 3;
   // Remaining freshness at transmission; retries may only shorten it.
   uint32 valid_for_ms = 4;
+  optional sint32 daily_low_c = 5;
+  optional sint32 daily_high_c = 6;
+}
+enum WeatherAlertSeverity {
+  WEATHER_ALERT_SEVERITY_UNSPECIFIED = 0;
+  WEATHER_ALERT_SEVERITY_BLUE = 1;
+  WEATHER_ALERT_SEVERITY_YELLOW = 2;
+  WEATHER_ALERT_SEVERITY_ORANGE = 3;
+  WEATHER_ALERT_SEVERITY_RED = 4;
+}
+// One producer-selected alert, synchronized separately to bound snapshot size.
+// A fully empty message clears it. Retries never extend the original lifetime.
+message WeatherAlert {
+  string alert_id = 1;
+  string title = 2;
+  string source = 3;
+  string location = 4;
+  WeatherAlertSeverity severity = 5;
+  string detail = 6;
+  uint32 valid_for_ms = 7;
+  bool notify = 8;
 }
 message Snapshot {
   repeated Card cards = 1;

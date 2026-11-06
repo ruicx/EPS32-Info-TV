@@ -18,6 +18,28 @@ class WeatherRequest(BaseModel):
     temperature_c: int = Field(ge=-100, le=100, strict=True)
     condition: Literal["unknown", "clear", "cloudy", "rain", "snow", "storm", "fog"]
     valid_for_seconds: int = Field(default=1800, ge=1, le=3600, strict=True)
+    daily_low_c: int | None = Field(default=None, ge=-100, le=100, strict=True)
+    daily_high_c: int | None = Field(default=None, ge=-100, le=100, strict=True)
+
+    @model_validator(mode="after")
+    def validate_range(self) -> WeatherRequest:
+        """Require both daily extremes in increasing order.
+
+        Returns
+        -------
+        WeatherRequest
+            Validated observation.
+
+        Raises
+        ------
+        ValueError
+            If the range is incomplete or reversed.
+        """
+        if (self.daily_low_c is None) != (self.daily_high_c is None):
+            raise ValueError("Supply both daily_low_c and daily_high_c")
+        if self.daily_low_c is not None and self.daily_high_c is not None and self.daily_low_c > self.daily_high_c:
+            raise ValueError("daily_low_c must not exceed daily_high_c")
+        return self
 
     @field_validator("location")
     @classmethod
@@ -41,6 +63,49 @@ class WeatherRequest(BaseModel):
         """
         if not value.strip() or not value.isprintable() or len(value.encode("utf-8")) > 24:
             raise ValueError("Location must be nonblank, printable, and at most 24 UTF-8 bytes")
+        return value
+
+
+class WeatherAlertRequest(BaseModel):
+    """Replace one source-selected alert with ordered updates and remaining validity."""
+
+    model_config = ConfigDict(extra="forbid")
+    alert_id: UUID
+    sequence: int = Field(gt=0, le=2**63 - 1, strict=True)
+    title: str = Field(min_length=1, max_length=64, strict=True)
+    source: str = Field(min_length=1, max_length=64, strict=True)
+    location: str = Field(min_length=1, max_length=24, strict=True)
+    severity: Literal["blue", "yellow", "orange", "red"]
+    detail: str = Field(default="", max_length=160, strict=True)
+    valid_for_seconds: int = Field(ge=1, le=86400, strict=True)
+
+    @field_validator("title", "source", "location", "detail")
+    @classmethod
+    def validate_text(cls, value: str, info: ValidationInfo) -> str:
+        """Check printable labels against their wire byte limits.
+
+        Parameters
+        ----------
+        value : str
+            Submitted text.
+        info : ValidationInfo
+            Field identity selecting the encoded limit.
+
+        Returns
+        -------
+        str
+            Unchanged valid label.
+
+        Raises
+        ------
+        ValueError
+            If a label is blank, contains controls, or exceeds its byte limit.
+        """
+        limit = 160 if info.field_name == "detail" else 24 if info.field_name == "location" else 64
+        if (value and not value.isprintable()) or (info.field_name != "detail" and not value.strip()):
+            raise ValueError("Alert labels must be printable and nonblank")
+        if len(value.encode("utf-8")) > limit:
+            raise ValueError(f"Text exceeds its {limit}-byte UTF-8 capacity")
         return value
 
 

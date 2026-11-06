@@ -81,6 +81,7 @@ int main() {
       response.body.hello.task_icons = true;
       response.body.hello.brightness_control = true;
       response.body.hello.weather = true;
+      response.body.hello.weather_details = true;
       send(response, sequence);
     } else if (command.envelope.which_body == info_tv_v1_Envelope_ping_tag) {
       response.which_body = info_tv_v1_Envelope_pong_tag;

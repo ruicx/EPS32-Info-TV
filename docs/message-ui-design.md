@@ -2,6 +2,10 @@
 
 Status: The multi-conversation overview direction has been accepted. Tasks and producer-supplied weather are implemented and desktop-tested; calendar, external weather retrieval, and general notifications remain proposals. The original firmware was flashed on 2026-11-05. Five cards and two notifications received actual device Presented feedback, and the user confirmed that physical text, layout, and page rotation were normal.
 
+Weather icons, optional daily temperature range, and producer-supplied hazard
+alerts are now implemented and desktop-tested. See
+[Weather UI validation](weather-ui-validation.md) for current previews and APIs.
+
 Visual update: The compact bubble layout and task-purpose icons below are a subsequent firmware UI
 revision. Its desktop previews and verification are recorded in
 [Bubble UI validation](bubble-ui-validation.md); the earlier physical confirmation
@@ -259,9 +263,12 @@ or is canceled, remove it and select the next eligible item. If no eligible item
 exists, calendar content occupies no space. The source, eligibility rules, and
 reminder lead time remain open; this behavior is not implemented yet.
 
-Weather uses one main temperature with city and condition in the persistent
-area. Missing data shows `Not set`; expired cached data shows `Stale` with a
-dimmed temperature. This state is separate from USB connection status. A static
+Weather uses one main temperature, city, and local weather icon in the persistent
+area. Its supplemental line shows an active hazard alert first, then stale data,
+daily low/high when supplied, or condition text. First/upgrade alerts can show
+an important notification; notification dismissal retains the valid marker.
+Missing data shows `Not set`; expired cached data shows `Stale` with a
+dimmed temperature. This state is separate from USB connection status. A
 full-body character stays beside it, with local blinking and occasional weight
 shifts documented in [Companion animation](companion-animation.md). Time and
 additional animation must not obscure

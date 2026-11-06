@@ -98,6 +98,7 @@ def test_http_to_cpp_firmware_core() -> None:
             time.sleep(0.01)
         assert client.put("/v1/weather", json={
             "location": "Harbin", "temperature_c": 0, "condition": "snow",
+            "daily_low_c": -10, "daily_high_c": 0,
         }).status_code == 202
         while not client.get("/v1/weather").json()["delivery"].get("accepted"):
             assert time.monotonic() < deadline, "C++ weather was not admitted"
@@ -134,6 +135,22 @@ def test_http_to_cpp_firmware_core() -> None:
                 break
             assert time.monotonic() < deadline, "C++ notification was not presented"
             time.sleep(0.01)
+
+
+        alert = {"alert_id": uuid4().hex, "sequence": 1, "title": "Snow",
+                 "location": "Harbin", "source": "Demo bureau", "severity": "orange",
+                 "detail": "Synthetic integration test.", "valid_for_seconds": 3600}
+        assert client.put("/v1/weather/alert", json=alert).status_code == 202
+        while not client.get("/v1/weather/alert").json()["delivery"].get("notification_presented"):
+            assert time.monotonic() < deadline, "C++ alert notification was not presented"
+            time.sleep(0.01)
+        assert client.get("/v1/weather/alert").json()["delivery"]["accepted"]
+        assert len(client.get("/v1/tasks").json()) == 1
+        assert client.delete("/v1/weather/alert").status_code == 202
+        while not client.get("/v1/weather/alert").json()["delivery"].get("accepted"):
+            assert time.monotonic() < deadline, "C++ alert withdrawal was not admitted"
+            time.sleep(0.01)
+        assert client.get("/v1/weather").json()["daily_low_c"] == -10
 
 
 @pytest.mark.integration

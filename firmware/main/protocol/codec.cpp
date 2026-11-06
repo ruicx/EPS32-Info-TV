@@ -29,11 +29,27 @@ bool validCard(const Card& card) {
 bool validWeather(const info_tv_v1_Weather& weather) {
   if (!weather.has_temperature_c)
     return !weather.location[0] && !weather.valid_for_ms &&
+        !weather.has_daily_low_c && !weather.has_daily_high_c &&
         weather.condition == info_tv_v1_WeatherCondition_WEATHER_CONDITION_UNKNOWN;
+  if (weather.has_daily_low_c != weather.has_daily_high_c) return false;
+  if (weather.has_daily_low_c && (weather.daily_low_c < -100 || weather.daily_high_c > 100 ||
+      weather.daily_low_c > weather.daily_high_c)) return false;
   return weather.location[0] && weather.temperature_c >= -100 && weather.temperature_c <= 100 &&
       weather.valid_for_ms && weather.valid_for_ms <= 3600000 &&
       weather.condition >= info_tv_v1_WeatherCondition_WEATHER_CONDITION_UNKNOWN &&
       weather.condition <= info_tv_v1_WeatherCondition_WEATHER_CONDITION_FOG;
+}
+
+/** Validate one bounded alert independently of current weather availability. */
+bool validWeatherAlert(const info_tv_v1_WeatherAlert& alert) {
+  if (!alert.alert_id[0])
+    return !alert.title[0] && !alert.source[0] && !alert.location[0] && !alert.detail[0] &&
+        !alert.valid_for_ms && !alert.notify &&
+        alert.severity == info_tv_v1_WeatherAlertSeverity_WEATHER_ALERT_SEVERITY_UNSPECIFIED;
+  return alert.title[0] && alert.source[0] && alert.location[0] &&
+      alert.valid_for_ms && alert.valid_for_ms <= 86400000 &&
+      alert.severity >= info_tv_v1_WeatherAlertSeverity_WEATHER_ALERT_SEVERITY_BLUE &&
+      alert.severity <= info_tv_v1_WeatherAlertSeverity_WEATHER_ALERT_SEVERITY_RED;
 }
 }  // namespace
 
@@ -53,6 +69,8 @@ const char* validateCommand(const Envelope& envelope) {
   if (envelope.protocol_version != 1) return "Unsupported protocol version";
   if (!envelope.session_id[0] || !envelope.message_id[0]) return "Missing operation identity";
   switch (envelope.which_body) {
+    case info_tv_v1_Envelope_weather_alert_tag:
+      return validWeatherAlert(envelope.body.weather_alert) ? nullptr : "Invalid weather alert";
     case info_tv_v1_Envelope_weather_tag:
       return validWeather(envelope.body.weather) ? nullptr : "Invalid weather";
     case info_tv_v1_Envelope_device_settings_tag:

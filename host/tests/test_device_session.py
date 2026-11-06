@@ -32,8 +32,10 @@ class PeerTransport:
         self.task_icons = True
         self.brightness_control = True
         self.weather = True
+        self.weather_details = True
         self.withhold_settings = False
         self.withhold_weather = False
+        self.withhold_alerts = False
 
     async def open(self) -> None:
         """Start a fresh connection while preserving captured history."""
@@ -81,6 +83,7 @@ class PeerTransport:
                 response.hello.task_icons = self.task_icons
                 response.hello.brightness_control = self.brightness_control
                 response.hello.weather = self.weather
+                response.hello.weather_details = self.weather_details
             elif kind == "ping":
                 response.pong.SetInParent()
             else:
@@ -90,6 +93,8 @@ class PeerTransport:
                 if kind == "device_settings" and self.withhold_settings:
                     continue
                 if kind == "weather" and self.withhold_weather:
+                    continue
+                if kind == "weather_alert" and self.withhold_alerts:
                     continue
                 response.acknowledgment.in_reply_to = command.message_id
                 response.acknowledgment.stage = pb.ACK_STAGE_ACCEPTED
@@ -438,6 +443,85 @@ def test_weather_coalesces_expires_and_does_not_revive_on_reconnect(monkeypatch:
             await wait_until(lambda: cast(dict[str, object], session.weather_status()["delivery"]).get("accepted") is True)
             assert session.weather_status()["state"] == "unavailable"
             assert store.list_tasks() == []
+        finally:
+            await stop(task)
+    asyncio.run(scenario())
+
+
+def test_alert_notifications_retries_and_reconnect(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Notify once on issuance/upgrades, retry safely, and restore silently.
+
+    Parameters
+    ----------
+    monkeypatch : MonkeyPatch
+        Shortens retry timing without changing content validity.
+    """
+    async def scenario() -> None:
+        """Drive ordered updates, withheld feedback, and a real reconnect."""
+        monkeypatch.setattr("info_tv_service.device.session.ACK_TIMEOUT_SECONDS", 0.08)
+        peer = PeerTransport()
+        session = DeviceSession(peer, TaskStore().list_tasks)
+        task = asyncio.create_task(session.run())
+        try:
+            await wait_until(lambda: session.online and session._alert_delivery is not None)
+            alert = pb.WeatherAlert(alert_id=uuid4().hex, title="Rain", source="Demo bureau",
+                                    location="Shanghai", severity=pb.WEATHER_ALERT_SEVERITY_ORANGE,
+                                    valid_for_ms=120000)
+            peer.withhold_alerts = True
+            session.set_weather_alert(alert, 1)
+            deadline = session._alert_expires_at
+            session.set_weather_alert(alert, 1)
+            assert session._alert_expires_at == deadline
+            await wait_until(lambda: sum(c.HasField("weather_alert") and
+                c.weather_alert.alert_id == alert.alert_id for c in peer.commands) >= 2)
+            updates = [c for c in peer.commands if c.HasField("weather_alert") and c.weather_alert.alert_id]
+            assert updates[0].weather_alert.notify and updates[1].weather_alert.notify
+            assert updates[0].message_id == updates[1].message_id
+            assert 0 < updates[1].weather_alert.valid_for_ms < updates[0].weather_alert.valid_for_ms
+            peer.withhold_alerts = False
+            reply = make_envelope(session.session_id)
+            reply.acknowledgment.in_reply_to = updates[0].message_id
+            reply.acknowledgment.stage = pb.ACK_STAGE_ACCEPTED
+            peer.incoming.put_nowait(encode_frame(reply.SerializeToString()))
+            await wait_until(lambda: session._pending is None)
+            session.set_weather_alert(alert, 2)
+            assert session.weather_alert_status()["notification"] == "suppressed"
+            alert.severity = pb.WEATHER_ALERT_SEVERITY_RED
+            session.set_weather_alert(alert, 3)
+            assert session.weather_alert_status()["notification"] == "queued"
+            await wait_until(lambda: session._alert_delivery is not None and session._alert_delivery.accepted)
+            assert peer.commands[-1].weather_alert.notify
+            count = sum(c.HasField("weather_alert") for c in peer.commands)
+            peer.fail = True
+            await wait_until(lambda: peer.opens >= 2 and session.online and
+                sum(c.HasField("weather_alert") for c in peer.commands) > count)
+            restored = [c for c in peer.commands if c.HasField("weather_alert")][-1]
+            assert restored.weather_alert.alert_id == alert.alert_id
+            assert not restored.weather_alert.notify
+            assert 0 < restored.weather_alert.valid_for_ms < alert.valid_for_ms
+            session._alert_expires_at = 0
+            assert session.weather_alert_status()["state"] == "expired"
+            count = sum(c.HasField("weather_alert") for c in peer.commands)
+            peer.fail = True
+            await wait_until(lambda: peer.opens >= 3 and session.online and
+                sum(c.HasField("weather_alert") for c in peer.commands) > count)
+            assert not [c for c in peer.commands if c.HasField("weather_alert")][-1].weather_alert.alert_id
+        finally:
+            await stop(task)
+    asyncio.run(scenario())
+
+
+def test_firmware_without_weather_details_is_rejected() -> None:
+    """Prevent old firmware from silently losing ranges or hazard alerts."""
+    async def scenario() -> None:
+        """Inspect the capability diagnostic before synchronization."""
+        peer = PeerTransport()
+        peer.weather_details = False
+        session = DeviceSession(peer, TaskStore().list_tasks)
+        task = asyncio.create_task(session.run())
+        try:
+            await wait_until(lambda: "weather details" in str(session.get_status()))
+            assert not any(c.HasField("snapshot") for c in peer.commands)
         finally:
             await stop(task)
     asyncio.run(scenario())

@@ -22,6 +22,8 @@ class ScreenView {
   lv_obj_t* bubble(int y, int height);
   /** Create a thin reported-progress track inside a message surface. */
   lv_obj_t* progressBar(lv_obj_t* parent, int x, int y, int width);
+  /** Draw the bounded local weather symbol using LVGL vector primitives. */
+  static void drawWeatherIcon(lv_event_t* event);
   lv_font_t smallFont_{};
   lv_obj_t* header_ = nullptr;
   lv_obj_t* headerUnit_ = nullptr;
@@ -40,6 +42,10 @@ class ScreenView {
   lv_obj_t* location_ = nullptr;
   lv_obj_t* temperature_ = nullptr;
   lv_obj_t* conditions_ = nullptr;
+  lv_obj_t* weatherIcon_ = nullptr;
+  lv_obj_t* weatherAlertIcon_ = nullptr;
+  info_tv_v1_WeatherCondition weatherCondition_ = info_tv_v1_WeatherCondition_WEATHER_CONDITION_UNKNOWN;
+  bool weatherIconFresh_ = false;
   lv_obj_t* character_ = nullptr;
   const lv_image_dsc_t* characterFrame_ = nullptr;
   std::array<lv_obj_t*, policy::kRowsPerPage> rowBubbles_{};

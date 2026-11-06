@@ -53,6 +53,9 @@ int main(int argc, char** argv) {
   cards.weather.temperature_c = -100;
   cards.weather.condition = info_tv_v1_WeatherCondition_WEATHER_CONDITION_STORM;
   cards.weather.valid_for_ms = 3600000;
+  cards.weather.has_daily_low_c = cards.weather.has_daily_high_c = true;
+  cards.weather.daily_low_c = -100;
+  cards.weather.daily_high_c = 100;
   std::memset(cards.weather.location, 'w', sizeof(cards.weather.location) - 1);
   cards.cards_count = 8;
   for (size_t index = 0; index < 8; ++index) {
@@ -75,6 +78,9 @@ int main(int argc, char** argv) {
   CHECK(!info_tv::validateCommand(roundtrip));
   CHECK(roundtrip.body.snapshot.cards_count == 8);
   CHECK(roundtrip.body.snapshot.weather.temperature_c == -100);
+  CHECK(roundtrip.body.snapshot.weather.has_daily_low_c);
+  CHECK(roundtrip.body.snapshot.weather.daily_low_c == -100);
+  CHECK(roundtrip.body.snapshot.weather.daily_high_c == 100);
   auto weather = makeCommand("weather");
   weather.envelope.which_body = info_tv_v1_Envelope_weather_tag;
   CHECK(!info_tv::validateCommand(weather.envelope));  // Explicit clear.
@@ -88,6 +94,25 @@ int main(int argc, char** argv) {
   weather.envelope.body.weather = cards.weather;
   weather.envelope.body.weather.condition = static_cast<info_tv_v1_WeatherCondition>(7);
   CHECK(info_tv::validateCommand(weather.envelope));
+  weather.envelope.body.weather = cards.weather;
+  weather.envelope.body.weather.has_daily_low_c = false;
+  CHECK(info_tv::validateCommand(weather.envelope));
+  weather.envelope.body.weather = cards.weather;
+  weather.envelope.body.weather.daily_low_c = 10;
+  weather.envelope.body.weather.daily_high_c = 0;
+  CHECK(info_tv::validateCommand(weather.envelope));
+  auto alert = makeWeatherAlert();
+  CHECK(!info_tv::validateCommand(alert.envelope));
+  const auto alertSize = info_tv::encodeEnvelope(alert.envelope, encoded.data(), encoded.size());
+  CHECK(info_tv::decodeEnvelope(encoded.data(), alertSize, roundtrip));
+  CHECK(roundtrip.body.weather_alert.notify);
+  CHECK(!std::strcmp(roundtrip.body.weather_alert.source, "Demo bureau"));
+  alert.envelope.body.weather_alert.valid_for_ms = 86400001;
+  CHECK(info_tv::validateCommand(alert.envelope));
+  alert.envelope.body.weather_alert = {};
+  CHECK(!info_tv::validateCommand(alert.envelope));
+  alert.envelope.body.weather_alert.notify = true;
+  CHECK(info_tv::validateCommand(alert.envelope));
   auto metadata = makeCard();
   auto changed = metadata;
   std::strcpy(changed.view.context, "different-project");

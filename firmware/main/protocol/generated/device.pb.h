@@ -38,6 +38,14 @@ typedef enum _info_tv_v1_WeatherCondition {
     info_tv_v1_WeatherCondition_WEATHER_CONDITION_FOG = 6
 } info_tv_v1_WeatherCondition;
 
+typedef enum _info_tv_v1_WeatherAlertSeverity {
+    info_tv_v1_WeatherAlertSeverity_WEATHER_ALERT_SEVERITY_UNSPECIFIED = 0,
+    info_tv_v1_WeatherAlertSeverity_WEATHER_ALERT_SEVERITY_BLUE = 1,
+    info_tv_v1_WeatherAlertSeverity_WEATHER_ALERT_SEVERITY_YELLOW = 2,
+    info_tv_v1_WeatherAlertSeverity_WEATHER_ALERT_SEVERITY_ORANGE = 3,
+    info_tv_v1_WeatherAlertSeverity_WEATHER_ALERT_SEVERITY_RED = 4
+} info_tv_v1_WeatherAlertSeverity;
+
 typedef enum _info_tv_v1_Priority {
     info_tv_v1_Priority_PRIORITY_UNSPECIFIED = 0,
     info_tv_v1_Priority_PRIORITY_ORDINARY = 1,
@@ -71,6 +79,7 @@ typedef struct _info_tv_v1_Hello {
     bool task_icons;
     bool brightness_control;
     bool weather;
+    bool weather_details;
 } info_tv_v1_Hello;
 
 typedef struct _info_tv_v1_Ping {
@@ -120,7 +129,24 @@ typedef struct _info_tv_v1_Weather {
     info_tv_v1_WeatherCondition condition;
     /* Remaining freshness at transmission; retries may only shorten it. */
     uint32_t valid_for_ms;
+    bool has_daily_low_c;
+    int8_t daily_low_c;
+    bool has_daily_high_c;
+    int8_t daily_high_c;
 } info_tv_v1_Weather;
+
+/* One producer-selected alert, synchronized separately to bound snapshot size.
+ A fully empty message clears it. Retries never extend the original lifetime. */
+typedef struct _info_tv_v1_WeatherAlert {
+    char alert_id[37];
+    char title[65];
+    char source[65];
+    char location[25];
+    info_tv_v1_WeatherAlertSeverity severity;
+    char detail[161];
+    uint32_t valid_for_ms;
+    bool notify;
+} info_tv_v1_WeatherAlert;
 
 typedef struct _info_tv_v1_Snapshot {
     pb_size_t cards_count;
@@ -180,6 +206,7 @@ typedef struct _info_tv_v1_Envelope {
         info_tv_v1_Pong pong;
         info_tv_v1_DeviceSettings device_settings;
         info_tv_v1_Weather weather;
+        info_tv_v1_WeatherAlert weather_alert;
     } body;
 } info_tv_v1_Envelope;
 
@@ -200,6 +227,10 @@ extern "C" {
 #define _info_tv_v1_WeatherCondition_MIN info_tv_v1_WeatherCondition_WEATHER_CONDITION_UNKNOWN
 #define _info_tv_v1_WeatherCondition_MAX info_tv_v1_WeatherCondition_WEATHER_CONDITION_FOG
 #define _info_tv_v1_WeatherCondition_ARRAYSIZE ((info_tv_v1_WeatherCondition)(info_tv_v1_WeatherCondition_WEATHER_CONDITION_FOG+1))
+
+#define _info_tv_v1_WeatherAlertSeverity_MIN info_tv_v1_WeatherAlertSeverity_WEATHER_ALERT_SEVERITY_UNSPECIFIED
+#define _info_tv_v1_WeatherAlertSeverity_MAX info_tv_v1_WeatherAlertSeverity_WEATHER_ALERT_SEVERITY_RED
+#define _info_tv_v1_WeatherAlertSeverity_ARRAYSIZE ((info_tv_v1_WeatherAlertSeverity)(info_tv_v1_WeatherAlertSeverity_WEATHER_ALERT_SEVERITY_RED+1))
 
 #define _info_tv_v1_Priority_MIN info_tv_v1_Priority_PRIORITY_UNSPECIFIED
 #define _info_tv_v1_Priority_MAX info_tv_v1_Priority_PRIORITY_IMPORTANT
@@ -225,6 +256,8 @@ extern "C" {
 
 #define info_tv_v1_Weather_condition_ENUMTYPE info_tv_v1_WeatherCondition
 
+#define info_tv_v1_WeatherAlert_severity_ENUMTYPE info_tv_v1_WeatherAlertSeverity
+
 
 
 #define info_tv_v1_Notification_priority_ENUMTYPE info_tv_v1_Priority
@@ -236,28 +269,30 @@ extern "C" {
 
 /* Initializer values for message structs */
 #define info_tv_v1_Envelope_init_default         {0, "", "", 0, {info_tv_v1_Hello_init_default}}
-#define info_tv_v1_Hello_init_default            {0, 0, 0, 0, 0}
+#define info_tv_v1_Hello_init_default            {0, 0, 0, 0, 0, 0}
 #define info_tv_v1_Ping_init_default             {0}
 #define info_tv_v1_Pong_init_default             {0}
 #define info_tv_v1_DeviceSettings_init_default   {false, 0}
 #define info_tv_v1_StatusView_init_default       {"", _info_tv_v1_Tone_MIN, "", false, 0}
 #define info_tv_v1_View_init_default             {"", "", "", _info_tv_v1_TaskIcon_MIN, 0, {info_tv_v1_StatusView_init_default}}
 #define info_tv_v1_Card_init_default             {"", 0, false, info_tv_v1_View_init_default}
-#define info_tv_v1_Weather_init_default          {"", false, 0, _info_tv_v1_WeatherCondition_MIN, 0}
+#define info_tv_v1_Weather_init_default          {"", false, 0, _info_tv_v1_WeatherCondition_MIN, 0, false, 0, false, 0}
+#define info_tv_v1_WeatherAlert_init_default     {"", "", "", "", _info_tv_v1_WeatherAlertSeverity_MIN, "", 0, 0}
 #define info_tv_v1_Snapshot_init_default         {0, {info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default}, false, info_tv_v1_Weather_init_default}
 #define info_tv_v1_CardUpsert_init_default       {false, info_tv_v1_Card_init_default}
 #define info_tv_v1_Notification_init_default     {"", _info_tv_v1_Priority_MIN, false, 0, 0, false, info_tv_v1_View_init_default, ""}
 #define info_tv_v1_Acknowledgment_init_default   {"", _info_tv_v1_AckStage_MIN, "", 0, false, 0}
 #define info_tv_v1_Error_init_default            {"", _info_tv_v1_ErrorCode_MIN, ""}
 #define info_tv_v1_Envelope_init_zero            {0, "", "", 0, {info_tv_v1_Hello_init_zero}}
-#define info_tv_v1_Hello_init_zero               {0, 0, 0, 0, 0}
+#define info_tv_v1_Hello_init_zero               {0, 0, 0, 0, 0, 0}
 #define info_tv_v1_Ping_init_zero                {0}
 #define info_tv_v1_Pong_init_zero                {0}
 #define info_tv_v1_DeviceSettings_init_zero      {false, 0}
 #define info_tv_v1_StatusView_init_zero          {"", _info_tv_v1_Tone_MIN, "", false, 0}
 #define info_tv_v1_View_init_zero                {"", "", "", _info_tv_v1_TaskIcon_MIN, 0, {info_tv_v1_StatusView_init_zero}}
 #define info_tv_v1_Card_init_zero                {"", 0, false, info_tv_v1_View_init_zero}
-#define info_tv_v1_Weather_init_zero             {"", false, 0, _info_tv_v1_WeatherCondition_MIN, 0}
+#define info_tv_v1_Weather_init_zero             {"", false, 0, _info_tv_v1_WeatherCondition_MIN, 0, false, 0, false, 0}
+#define info_tv_v1_WeatherAlert_init_zero        {"", "", "", "", _info_tv_v1_WeatherAlertSeverity_MIN, "", 0, 0}
 #define info_tv_v1_Snapshot_init_zero            {0, {info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero}, false, info_tv_v1_Weather_init_zero}
 #define info_tv_v1_CardUpsert_init_zero          {false, info_tv_v1_Card_init_zero}
 #define info_tv_v1_Notification_init_zero        {"", _info_tv_v1_Priority_MIN, false, 0, 0, false, info_tv_v1_View_init_zero, ""}
@@ -270,6 +305,7 @@ extern "C" {
 #define info_tv_v1_Hello_task_icons_tag          3
 #define info_tv_v1_Hello_brightness_control_tag  4
 #define info_tv_v1_Hello_weather_tag             5
+#define info_tv_v1_Hello_weather_details_tag     6
 #define info_tv_v1_DeviceSettings_brightness_percent_tag 1
 #define info_tv_v1_StatusView_text_tag           1
 #define info_tv_v1_StatusView_tone_tag           2
@@ -287,6 +323,16 @@ extern "C" {
 #define info_tv_v1_Weather_temperature_c_tag     2
 #define info_tv_v1_Weather_condition_tag         3
 #define info_tv_v1_Weather_valid_for_ms_tag      4
+#define info_tv_v1_Weather_daily_low_c_tag       5
+#define info_tv_v1_Weather_daily_high_c_tag      6
+#define info_tv_v1_WeatherAlert_alert_id_tag     1
+#define info_tv_v1_WeatherAlert_title_tag        2
+#define info_tv_v1_WeatherAlert_source_tag       3
+#define info_tv_v1_WeatherAlert_location_tag     4
+#define info_tv_v1_WeatherAlert_severity_tag     5
+#define info_tv_v1_WeatherAlert_detail_tag       6
+#define info_tv_v1_WeatherAlert_valid_for_ms_tag 7
+#define info_tv_v1_WeatherAlert_notify_tag       8
 #define info_tv_v1_Snapshot_cards_tag            1
 #define info_tv_v1_Snapshot_weather_tag          2
 #define info_tv_v1_CardUpsert_card_tag           1
@@ -317,6 +363,7 @@ extern "C" {
 #define info_tv_v1_Envelope_pong_tag             17
 #define info_tv_v1_Envelope_device_settings_tag  18
 #define info_tv_v1_Envelope_weather_tag          19
+#define info_tv_v1_Envelope_weather_alert_tag    20
 
 /* Struct field encoding specification for nanopb */
 #define info_tv_v1_Envelope_FIELDLIST(X, a) \
@@ -332,7 +379,8 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (body,error,body.error),  15) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (body,ping,body.ping),  16) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (body,pong,body.pong),  17) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (body,device_settings,body.device_settings),  18) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (body,weather,body.weather),  19)
+X(a, STATIC,   ONEOF,    MESSAGE,  (body,weather,body.weather),  19) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (body,weather_alert,body.weather_alert),  20)
 #define info_tv_v1_Envelope_CALLBACK NULL
 #define info_tv_v1_Envelope_DEFAULT NULL
 #define info_tv_v1_Envelope_body_hello_MSGTYPE info_tv_v1_Hello
@@ -345,13 +393,15 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (body,weather,body.weather),  19)
 #define info_tv_v1_Envelope_body_pong_MSGTYPE info_tv_v1_Pong
 #define info_tv_v1_Envelope_body_device_settings_MSGTYPE info_tv_v1_DeviceSettings
 #define info_tv_v1_Envelope_body_weather_MSGTYPE info_tv_v1_Weather
+#define info_tv_v1_Envelope_body_weather_alert_MSGTYPE info_tv_v1_WeatherAlert
 
 #define info_tv_v1_Hello_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UINT64,   boot_id,           1) \
 X(a, STATIC,   SINGULAR, UINT32,   max_cards,         2) \
 X(a, STATIC,   SINGULAR, BOOL,     task_icons,        3) \
 X(a, STATIC,   SINGULAR, BOOL,     brightness_control,   4) \
-X(a, STATIC,   SINGULAR, BOOL,     weather,           5)
+X(a, STATIC,   SINGULAR, BOOL,     weather,           5) \
+X(a, STATIC,   SINGULAR, BOOL,     weather_details,   6)
 #define info_tv_v1_Hello_CALLBACK NULL
 #define info_tv_v1_Hello_DEFAULT NULL
 
@@ -400,9 +450,23 @@ X(a, STATIC,   OPTIONAL, MESSAGE,  view,              3)
 X(a, STATIC,   SINGULAR, STRING,   location,          1) \
 X(a, STATIC,   OPTIONAL, SINT32,   temperature_c,     2) \
 X(a, STATIC,   SINGULAR, UENUM,    condition,         3) \
-X(a, STATIC,   SINGULAR, UINT32,   valid_for_ms,      4)
+X(a, STATIC,   SINGULAR, UINT32,   valid_for_ms,      4) \
+X(a, STATIC,   OPTIONAL, SINT32,   daily_low_c,       5) \
+X(a, STATIC,   OPTIONAL, SINT32,   daily_high_c,      6)
 #define info_tv_v1_Weather_CALLBACK NULL
 #define info_tv_v1_Weather_DEFAULT NULL
+
+#define info_tv_v1_WeatherAlert_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, STRING,   alert_id,          1) \
+X(a, STATIC,   SINGULAR, STRING,   title,             2) \
+X(a, STATIC,   SINGULAR, STRING,   source,            3) \
+X(a, STATIC,   SINGULAR, STRING,   location,          4) \
+X(a, STATIC,   SINGULAR, UENUM,    severity,          5) \
+X(a, STATIC,   SINGULAR, STRING,   detail,            6) \
+X(a, STATIC,   SINGULAR, UINT32,   valid_for_ms,      7) \
+X(a, STATIC,   SINGULAR, BOOL,     notify,            8)
+#define info_tv_v1_WeatherAlert_CALLBACK NULL
+#define info_tv_v1_WeatherAlert_DEFAULT NULL
 
 #define info_tv_v1_Snapshot_FIELDLIST(X, a) \
 X(a, STATIC,   REPEATED, MESSAGE,  cards,             1) \
@@ -454,6 +518,7 @@ extern const pb_msgdesc_t info_tv_v1_StatusView_msg;
 extern const pb_msgdesc_t info_tv_v1_View_msg;
 extern const pb_msgdesc_t info_tv_v1_Card_msg;
 extern const pb_msgdesc_t info_tv_v1_Weather_msg;
+extern const pb_msgdesc_t info_tv_v1_WeatherAlert_msg;
 extern const pb_msgdesc_t info_tv_v1_Snapshot_msg;
 extern const pb_msgdesc_t info_tv_v1_CardUpsert_msg;
 extern const pb_msgdesc_t info_tv_v1_Notification_msg;
@@ -470,6 +535,7 @@ extern const pb_msgdesc_t info_tv_v1_Error_msg;
 #define info_tv_v1_View_fields &info_tv_v1_View_msg
 #define info_tv_v1_Card_fields &info_tv_v1_Card_msg
 #define info_tv_v1_Weather_fields &info_tv_v1_Weather_msg
+#define info_tv_v1_WeatherAlert_fields &info_tv_v1_WeatherAlert_msg
 #define info_tv_v1_Snapshot_fields &info_tv_v1_Snapshot_msg
 #define info_tv_v1_CardUpsert_fields &info_tv_v1_CardUpsert_msg
 #define info_tv_v1_Notification_fields &info_tv_v1_Notification_msg
@@ -482,16 +548,17 @@ extern const pb_msgdesc_t info_tv_v1_Error_msg;
 #define info_tv_v1_CardUpsert_size               495
 #define info_tv_v1_Card_size                     492
 #define info_tv_v1_DeviceSettings_size           6
-#define info_tv_v1_Envelope_size                 4087
+#define info_tv_v1_Envelope_size                 4093
 #define info_tv_v1_Error_size                    138
-#define info_tv_v1_Hello_size                    23
+#define info_tv_v1_Hello_size                    25
 #define info_tv_v1_Notification_size             533
 #define info_tv_v1_Ping_size                     0
 #define info_tv_v1_Pong_size                     0
-#define info_tv_v1_Snapshot_size                 4002
+#define info_tv_v1_Snapshot_size                 4008
 #define info_tv_v1_StatusView_size               237
 #define info_tv_v1_View_size                     440
-#define info_tv_v1_Weather_size                  40
+#define info_tv_v1_WeatherAlert_size             369
+#define info_tv_v1_Weather_size                  46
 
 #ifdef __cplusplus
 } /* extern "C" */

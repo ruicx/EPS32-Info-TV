@@ -13,6 +13,10 @@ For the latest header and message surface styling, see
 [Message UI polish](message-ui-polish.md). The captures below preserve the
 original layout revision.
 
+The [weather extension](weather-ui-validation.md) adds icons, daily temperature
+ranges, and independent hazard alerts. Its current protocol bound and required
+capability supersede the original weather-only values recorded below.
+
 ## Accepted layout
 
 The 240 x 240 display keeps three independent regions:

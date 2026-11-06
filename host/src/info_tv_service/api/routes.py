@@ -4,7 +4,7 @@ from typing import cast
 
 from fastapi import APIRouter, HTTPException, Request
 
-from info_tv_service.api.models import DeviceSettingsRequest, TaskEventRequest, WeatherRequest
+from info_tv_service.api.models import DeviceSettingsRequest, TaskEventRequest, WeatherAlertRequest, WeatherRequest
 from info_tv_service.device.generated import device_pb2 as pb
 from info_tv_service.runtime import ServiceRuntime
 from info_tv_service.tasks.store import AdmissionError
@@ -162,11 +162,15 @@ def create_router() -> APIRouter:
         runtime = runtime_from_request(request)
         if runtime.failure:
             raise HTTPException(503, runtime.failure)
-        runtime.device.set_weather(pb.Weather(
+        weather = pb.Weather(
             location=body.location, temperature_c=body.temperature_c,
             condition=f"WEATHER_CONDITION_{body.condition.upper()}",
             valid_for_ms=body.valid_for_seconds * 1000,
-        ))
+        )
+        if body.daily_low_c is not None and body.daily_high_c is not None:
+            weather.daily_low_c = body.daily_low_c
+            weather.daily_high_c = body.daily_high_c
+        runtime.device.set_weather(weather)
         return runtime.device.weather_status()
 
     @router.get("/weather")
@@ -209,6 +213,83 @@ def create_router() -> APIRouter:
             raise HTTPException(503, runtime.failure)
         runtime.device.set_weather(pb.Weather())
         return runtime.device.weather_status()
+
+    @router.put("/weather/alert", status_code=202)
+    async def set_weather_alert(body: WeatherAlertRequest, request: Request) -> dict[str, object]:
+        """Admit one ordered alert independently of ordinary weather freshness.
+
+        Parameters
+        ----------
+        body : WeatherAlertRequest
+            Source-selected alert and remaining validity.
+        request : Request
+            Application context.
+
+        Returns
+        -------
+        dict[str, object]
+            Retained alert, notification disposition, and device admission.
+
+        Raises
+        ------
+        HTTPException
+            For conflicting updates or a failed coordinator.
+        """
+        runtime = runtime_from_request(request)
+        if runtime.failure:
+            raise HTTPException(503, runtime.failure)
+        alert = pb.WeatherAlert(
+            alert_id=body.alert_id.hex, title=body.title, source=body.source,
+            location=body.location, detail=body.detail,
+            severity=f"WEATHER_ALERT_SEVERITY_{body.severity.upper()}",
+            valid_for_ms=body.valid_for_seconds * 1000,
+        )
+        try:
+            runtime.device.set_weather_alert(alert, body.sequence)
+        except ValueError as error:
+            raise HTTPException(409, str(error)) from error
+        return runtime.device.weather_alert_status()
+
+    @router.get("/weather/alert")
+    async def weather_alert_status(request: Request) -> dict[str, object]:
+        """Query alert validity independently of notification dismissal.
+
+        Parameters
+        ----------
+        request : Request
+            Application context.
+
+        Returns
+        -------
+        dict[str, object]
+            Retained alert and latest device feedback.
+        """
+        return runtime_from_request(request).device.weather_alert_status()
+
+    @router.delete("/weather/alert", status_code=202)
+    async def clear_weather_alert(request: Request) -> dict[str, object]:
+        """Withdraw the current alert and its pending or active notification.
+
+        Parameters
+        ----------
+        request : Request
+            Application context.
+
+        Returns
+        -------
+        dict[str, object]
+            Empty alert state with pending removal delivery.
+
+        Raises
+        ------
+        HTTPException
+            If the coordinator failed.
+        """
+        runtime = runtime_from_request(request)
+        if runtime.failure:
+            raise HTTPException(503, runtime.failure)
+        runtime.device.set_weather_alert(pb.WeatherAlert(), 0)
+        return runtime.device.weather_alert_status()
 
     @router.get("/device")
     async def device_status(request: Request) -> dict[str, object]:

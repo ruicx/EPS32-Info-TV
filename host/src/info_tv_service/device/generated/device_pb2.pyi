@@ -34,6 +34,14 @@ class WeatherCondition(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     WEATHER_CONDITION_STORM: _ClassVar[WeatherCondition]
     WEATHER_CONDITION_FOG: _ClassVar[WeatherCondition]
 
+class WeatherAlertSeverity(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    WEATHER_ALERT_SEVERITY_UNSPECIFIED: _ClassVar[WeatherAlertSeverity]
+    WEATHER_ALERT_SEVERITY_BLUE: _ClassVar[WeatherAlertSeverity]
+    WEATHER_ALERT_SEVERITY_YELLOW: _ClassVar[WeatherAlertSeverity]
+    WEATHER_ALERT_SEVERITY_ORANGE: _ClassVar[WeatherAlertSeverity]
+    WEATHER_ALERT_SEVERITY_RED: _ClassVar[WeatherAlertSeverity]
+
 class Priority(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     PRIORITY_UNSPECIFIED: _ClassVar[Priority]
@@ -73,6 +81,11 @@ WEATHER_CONDITION_RAIN: WeatherCondition
 WEATHER_CONDITION_SNOW: WeatherCondition
 WEATHER_CONDITION_STORM: WeatherCondition
 WEATHER_CONDITION_FOG: WeatherCondition
+WEATHER_ALERT_SEVERITY_UNSPECIFIED: WeatherAlertSeverity
+WEATHER_ALERT_SEVERITY_BLUE: WeatherAlertSeverity
+WEATHER_ALERT_SEVERITY_YELLOW: WeatherAlertSeverity
+WEATHER_ALERT_SEVERITY_ORANGE: WeatherAlertSeverity
+WEATHER_ALERT_SEVERITY_RED: WeatherAlertSeverity
 PRIORITY_UNSPECIFIED: Priority
 PRIORITY_ORDINARY: Priority
 PRIORITY_IMPORTANT: Priority
@@ -88,7 +101,7 @@ ERROR_CODE_EXPIRED: ErrorCode
 ERROR_CODE_HARDWARE: ErrorCode
 
 class Envelope(_message.Message):
-    __slots__ = ("protocol_version", "session_id", "message_id", "hello", "snapshot", "card_upsert", "notification", "acknowledgment", "error", "ping", "pong", "device_settings", "weather")
+    __slots__ = ("protocol_version", "session_id", "message_id", "hello", "snapshot", "card_upsert", "notification", "acknowledgment", "error", "ping", "pong", "device_settings", "weather", "weather_alert")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     SESSION_ID_FIELD_NUMBER: _ClassVar[int]
     MESSAGE_ID_FIELD_NUMBER: _ClassVar[int]
@@ -102,6 +115,7 @@ class Envelope(_message.Message):
     PONG_FIELD_NUMBER: _ClassVar[int]
     DEVICE_SETTINGS_FIELD_NUMBER: _ClassVar[int]
     WEATHER_FIELD_NUMBER: _ClassVar[int]
+    WEATHER_ALERT_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     session_id: str
     message_id: str
@@ -115,21 +129,24 @@ class Envelope(_message.Message):
     pong: Pong
     device_settings: DeviceSettings
     weather: Weather
-    def __init__(self, protocol_version: _Optional[int] = ..., session_id: _Optional[str] = ..., message_id: _Optional[str] = ..., hello: _Optional[_Union[Hello, _Mapping]] = ..., snapshot: _Optional[_Union[Snapshot, _Mapping]] = ..., card_upsert: _Optional[_Union[CardUpsert, _Mapping]] = ..., notification: _Optional[_Union[Notification, _Mapping]] = ..., acknowledgment: _Optional[_Union[Acknowledgment, _Mapping]] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., ping: _Optional[_Union[Ping, _Mapping]] = ..., pong: _Optional[_Union[Pong, _Mapping]] = ..., device_settings: _Optional[_Union[DeviceSettings, _Mapping]] = ..., weather: _Optional[_Union[Weather, _Mapping]] = ...) -> None: ...
+    weather_alert: WeatherAlert
+    def __init__(self, protocol_version: _Optional[int] = ..., session_id: _Optional[str] = ..., message_id: _Optional[str] = ..., hello: _Optional[_Union[Hello, _Mapping]] = ..., snapshot: _Optional[_Union[Snapshot, _Mapping]] = ..., card_upsert: _Optional[_Union[CardUpsert, _Mapping]] = ..., notification: _Optional[_Union[Notification, _Mapping]] = ..., acknowledgment: _Optional[_Union[Acknowledgment, _Mapping]] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., ping: _Optional[_Union[Ping, _Mapping]] = ..., pong: _Optional[_Union[Pong, _Mapping]] = ..., device_settings: _Optional[_Union[DeviceSettings, _Mapping]] = ..., weather: _Optional[_Union[Weather, _Mapping]] = ..., weather_alert: _Optional[_Union[WeatherAlert, _Mapping]] = ...) -> None: ...
 
 class Hello(_message.Message):
-    __slots__ = ("boot_id", "max_cards", "task_icons", "brightness_control", "weather")
+    __slots__ = ("boot_id", "max_cards", "task_icons", "brightness_control", "weather", "weather_details")
     BOOT_ID_FIELD_NUMBER: _ClassVar[int]
     MAX_CARDS_FIELD_NUMBER: _ClassVar[int]
     TASK_ICONS_FIELD_NUMBER: _ClassVar[int]
     BRIGHTNESS_CONTROL_FIELD_NUMBER: _ClassVar[int]
     WEATHER_FIELD_NUMBER: _ClassVar[int]
+    WEATHER_DETAILS_FIELD_NUMBER: _ClassVar[int]
     boot_id: int
     max_cards: int
     task_icons: bool
     brightness_control: bool
     weather: bool
-    def __init__(self, boot_id: _Optional[int] = ..., max_cards: _Optional[int] = ..., task_icons: bool = ..., brightness_control: bool = ..., weather: bool = ...) -> None: ...
+    weather_details: bool
+    def __init__(self, boot_id: _Optional[int] = ..., max_cards: _Optional[int] = ..., task_icons: bool = ..., brightness_control: bool = ..., weather: bool = ..., weather_details: bool = ...) -> None: ...
 
 class Ping(_message.Message):
     __slots__ = ()
@@ -182,16 +199,40 @@ class Card(_message.Message):
     def __init__(self, card_id: _Optional[str] = ..., revision: _Optional[int] = ..., view: _Optional[_Union[View, _Mapping]] = ...) -> None: ...
 
 class Weather(_message.Message):
-    __slots__ = ("location", "temperature_c", "condition", "valid_for_ms")
+    __slots__ = ("location", "temperature_c", "condition", "valid_for_ms", "daily_low_c", "daily_high_c")
     LOCATION_FIELD_NUMBER: _ClassVar[int]
     TEMPERATURE_C_FIELD_NUMBER: _ClassVar[int]
     CONDITION_FIELD_NUMBER: _ClassVar[int]
     VALID_FOR_MS_FIELD_NUMBER: _ClassVar[int]
+    DAILY_LOW_C_FIELD_NUMBER: _ClassVar[int]
+    DAILY_HIGH_C_FIELD_NUMBER: _ClassVar[int]
     location: str
     temperature_c: int
     condition: WeatherCondition
     valid_for_ms: int
-    def __init__(self, location: _Optional[str] = ..., temperature_c: _Optional[int] = ..., condition: _Optional[_Union[WeatherCondition, str]] = ..., valid_for_ms: _Optional[int] = ...) -> None: ...
+    daily_low_c: int
+    daily_high_c: int
+    def __init__(self, location: _Optional[str] = ..., temperature_c: _Optional[int] = ..., condition: _Optional[_Union[WeatherCondition, str]] = ..., valid_for_ms: _Optional[int] = ..., daily_low_c: _Optional[int] = ..., daily_high_c: _Optional[int] = ...) -> None: ...
+
+class WeatherAlert(_message.Message):
+    __slots__ = ("alert_id", "title", "source", "location", "severity", "detail", "valid_for_ms", "notify")
+    ALERT_ID_FIELD_NUMBER: _ClassVar[int]
+    TITLE_FIELD_NUMBER: _ClassVar[int]
+    SOURCE_FIELD_NUMBER: _ClassVar[int]
+    LOCATION_FIELD_NUMBER: _ClassVar[int]
+    SEVERITY_FIELD_NUMBER: _ClassVar[int]
+    DETAIL_FIELD_NUMBER: _ClassVar[int]
+    VALID_FOR_MS_FIELD_NUMBER: _ClassVar[int]
+    NOTIFY_FIELD_NUMBER: _ClassVar[int]
+    alert_id: str
+    title: str
+    source: str
+    location: str
+    severity: WeatherAlertSeverity
+    detail: str
+    valid_for_ms: int
+    notify: bool
+    def __init__(self, alert_id: _Optional[str] = ..., title: _Optional[str] = ..., source: _Optional[str] = ..., location: _Optional[str] = ..., severity: _Optional[_Union[WeatherAlertSeverity, str]] = ..., detail: _Optional[str] = ..., valid_for_ms: _Optional[int] = ..., notify: bool = ...) -> None: ...
 
 class Snapshot(_message.Message):
     __slots__ = ("cards", "weather")

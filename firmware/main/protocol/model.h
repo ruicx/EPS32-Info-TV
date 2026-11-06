@@ -58,6 +58,9 @@ struct RenderModel {
   bool connected = false;
   info_tv_v1_Weather weather{};
   bool weatherFresh = false;
+  info_tv_v1_WeatherAlert weatherAlert{};
+  bool weatherAlertActive = false;
+  bool weatherNotification = false;
 };
 
 static_assert(std::is_trivially_copyable_v<DisplayCommand>);

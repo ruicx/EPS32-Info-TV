@@ -80,6 +80,9 @@ The companion now blinks and occasionally shifts its weight; see the
 [actual LVGL animation preview](docs/companion-animation.md).
 Weather comes from `PUT /v1/weather`, independently of task cards, and expires
 locally. No city or weather provider is configured automatically.
+Weather now supports local condition icons and optional `daily_low_c` /
+`daily_high_c`. `PUT /v1/weather/alert` controls one independent hazard marker
+with first/upgrade notifications. See [weather previews and API](docs/weather-ui-validation.md).
 
 Character artwork: [YunYueSama / codex-deepseek-pet](https://github.com/YunYueSama/codex-deepseek-pet),
 modified by selecting a frame, trimming transparency, and resizing. See the
