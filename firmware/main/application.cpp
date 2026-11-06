@@ -36,6 +36,7 @@ void Application::uiTask(void* context) {
   app.display_.initialize();
   app.view_.initialize();
   uint32_t rendered = 0;
+  uint32_t frameId = 0;
   uint32_t acknowledged = 0;
   for (;;) {
     const uint64_t nowMs = esp_timer_get_time() / 1000;
@@ -43,7 +44,7 @@ void Application::uiTask(void* context) {
     if (!app.display_.hasPendingFrame()) {
       const auto completed = app.display_.completedGeneration();
       if (completed && completed != acknowledged && app.display_.backlightEnabled()) {
-        while (app.presentation_.onFramePresented(completed, nowMs, feedback))
+        while (app.presentation_.onFramePresented(rendered, nowMs, feedback))
           app.queueFeedback(feedback);
         acknowledged = completed;
       }
@@ -63,9 +64,12 @@ void Application::uiTask(void* context) {
         app.queueFeedback(feedback);
       }
       const auto& model = app.presentation_.tick(nowMs);
-      if (model.generation != rendered) {
-        app.view_.render(model);
-        app.display_.present(model.generation);
+      const bool contentChanged = model.generation != rendered;
+      if (contentChanged) app.view_.render(model);
+      const bool animated = app.display_.backlightEnabled() && app.view_.animate(nowMs);
+      if (contentChanged || animated) {
+        // DMA identities advance for animation, while Presented tracks content.
+        app.display_.present(++frameId, contentChanged);
         rendered = model.generation;
       }
     }

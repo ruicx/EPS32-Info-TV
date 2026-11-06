@@ -5,6 +5,11 @@
 
 extern "C" {
 LV_IMAGE_DECLARE(whale_idle);
+LV_IMAGE_DECLARE(whale_closed);
+LV_IMAGE_DECLARE(whale_shift_0);
+LV_IMAGE_DECLARE(whale_shift_1);
+LV_IMAGE_DECLARE(whale_shift_2);
+LV_IMAGE_DECLARE(whale_shift_3);
 }
 
 namespace info_tv {
@@ -61,6 +66,30 @@ const char* weatherCondition(info_tv_v1_WeatherCondition condition) {
     case info_tv_v1_WeatherCondition_WEATHER_CONDITION_FOG: return "Fog";
     default: return "Unknown";
   }
+}
+
+/** Sample upstream idle poses by elapsed time, skipping missed frames. */
+const lv_image_dsc_t* companionFrame(uint64_t nowMs) {
+  const lv_image_dsc_t* shifts[] = {&whale_shift_0, &whale_shift_1, &whale_shift_2,
+      &whale_shift_3, &whale_shift_2, &whale_shift_1, &whale_shift_0};
+  const uint32_t durations[] = {75, 80, 90, 100, 90, 80, 100};
+  const uint32_t phase = nowMs % 24000;
+  if (phase >= 15000) {
+    uint32_t elapsed = phase - 15000;
+    for (size_t index = 0; index < 7; ++index) {
+      if (elapsed < durations[index]) return shifts[index];
+      elapsed -= durations[index];
+    }
+  }
+  // Upstream's irregular blink intervals; the discrete closed pose lasts 140 ms.
+  const uint32_t intervals[] = {5200, 7100, 4300, 8600, 6100};
+  uint32_t elapsed = nowMs % 31300;
+  for (const auto interval : intervals) {
+    if (elapsed < interval)
+      return elapsed >= interval - 170 && elapsed < interval - 30 ? &whale_closed : &whale_idle;
+    elapsed -= interval;
+  }
+  return &whale_idle;
 }
 }  // namespace
 
@@ -124,9 +153,10 @@ void ScreenView::initialize() {
   lv_label_set_text(empty_, "No tasks yet");
   lv_obj_set_style_text_align(empty_, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_set_style_text_color(empty_, lv_color_hex(0x9baabd), 0);
-  auto* character = lv_image_create(screen);
-  lv_image_set_src(character, &whale_idle);
-  lv_obj_set_pos(character, 14, 152);
+  character_ = lv_image_create(screen);
+  characterFrame_ = &whale_idle;
+  lv_image_set_src(character_, characterFrame_);
+  lv_obj_set_pos(character_, 14, 152);
   location_ = label(screen, 106, 151, 122, 20);
   temperature_ = label(screen, 106, 174, 122, 22);
   lv_obj_set_style_text_font(temperature_, &lv_font_montserrat_16, 0);
@@ -157,6 +187,14 @@ void ScreenView::initialize() {
     lv_obj_set_style_text_align(rowDetails_[row], LV_TEXT_ALIGN_RIGHT, 0);
     rowProgress_[row] = progressBar(rowBubbles_[row], 34, 28, 174);
   }
+}
+
+bool ScreenView::animate(uint64_t nowMs) {
+  const auto* frame = companionFrame(nowMs);
+  if (frame == characterFrame_) return false;
+  characterFrame_ = frame;
+  lv_image_set_src(character_, frame);
+  return true;
 }
 
 void ScreenView::render(const RenderModel& model) {

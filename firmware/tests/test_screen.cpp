@@ -15,13 +15,19 @@ namespace {
 struct Capture {
   std::array<uint8_t, 240 * 240 * 3> pixels{};
   bool flushed = false;
+  size_t pixelsFlushed = 0;
 };
 
-/** Copy the full RGB888 draw buffer and complete the desktop flush immediately. */
+/** Copy full or partial RGB888 areas and complete the desktop flush immediately. */
 void flush(lv_display_t* display, const lv_area_t* area, uint8_t* pixels) {
   auto& capture = *static_cast<Capture*>(lv_display_get_user_data(display));
-  CHECK(area->x1 == 0 && area->y1 == 0 && area->x2 == 239 && area->y2 == 239);
-  std::memcpy(capture.pixels.data(), pixels, capture.pixels.size());
+  CHECK(area->x1 >= 0 && area->y1 >= 0 && area->x2 < 240 && area->y2 < 240);
+  const size_t width = lv_area_get_width(area);
+  for (int32_t y = area->y1; y <= area->y2; ++y) {
+    std::memcpy(capture.pixels.data() + (y * 240 + area->x1) * 3,
+                pixels + (y - area->y1) * width * 3, width * 3);
+  }
+  capture.pixelsFlushed += width * lv_area_get_height(area);
   capture.flushed = true;
   lv_display_flush_ready(display);
 }
@@ -76,6 +82,103 @@ size_t visibleBars(int value = -1, lv_obj_t* parent = lv_screen_active()) {
     count += visibleBars(value, child);
   }
   return count;
+}
+
+/** Check blink boundaries, frame skipping, and independent widget updates. */
+void checkAnimationTiming(info_tv::ScreenView& screen, const info_tv::RenderModel& model) {
+  CHECK(!screen.animate(0));
+  CHECK(!screen.animate(5029));
+  CHECK(screen.animate(5030));
+  CHECK(!screen.animate(5169));
+  screen.render(model);  // Message refreshes must not reopen or restart the pose.
+  CHECK(!screen.animate(5040));
+  CHECK(screen.animate(5170));
+  CHECK(!screen.animate(7000));  // A skipped blink is not queued for playback.
+  CHECK(screen.animate(15000));
+  CHECK(!screen.animate(15074));
+  CHECK(screen.animate(15075));
+  CHECK(screen.animate(15615));
+  CHECK(!screen.animate(24000));
+}
+
+/** Export actual LVGL motion with its timing and check unchanged surrounding pixels. */
+void captureAnimation(info_tv::ScreenView& screen, lv_display_t* display, Capture& capture,
+                      const std::string& prefix) {
+  const auto baseline = capture.pixels;
+  auto previous = baseline;
+  std::ofstream timeline(prefix + "-animation.csv");
+  timeline << "frame,duration_ms\n";
+  size_t frame = 0;
+  uint64_t previousAt = 0;
+  std::string filename = prefix + "-animation-0.ppm";
+  save(capture, filename);
+  for (uint64_t nowMs = 5; nowMs < 24000; nowMs += 5) {
+    if (!screen.animate(nowMs)) continue;
+    timeline << filename << ',' << nowMs - previousAt << '\n';
+    previousAt = nowMs;
+    checkBounds();
+    lv_refr_now(display);
+    CHECK(capture.pixels != previous);
+    for (size_t y = 0; y < 240; ++y) {
+      for (size_t x = 0; x < 240; ++x) {
+        if (x >= 14 && x < 94 && y >= 152 && y < 236) continue;
+        const size_t pixel = (y * 240 + x) * 3;
+        for (size_t channel = 0; channel < 3; ++channel)
+          CHECK(capture.pixels[pixel + channel] == baseline[pixel + channel]);
+      }
+    }
+    previous = capture.pixels;
+    filename = prefix + "-animation-" + std::to_string(++frame) + ".ppm";
+    save(capture, filename);
+  }
+  timeline << filename << ',' << 24000 - previousAt << '\n';
+  CHECK(timeline.good());
+  CHECK(frame >= 10 && capture.pixels == baseline);
+}
+
+/** Verify manual partial refresh cannot be bypassed by the LVGL timer handler. */
+void checkPartialAnimation() {
+  Capture capture;
+  std::array<uint8_t, 240 * 24 * 3> buffer{};
+  auto* display = lv_display_create(240, 240);
+  lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB888);
+  lv_display_set_buffers(display, buffer.data(), nullptr, buffer.size(), LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_set_user_data(display, &capture);
+  lv_display_set_flush_cb(display, flush);
+  lv_display_delete_refr_timer(display);
+  info_tv::ScreenView screen;
+  screen.initialize();
+  screen.render(info_tv::RenderModel{});
+  lv_tick_inc(100);
+  lv_timer_handler();
+  CHECK(capture.pixelsFlushed == 0);
+  lv_display_refr_timer(nullptr);
+  CHECK(capture.pixelsFlushed == 240 * 240);
+  const auto baseline = capture.pixels;
+  capture.pixelsFlushed = 0;
+  CHECK(screen.animate(5030));
+  lv_tick_inc(100);
+  lv_timer_handler();
+  CHECK(capture.pixelsFlushed == 0);
+  lv_display_refr_timer(nullptr);
+  CHECK(capture.pixelsFlushed == 80 * 84);
+  CHECK(capture.pixels != baseline);
+  for (size_t y = 0; y < 240; ++y) {
+    for (size_t x = 0; x < 240; ++x) {
+      if (x >= 14 && x < 94 && y >= 152 && y < 236) continue;
+      const size_t pixel = (y * 240 + x) * 3;
+      for (size_t channel = 0; channel < 3; ++channel)
+        CHECK(capture.pixels[pixel + channel] == baseline[pixel + channel]);
+    }
+  }
+  capture.pixelsFlushed = 0;
+  CHECK(!screen.animate(5040));
+  lv_display_refr_timer(nullptr);
+  CHECK(capture.pixelsFlushed == 0);
+  CHECK(screen.animate(5170));
+  lv_display_refr_timer(nullptr);
+  CHECK(capture.pixelsFlushed == 80 * 84 && capture.pixels == baseline);
+  lv_display_delete(display);
 }
 }  // namespace
 
@@ -137,6 +240,10 @@ int main(int argc, char** argv) {
   lv_refr_now(display);
   save(capture, std::string(argv[1]) + "-overview.ppm");
   const auto overviewPixels = capture.pixels;
+  checkAnimationTiming(screen, model);
+  lv_refr_now(display);
+  CHECK(capture.pixels == overviewPixels);
+  captureAnimation(screen, display, capture, argv[1]);
   auto sparse = model;
   sparse.rowCount = 2;
   sparse.pageIndex = 2;
@@ -258,5 +365,7 @@ int main(int argc, char** argv) {
   CHECK(visibleBars(0) == 1 && visibleBars(100) == 1);
   CHECK(hasLabel("DONE") && hasLabel(LV_SYMBOL_UPLOAD) && hasLabel(LV_SYMBOL_EYE_OPEN));
   CHECK(!hasLabel("No tasks yet") && !hasLabel("2 need you") && !hasLabel("1/1"));
+  lv_display_delete(display);
+  checkPartialAnimation();
   lv_deinit();
 }

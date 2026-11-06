@@ -5,6 +5,10 @@ Date: 2026-11-06
 Status: Implemented, desktop-tested, and firmware-built. Not flashed. Previous
 physical confirmation applies to the earlier message UI, not this revision.
 
+This record describes the static layout committed as `a146a79`. The subsequent
+[local animation revision](companion-animation.md) adds blinking and occasional
+weight shifts; its build size and validation are recorded separately.
+
 ## Accepted layout
 
 The 240 x 240 display keeps three independent regions:

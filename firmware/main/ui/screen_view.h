@@ -12,6 +12,8 @@ class ScreenView {
   void initialize();
   /** Apply one render model without reconstructing the widget tree. */
   void render(const RenderModel& model);
+  /** Sample local motion; return true only when the character pixels change. */
+  bool animate(uint64_t nowMs);
 
  private:
   /** Create a fixed-position, bounded text widget. */
@@ -37,6 +39,8 @@ class ScreenView {
   lv_obj_t* location_ = nullptr;
   lv_obj_t* temperature_ = nullptr;
   lv_obj_t* conditions_ = nullptr;
+  lv_obj_t* character_ = nullptr;
+  const lv_image_dsc_t* characterFrame_ = nullptr;
   std::array<lv_obj_t*, policy::kRowsPerPage> rowBubbles_{};
   std::array<lv_obj_t*, policy::kRowsPerPage> rowIcons_{};
   std::array<lv_obj_t*, policy::kRowsPerPage> rowTitles_{};

@@ -76,6 +76,8 @@ does not advertise the required eight-card overview and task-icon capabilities.
 See [current UI previews and weather API](docs/companion-ui-validation.md).
 The header holds counts and page position; a full-body whale companion and weather
 remain below the message area. One or two rows leave unused space black.
+The companion now blinks and occasionally shifts its weight; see the
+[actual LVGL animation preview](docs/companion-animation.md).
 Weather comes from `PUT /v1/weather`, independently of task cards, and expires
 locally. No city or weather provider is configured automatically.
 
@@ -193,5 +195,5 @@ uv run --project host python scripts/generate_protocol.py
 - State is in memory. A USB power loss is a cold boot, not powered offline caching.
 - English system labels; the bundled LVGL CJK font supports a limited character
   subset, not arbitrary Chinese. Full Chinese font coverage, automatic calendar/weather
-  producers, animation, touch, Wi-Fi, BLE, and OS service registration remain
+  producers, additional character actions, touch, Wi-Fi, BLE, and OS service registration remain
   future work. Card removal and automatic retention expiry are not implemented.

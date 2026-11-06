@@ -258,7 +258,9 @@ reminder lead time remain open; this behavior is not implemented yet.
 Weather uses one main temperature with city and condition in the persistent
 area. Missing data shows `Not set`; expired cached data shows `Stale` with a
 dimmed temperature. This state is separate from USB connection status. A static
-full-body character stays beside it. Time and future animation must not obscure
+full-body character stays beside it, with local blinking and occasional weight
+shifts documented in [Companion animation](companion-animation.md). Time and
+additional animation must not obscure
 message content. External weather retrieval and other information cards remain
 future work.
 

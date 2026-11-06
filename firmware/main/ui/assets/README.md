@@ -3,22 +3,34 @@
 Author: YunYueSama  
 Repository: https://github.com/YunYueSama/codex-deepseek-pet  
 Source revision: `7661c8b304c5400701f91da01b1a643a207331de`  
-Source file: `assets/whale/idle-front.png`  
-Source SHA-256: `79D3952ACFE7620E0C2CFE7B80E9E6793D5F115252962F81CD56778402F4CDCD`
+Source sheets:
 
-The supplied two-frame transparent sheet was modified by selecting the left,
-open-eyed full-body pose, trimming transparent margins, and proportionally
-resampling into an 80 x 84 transparent canvas. Hair, shoes, and tail remain
-uncropped. No artwork was redrawn. The character is static in this revision.
+| Source | SHA-256 |
+| --- | --- |
+| `assets/whale/idle-front.png` | `79D3952ACFE7620E0C2CFE7B80E9E6793D5F115252962F81CD56778402F4CDCD` |
+| `assets/whale/dense-idle.png` | `FDD3990FEE0302D41D9809007F1303663440AF299E0FF979E3B67BD777D934EF` |
 
-`whale_idle.png` is the prepared asset for inspection. `whale_idle.c` embeds the
-same pixels as straight-alpha BGRA for LVGL 9.3, independent of the display's
-RGB565/RGB888 output format. Its 26,880-byte pixel array remains in flash.
+The two idle poses and dense-idle frames 1, 3, 5, and 7 were selected, trimmed of
+transparent margins, and proportionally resampled into 80 x 84 transparent
+canvases. Feet share a bottom anchor at y = 82, with two clear rows below them.
+Hair, shoes, and tail remain uncropped. No artwork was redrawn. The open-eyed
+idle PNG is byte-identical to the earlier static asset.
 
-To reproduce both files on Windows after downloading the pinned source sheet:
+Prepared PNGs are provided for inspection. Corresponding C files embed the same
+pixels as straight-alpha BGRA for LVGL 9.3, independent of the display's
+RGB565/RGB888 output format. Each 26,880-byte array remains in flash; all six
+frames total 161,280 bytes. The closed eyes use `whale_closed`; weight-shift poses
+use `whale_shift_0` through `whale_shift_3`.
+
+Frame order and timing reference the same revision's `src/renderer/motion.js`.
+The firmware uses discrete poses without the upstream WebGL motion interpolation.
+
+To reproduce all frames on Windows after downloading both pinned sheets:
 
 ```powershell
-./scripts/prepare_character.ps1 -SourcePath .local/design/whale-source/idle-front.png
+./scripts/prepare_character.ps1 `
+    -SourcePath .local/design/whale-source/idle-front.png `
+    -MotionSourcePath .local/design/whale-source/dense-idle.png
 ```
 
 The original upstream license is preserved verbatim in [LICENSE](LICENSE), and

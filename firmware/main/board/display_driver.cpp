@@ -72,6 +72,8 @@ void DisplayDriver::initialize() {
   lv_display_set_buffers(display_, buffer, nullptr, bufferSize, LV_DISPLAY_RENDER_MODE_PARTIAL);
   lv_display_set_user_data(display_, this);
   lv_display_set_flush_cb(display_, flush);
+  // All refreshes must pass through present() so DMA identities stay correlated.
+  lv_display_delete_refr_timer(display_);
   esp_lcd_panel_io_callbacks_t callbacks{};
   callbacks.on_color_trans_done = transferDone;
   ESP_ERROR_CHECK(esp_lcd_panel_io_register_event_callbacks(io_, &callbacks, this));
@@ -105,10 +107,10 @@ bool DisplayDriver::transferDone(esp_lcd_panel_io_handle_t, esp_lcd_panel_io_eve
   return false;
 }
 
-void DisplayDriver::present(uint32_t generation) {
-  activeGeneration_.store(generation);
-  lv_obj_invalidate(lv_screen_active());
-  lv_refr_now(display_);
+void DisplayDriver::present(uint32_t frameId, bool fullRefresh) {
+  activeGeneration_.store(frameId);
+  if (fullRefresh) lv_obj_invalidate(lv_screen_active());
+  lv_display_refr_timer(nullptr);
 }
 
 bool DisplayDriver::hasPendingFrame() const {

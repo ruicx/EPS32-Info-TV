@@ -17,11 +17,11 @@ class DisplayDriver {
   bool setBrightness(uint32_t percent);
   /** Return whether the last successfully applied level enables the backlight. */
   bool backlightEnabled() const { return brightnessPercent_ > 0; }
-  /** Force one refresh associated with a presentation generation. */
-  void present(uint32_t generation);
+  /** Refresh with a unique DMA identity; optionally invalidate the full screen. */
+  void present(uint32_t frameId, bool fullRefresh);
   /** Return whether the current refresh still owns the DMA buffer. */
   bool hasPendingFrame() const;
-  /** Return the most recent generation whose final DMA transfer completed. */
+  /** Return the most recent refresh identity whose final DMA transfer completed. */
   uint32_t completedGeneration() const;
 
  private:
