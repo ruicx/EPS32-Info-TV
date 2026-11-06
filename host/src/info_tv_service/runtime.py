@@ -26,7 +26,10 @@ class ServiceRuntime:
             Test seam; production creates the configured serial transport.
         """
         self.store = TaskStore()
-        self.device = DeviceSession(transport or SerialTransport(settings.serial_port), self.store.list_tasks)
+        self.device = DeviceSession(
+            transport or SerialTransport(settings.serial_port, settings.usb_vid, settings.usb_pid),
+            self.store.list_tasks,
+        )
         self.tasks = TaskService(self.store, self.device, settings.completed_retention_seconds)
         self.weather = WeatherUpdater(settings.weather, self.device) if settings.weather is not None else None
         self.failure: str | None = None

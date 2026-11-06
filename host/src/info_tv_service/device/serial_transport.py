@@ -1,24 +1,34 @@
 """Portable pySerial transport with a single owned blocking-I/O thread."""
 
 import asyncio
+import logging
 import queue
 import threading
 
 import serial
 
+from info_tv_service.config import DEFAULT_USB_PID, DEFAULT_USB_VID
+from info_tv_service.device.serial_ports import resolve_serial_port
+
 
 class SerialTransport:
     """Keep blocking serial I/O and port ownership outside the event loop."""
 
-    def __init__(self, port: str) -> None:
+    def __init__(self, port: str, usb_vid: int = DEFAULT_USB_VID, usb_pid: int = DEFAULT_USB_PID) -> None:
         """Configure the transport without opening the port.
 
         Parameters
         ----------
         port : str
-            Platform-specific serial device path.
+            Platform-specific serial device path, or auto for USB discovery.
+        usb_vid : int
+            USB vendor ID used for automatic discovery.
+        usb_pid : int
+            USB product ID used for automatic discovery.
         """
         self._port = port
+        self._usb_vid = usb_vid
+        self._usb_pid = usb_pid
         self._incoming: asyncio.Queue[bytes] = asyncio.Queue(maxsize=8)
         self._outgoing: queue.Queue[bytes] = queue.Queue(maxsize=8)
         self._stop = threading.Event()
@@ -87,7 +97,8 @@ class SerialTransport:
         try:
             connection.dtr = False
             connection.rts = False
-            connection.port = self._port
+            connection.port = resolve_serial_port(self._port, self._usb_vid, self._usb_pid)
+            logging.getLogger(__name__).info("Opening serial port %s", connection.port)
             connection.open()
             connection.reset_input_buffer()
             loop.call_soon_threadsafe(self._opened)

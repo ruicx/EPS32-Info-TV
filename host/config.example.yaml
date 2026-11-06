@@ -1,5 +1,9 @@
-# Copy to a local file and select the currently enumerated serial port.
-serial_port: COM6
+# Field reference: ../docs/host-configuration.md
+# Select the single matching USB device, or specify a port such as COM6.
+serial_port: auto
+# USB VID/PID for automatic selection; YAML hexadecimal integers, without quotes.
+usb_vid: 0x303A
+usb_pid: 0x1001
 http_port: 8765
 completed_retention_seconds: 300
 

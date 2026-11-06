@@ -4,6 +4,9 @@ Updated: 2026-11-07
 
 ## Configuration
 
+See the [YAML field reference](host-configuration.md) for a complete table of
+settings, defaults, allowed values, and override rules.
+
 The service accepts an explicitly selected UTF-8 YAML file. Run from the root:
 
 ```powershell
@@ -11,15 +14,21 @@ uv sync --project host --locked
 uv run --project host info-tv --config host/config.example.yaml
 ```
 
-Copy and edit [the example](../host/config.example.yaml) for local use. Select
-the enumerated serial port; the example's COM6 is not automatic discovery.
+Copy and edit [the example](../host/config.example.yaml) for local use. The
+default `serial_port: auto` selects a single USB candidate using `usb_vid` and
+`usb_pid` (defaults `303A:1001`); omitting these keys retains those defaults.
+Use `info-tv ports --config host/config.example.yaml` to inspect candidates or set
+an explicit port such as COM6. See [serial discovery](host-cli.md#start-and-connect)
+for ambiguity handling, shared USB IDs, and reconnect behavior.
 `--serial-port` and `--http-port` override their YAML values. The original
 `info-tv --serial-port COM6` command remains valid and makes no weather requests.
 Unknown keys, invalid ranges, and malformed YAML fail before resources open.
 Configuration is read at startup; restart the process after editing it.
 
 ```yaml
-serial_port: COM6
+serial_port: auto
+usb_vid: 0x303A
+usb_pid: 0x1001
 http_port: 8765
 completed_retention_seconds: 300
 weather:
@@ -30,6 +39,9 @@ weather:
   retry_seconds: 60
   valid_for_seconds: 1800
 ```
+
+USB IDs must be unquoted hexadecimal or decimal integers from 0 to 65535.
+Explicit serial paths bypass the USB filters. Restart after configuration edits.
 
 Omit `weather`, or set it to `null`, to disable retrieval. Coordinates identify
 the requested location; the label is only display text and is not geocoded.

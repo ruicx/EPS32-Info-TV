@@ -15,6 +15,8 @@ MAX_SEND_ATTEMPTS = 3
 HEARTBEAT_INTERVAL_SECONDS = 1.0
 HEARTBEAT_TIMEOUT_SECONDS = 3.0
 RECONNECT_SECONDS = 1.0
+DEFAULT_USB_VID = 0x303A
+DEFAULT_USB_PID = 0x1001
 
 
 class WeatherSettings(BaseModel):
@@ -54,29 +56,37 @@ class Settings:
     Parameters
     ----------
     serial_port : str
-        Operating-system serial path.
+        Operating-system serial path, or auto for USB discovery.
     http_port : int
         Loopback HTTP port.
     completed_retention_seconds : int
         Time to retain a completed execution from its first completed update.
     weather : WeatherSettings or None
         Automatic retrieval configuration; absent disables network requests.
+    usb_vid : int
+        USB vendor ID used for automatic serial discovery.
+    usb_pid : int
+        USB product ID used for automatic serial discovery.
     """
 
-    serial_port: str
+    serial_port: str = "auto"
     http_port: int = 8765
     completed_retention_seconds: int = 300
     weather: WeatherSettings | None = None
+    usb_vid: int = DEFAULT_USB_VID
+    usb_pid: int = DEFAULT_USB_PID
 
 
 class FileSettings(BaseModel):
     """Validate YAML keys and values before constructing runtime settings."""
 
     model_config = ConfigDict(extra="forbid")
-    serial_port: str = Field(min_length=1, strict=True)
+    serial_port: str = Field(default="auto", min_length=1, strict=True)
     http_port: int = Field(default=8765, ge=1, le=65535, strict=True)
     completed_retention_seconds: int = Field(default=300, ge=1, strict=True)
     weather: WeatherSettings | None = None
+    usb_vid: int = Field(default=DEFAULT_USB_VID, ge=0, le=0xFFFF, strict=True)
+    usb_pid: int = Field(default=DEFAULT_USB_PID, ge=0, le=0xFFFF, strict=True)
 
 
 def load_settings(path: Path) -> Settings:
@@ -105,4 +115,5 @@ def load_settings(path: Path) -> Settings:
         raise ValueError(f"Invalid YAML: {error}") from error
     validated = FileSettings.model_validate(values)
     return Settings(validated.serial_port, validated.http_port,
-                    validated.completed_retention_seconds, validated.weather)
+                    validated.completed_retention_seconds, validated.weather,
+                    validated.usb_vid, validated.usb_pid)

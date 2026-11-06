@@ -30,7 +30,7 @@ From the repository root:
 
 ```powershell
 uv sync --project host --locked
-uv run --project host info-tv --serial-port COM6
+uv run --project host info-tv serve
 ```
 
 To use YAML configuration with automatic Shanghai weather:
@@ -39,14 +39,36 @@ To use YAML configuration with automatic Shanghai weather:
 uv run --project host info-tv --config host/config.example.yaml
 ```
 
-Edit the serial port in your copy, or override it with `--serial-port`.
+See the [YAML field reference](docs/host-configuration.md) for field meanings,
+types, defaults, limits, and configuration precedence.
+
+Serial discovery defaults to `auto`: the host selects a single USB `303A:1001`
+candidate and rescans after disconnects. YAML keys `usb_vid` and `usb_pid` can
+override that USB filter. Use `info-tv ports --config host/config.example.yaml`
+to list candidates using the same configuration;
+with multiple matching devices, select one explicitly with `--serial-port COM6`.
+Other ESP32 devices share this USB ID; the protocol handshake checks compatibility.
 See [task lifecycle, YAML, and automatic weather](docs/host-lifecycle-weather.md)
 for configuration, removal APIs, and verification scope.
 
-Use the currently enumerated port, not necessarily COM6. Linux/macOS serial
+For manual selection, use the currently enumerated port, not necessarily COM6. Linux/macOS serial
 paths use the same option; these platforms remain untested. The API binds only
 to `127.0.0.1:8765`, with documentation at `http://127.0.0.1:8765/docs`. Startup
 retries an unavailable device while continuing to accept task state.
+
+The CLI also calls the running host directly:
+
+```powershell
+uv run --project host info-tv status
+uv run --project host info-tv task submit --task-id build-1 --sequence 1 --state running --title "Build firmware" --progress-percent 20
+uv run --project host info-tv task list
+uv run --project host info-tv weather updater
+uv run --project host info-tv brightness 30
+```
+
+Use `info-tv serve --config ...` for explicit startup; existing startup commands
+remain supported. Client results are JSON. See the [CLI guide](docs/host-cli.md)
+for task closure, retries, weather/alerts, connection options, and exit codes.
 
 Check `GET /v1/device` for `state: online`. In another terminal:
 
