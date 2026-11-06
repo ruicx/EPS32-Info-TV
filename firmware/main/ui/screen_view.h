@@ -24,6 +24,7 @@ class ScreenView {
   lv_obj_t* progressBar(lv_obj_t* parent, int x, int y, int width);
   lv_font_t smallFont_{};
   lv_obj_t* header_ = nullptr;
+  lv_obj_t* headerUnit_ = nullptr;
   lv_obj_t* summary_ = nullptr;
   lv_obj_t* message_ = nullptr;
   lv_obj_t* icon_ = nullptr;

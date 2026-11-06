@@ -1,5 +1,9 @@
 # Local companion animation
 
+The [latest message styling](message-ui-polish.md) changes the header and bubble
+surfaces. Animation behavior is unchanged; the GIF below shows the earlier
+message styling.
+
 Date: 2026-11-06
 
 Status: Desktop-rendered and firmware-built; not flashed. The previous static

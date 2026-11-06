@@ -230,8 +230,8 @@ int main(int argc, char** argv) {
   }
   screen.render(model);
   checkBounds();
-  CHECK(hasLabel("8 tasks") && hasLabel("1/3"));
-  CHECK(hasLabel("2 need you"));
+  CHECK(hasLabel("8") && hasLabel("tasks") && hasLabel("#edf2f7 1#/3"));
+  CHECK(hasLabel("2 " LV_SYMBOL_BELL));
   CHECK(hasLabel("消息接口"));
   CHECK(hasLabel("RUN") && hasLabel("WAIT") && hasLabel("FAIL"));
   CHECK(hasLabel(LV_SYMBOL_OK));
@@ -259,7 +259,7 @@ int main(int argc, char** argv) {
   sparse.rows[1].card.view.content.status.progress_percent = 100;
   screen.render(sparse);
   checkBounds();
-  CHECK(!hasLabel("Unit tests") && hasLabel("3/3"));
+  CHECK(!hasLabel("Unit tests") && hasLabel("#edf2f7 3#/3"));
   CHECK(hasLabel("Shanghai") && visibleBars(100) == 1);
   lv_refr_now(display);
   CHECK(std::equal(capture.pixels.begin() + 148 * 240 * 3, capture.pixels.end(),
@@ -270,8 +270,8 @@ int main(int argc, char** argv) {
   sparse.pageIndex = sparse.attentionCount = 0;
   screen.render(sparse);
   checkBounds();
-  CHECK(!hasLabel("Login") && !hasLabel("1/1") && !hasLabel("2 need you"));
-  CHECK(hasLabel("1 task"));
+  CHECK(!hasLabel("Login") && !hasLabel("#edf2f7 1#/1") && !hasLabel("2 " LV_SYMBOL_BELL));
+  CHECK(hasLabel("1") && hasLabel("task"));
   lv_refr_now(display);
   CHECK(std::equal(capture.pixels.begin() + 148 * 240 * 3, capture.pixels.end(),
                    overviewPixels.begin() + 148 * 240 * 3));
@@ -284,6 +284,8 @@ int main(int argc, char** argv) {
   checkBounds();
   CHECK(!hasLabel("Unit tests"));
   CHECK(visibleBars() == 0);
+  lv_refr_now(display);
+  save(capture, std::string(argv[1]) + "-long.ppm");
   screen.render(model);
   checkBounds();
   CHECK(hasLabel("消息接口"));
@@ -329,7 +331,7 @@ int main(int argc, char** argv) {
   model.cardCount = model.rowCount = model.pageCount = model.attentionCount = 0;
   screen.render(model);
   checkBounds();
-  CHECK(hasLabel("No tasks yet") && !hasLabel("1/3"));
+  CHECK(hasLabel("No tasks yet") && !hasLabel("#edf2f7 1#/3"));
   CHECK(hasLabel("Clear"));
   CHECK(!hasLabel("last: running"));
   CHECK(visibleBars() == 0);
@@ -364,7 +366,7 @@ int main(int argc, char** argv) {
   CHECK(visibleBars() == 3);
   CHECK(visibleBars(0) == 1 && visibleBars(100) == 1);
   CHECK(hasLabel("DONE") && hasLabel(LV_SYMBOL_UPLOAD) && hasLabel(LV_SYMBOL_EYE_OPEN));
-  CHECK(!hasLabel("No tasks yet") && !hasLabel("2 need you") && !hasLabel("1/1"));
+  CHECK(!hasLabel("No tasks yet") && !hasLabel("2 " LV_SYMBOL_BELL) && !hasLabel("#edf2f7 1#/1"));
   lv_display_delete(display);
   checkPartialAnimation();
   lv_deinit();

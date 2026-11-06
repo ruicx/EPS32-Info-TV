@@ -14,6 +14,10 @@ This supersedes the five-row layout. See
 [Companion UI validation](companion-ui-validation.md) for current previews, the
 weather API, asset attribution, and desktop verification. It has not been flashed.
 
+The latest [message UI polish](message-ui-polish.md) uses neutral bordered
+surfaces, compact colored status badges, and a quieter header with an attention
+count badge. Its actual LVGL previews supersede the earlier surface colors.
+
 Date: 2026-11-05
 
 ## 1. Design Goals
@@ -91,9 +95,9 @@ expanded notification; producers should use distinguishable short titles.
 
 All bubbles are rounded rectangles with smooth edges and no tails.
 Task purpose is independent of source identity.
-Use a dark background, muted metadata, and softly tinted surfaces. Amber, red,
+Use a dark background, muted metadata, and neutral surfaces with thin borders. Amber, red,
 green, and blue accents accompany the state text for attention, failure,
-completion, and ordinary progress. Offline bubbles use a neutral surface and
+completion, and ordinary progress in icons, status badges, and progress bars. Offline bubbles use a neutral surface and
 an `Offline` indicator without a live percentage. Keep the connection indicator
 in the persistent area and the page count in the header, outside the bubbles.
 

@@ -9,6 +9,10 @@ This record describes the static layout committed as `a146a79`. The subsequent
 [local animation revision](companion-animation.md) adds blinking and occasional
 weight shifts; its build size and validation are recorded separately.
 
+For the latest header and message surface styling, see
+[Message UI polish](message-ui-polish.md). The captures below preserve the
+original layout revision.
+
 ## Accepted layout
 
 The 240 x 240 display keeps three independent regions:
