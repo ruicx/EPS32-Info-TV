@@ -2,6 +2,11 @@
 
 Date: 2026-11-05
 
+Updated: 2026-11-06. The outer screen background is pure black (`#000000`);
+bubble colors and progress tracks retain their existing palette. The previews
+below reflect this change. Independent backlight settings are documented in
+[Brightness control](brightness-control.md).
+
 This revision adds optional preset task icons to the message API and renders
 five compact conversations per page. It keeps the eight-card capacity,
 six-second rotation, and notification scheduling. It changes the reusable LVGL widgets in
@@ -69,7 +74,7 @@ overview/notification/empty transitions, all six icon glyphs, and absent/zero/fu
 progress. Presentation tests cover five-row visibility feedback, hidden-page
 updates, page fairness, and related-notification restoration.
 
-Results: All four native CTest cases and 40 Python tests passed, including two
+UI revision results: All four native CTest cases and 40 Python tests passed, including two
 Python-to-C++ integration cases. Static analysis and generated binding checks
 passed. The ESP-IDF v6.1 build passed; the binary is 698,144 bytes, with 33% of the existing
 1 MiB app partition remaining. The bubble firmware has not been flashed.

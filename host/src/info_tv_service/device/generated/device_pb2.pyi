@@ -35,6 +35,7 @@ class AckStage(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     ACK_STAGE_UNSPECIFIED: _ClassVar[AckStage]
     ACK_STAGE_ACCEPTED: _ClassVar[AckStage]
     ACK_STAGE_PRESENTED: _ClassVar[AckStage]
+    ACK_STAGE_APPLIED: _ClassVar[AckStage]
 
 class ErrorCode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
@@ -43,6 +44,7 @@ class ErrorCode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     ERROR_CODE_BUSY: _ClassVar[ErrorCode]
     ERROR_CODE_UNSUPPORTED: _ClassVar[ErrorCode]
     ERROR_CODE_EXPIRED: _ClassVar[ErrorCode]
+    ERROR_CODE_HARDWARE: _ClassVar[ErrorCode]
 TONE_UNSPECIFIED: Tone
 TONE_NEUTRAL: Tone
 TONE_ATTENTION: Tone
@@ -60,14 +62,16 @@ PRIORITY_IMPORTANT: Priority
 ACK_STAGE_UNSPECIFIED: AckStage
 ACK_STAGE_ACCEPTED: AckStage
 ACK_STAGE_PRESENTED: AckStage
+ACK_STAGE_APPLIED: AckStage
 ERROR_CODE_UNSPECIFIED: ErrorCode
 ERROR_CODE_INVALID: ErrorCode
 ERROR_CODE_BUSY: ErrorCode
 ERROR_CODE_UNSUPPORTED: ErrorCode
 ERROR_CODE_EXPIRED: ErrorCode
+ERROR_CODE_HARDWARE: ErrorCode
 
 class Envelope(_message.Message):
-    __slots__ = ("protocol_version", "session_id", "message_id", "hello", "snapshot", "card_upsert", "notification", "acknowledgment", "error", "ping", "pong")
+    __slots__ = ("protocol_version", "session_id", "message_id", "hello", "snapshot", "card_upsert", "notification", "acknowledgment", "error", "ping", "pong", "device_settings")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     SESSION_ID_FIELD_NUMBER: _ClassVar[int]
     MESSAGE_ID_FIELD_NUMBER: _ClassVar[int]
@@ -79,6 +83,7 @@ class Envelope(_message.Message):
     ERROR_FIELD_NUMBER: _ClassVar[int]
     PING_FIELD_NUMBER: _ClassVar[int]
     PONG_FIELD_NUMBER: _ClassVar[int]
+    DEVICE_SETTINGS_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     session_id: str
     message_id: str
@@ -90,17 +95,20 @@ class Envelope(_message.Message):
     error: Error
     ping: Ping
     pong: Pong
-    def __init__(self, protocol_version: _Optional[int] = ..., session_id: _Optional[str] = ..., message_id: _Optional[str] = ..., hello: _Optional[_Union[Hello, _Mapping]] = ..., snapshot: _Optional[_Union[Snapshot, _Mapping]] = ..., card_upsert: _Optional[_Union[CardUpsert, _Mapping]] = ..., notification: _Optional[_Union[Notification, _Mapping]] = ..., acknowledgment: _Optional[_Union[Acknowledgment, _Mapping]] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., ping: _Optional[_Union[Ping, _Mapping]] = ..., pong: _Optional[_Union[Pong, _Mapping]] = ...) -> None: ...
+    device_settings: DeviceSettings
+    def __init__(self, protocol_version: _Optional[int] = ..., session_id: _Optional[str] = ..., message_id: _Optional[str] = ..., hello: _Optional[_Union[Hello, _Mapping]] = ..., snapshot: _Optional[_Union[Snapshot, _Mapping]] = ..., card_upsert: _Optional[_Union[CardUpsert, _Mapping]] = ..., notification: _Optional[_Union[Notification, _Mapping]] = ..., acknowledgment: _Optional[_Union[Acknowledgment, _Mapping]] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., ping: _Optional[_Union[Ping, _Mapping]] = ..., pong: _Optional[_Union[Pong, _Mapping]] = ..., device_settings: _Optional[_Union[DeviceSettings, _Mapping]] = ...) -> None: ...
 
 class Hello(_message.Message):
-    __slots__ = ("boot_id", "max_cards", "task_icons")
+    __slots__ = ("boot_id", "max_cards", "task_icons", "brightness_control")
     BOOT_ID_FIELD_NUMBER: _ClassVar[int]
     MAX_CARDS_FIELD_NUMBER: _ClassVar[int]
     TASK_ICONS_FIELD_NUMBER: _ClassVar[int]
+    BRIGHTNESS_CONTROL_FIELD_NUMBER: _ClassVar[int]
     boot_id: int
     max_cards: int
     task_icons: bool
-    def __init__(self, boot_id: _Optional[int] = ..., max_cards: _Optional[int] = ..., task_icons: bool = ...) -> None: ...
+    brightness_control: bool
+    def __init__(self, boot_id: _Optional[int] = ..., max_cards: _Optional[int] = ..., task_icons: bool = ..., brightness_control: bool = ...) -> None: ...
 
 class Ping(_message.Message):
     __slots__ = ()
@@ -109,6 +117,12 @@ class Ping(_message.Message):
 class Pong(_message.Message):
     __slots__ = ()
     def __init__(self) -> None: ...
+
+class DeviceSettings(_message.Message):
+    __slots__ = ("brightness_percent",)
+    BRIGHTNESS_PERCENT_FIELD_NUMBER: _ClassVar[int]
+    brightness_percent: int
+    def __init__(self, brightness_percent: _Optional[int] = ...) -> None: ...
 
 class StatusView(_message.Message):
     __slots__ = ("text", "tone", "detail", "progress_percent")
@@ -175,16 +189,18 @@ class Notification(_message.Message):
     def __init__(self, notification_id: _Optional[str] = ..., priority: _Optional[_Union[Priority, str]] = ..., display_duration_ms: _Optional[int] = ..., valid_for_ms: _Optional[int] = ..., view: _Optional[_Union[View, _Mapping]] = ..., card_id: _Optional[str] = ...) -> None: ...
 
 class Acknowledgment(_message.Message):
-    __slots__ = ("in_reply_to", "stage", "card_id", "revision")
+    __slots__ = ("in_reply_to", "stage", "card_id", "revision", "brightness_percent")
     IN_REPLY_TO_FIELD_NUMBER: _ClassVar[int]
     STAGE_FIELD_NUMBER: _ClassVar[int]
     CARD_ID_FIELD_NUMBER: _ClassVar[int]
     REVISION_FIELD_NUMBER: _ClassVar[int]
+    BRIGHTNESS_PERCENT_FIELD_NUMBER: _ClassVar[int]
     in_reply_to: str
     stage: AckStage
     card_id: str
     revision: int
-    def __init__(self, in_reply_to: _Optional[str] = ..., stage: _Optional[_Union[AckStage, str]] = ..., card_id: _Optional[str] = ..., revision: _Optional[int] = ...) -> None: ...
+    brightness_percent: int
+    def __init__(self, in_reply_to: _Optional[str] = ..., stage: _Optional[_Union[AckStage, str]] = ..., card_id: _Optional[str] = ..., revision: _Optional[int] = ..., brightness_percent: _Optional[int] = ...) -> None: ...
 
 class Error(_message.Message):
     __slots__ = ("in_reply_to", "code", "detail")

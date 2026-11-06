@@ -28,6 +28,7 @@ struct Feedback {
   char messageId[37]{};
   char cardId[37]{};
   uint64_t revision = 0;
+  uint32_t brightnessPercent = 0;
   info_tv_v1_AckStage stage = info_tv_v1_AckStage_ACK_STAGE_UNSPECIFIED;
   info_tv_v1_ErrorCode error = info_tv_v1_ErrorCode_ERROR_CODE_UNSPECIFIED;
   char detail[97]{};

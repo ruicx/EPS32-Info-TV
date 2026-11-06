@@ -42,6 +42,10 @@ void reply(const info_tv::Feedback& feedback, uint64_t& sequence) {
     std::strcpy(ack.card_id, feedback.cardId);
     ack.revision = feedback.revision;
     ack.stage = feedback.stage;
+    if (feedback.stage == info_tv_v1_AckStage_ACK_STAGE_APPLIED) {
+      ack.has_brightness_percent = true;
+      ack.brightness_percent = feedback.brightnessPercent;
+    }
   }
   send(envelope, sequence);
 }
@@ -59,6 +63,7 @@ int main() {
   info_tv::DisplayState state;
   info_tv::PresentationController controller(state);
   uint64_t sequence = 0;
+  uint32_t brightnessPercent = 100;
   const auto started = std::chrono::steady_clock::now();
   char byte;
   while (std::cin.get(byte)) {
@@ -74,16 +79,26 @@ int main() {
       response.body.hello.boot_id = 123;
       response.body.hello.max_cards = info_tv::policy::kMaxCards;
       response.body.hello.task_icons = true;
+      response.body.hello.brightness_control = true;
       send(response, sequence);
     } else if (command.envelope.which_body == info_tv_v1_Envelope_ping_tag) {
       response.which_body = info_tv_v1_Envelope_pong_tag;
       send(response, sequence);
     } else {
       info_tv::Feedback feedback{};
-      if (controller.handleCommand(command, now, feedback)) reply(feedback, sequence);
+      if (controller.handleCommand(command, now, feedback)) {
+        // Simulate successful hardware application; the bridge has no backlight.
+        if (command.envelope.which_body == info_tv_v1_Envelope_device_settings_tag &&
+            feedback.error == info_tv_v1_ErrorCode_ERROR_CODE_UNSPECIFIED) {
+          feedback.stage = info_tv_v1_AckStage_ACK_STAGE_APPLIED;
+          brightnessPercent = feedback.brightnessPercent;
+        }
+        reply(feedback, sequence);
+      }
     }
     const auto& model = controller.tick(now);
     info_tv::Feedback feedback{};
-    while (controller.onFramePresented(model.generation, now, feedback)) reply(feedback, sequence);
+    while (brightnessPercent > 0 && controller.onFramePresented(model.generation, now, feedback))
+      reply(feedback, sequence);
   }
 }

@@ -9,6 +9,13 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validat
 from info_tv_service.tasks.models import TaskEvent, TaskIcon, TaskState
 
 
+class DeviceSettingsRequest(BaseModel):
+    """Set an absolute backlight level without changing displayed messages."""
+
+    model_config = ConfigDict(extra="forbid")
+    brightness_percent: int = Field(ge=0, le=100, strict=True)
+
+
 class TaskEventRequest(BaseModel):
     """Accept a task run update without device addresses or layout fields."""
 

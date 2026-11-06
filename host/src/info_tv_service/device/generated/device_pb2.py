@@ -24,45 +24,47 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x64\x65vice.proto\x12\ninfo_tv.v1\"\xa1\x03\n\x08\x45nvelope\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\x12\x12\n\nsession_id\x18\x02 \x01(\t\x12\x12\n\nmessage_id\x18\x03 \x01(\t\x12\"\n\x05hello\x18\n \x01(\x0b\x32\x11.info_tv.v1.HelloH\x00\x12(\n\x08snapshot\x18\x0b \x01(\x0b\x32\x14.info_tv.v1.SnapshotH\x00\x12-\n\x0b\x63\x61rd_upsert\x18\x0c \x01(\x0b\x32\x16.info_tv.v1.CardUpsertH\x00\x12\x30\n\x0cnotification\x18\r \x01(\x0b\x32\x18.info_tv.v1.NotificationH\x00\x12\x34\n\x0e\x61\x63knowledgment\x18\x0e \x01(\x0b\x32\x1a.info_tv.v1.AcknowledgmentH\x00\x12\"\n\x05\x65rror\x18\x0f \x01(\x0b\x32\x11.info_tv.v1.ErrorH\x00\x12 \n\x04ping\x18\x10 \x01(\x0b\x32\x10.info_tv.v1.PingH\x00\x12 \n\x04pong\x18\x11 \x01(\x0b\x32\x10.info_tv.v1.PongH\x00\x42\x06\n\x04\x62ody\"?\n\x05Hello\x12\x0f\n\x07\x62oot_id\x18\x01 \x01(\x04\x12\x11\n\tmax_cards\x18\x02 \x01(\r\x12\x12\n\ntask_icons\x18\x03 \x01(\x08\"\x06\n\x04Ping\"\x06\n\x04Pong\"~\n\nStatusView\x12\x0c\n\x04text\x18\x01 \x01(\t\x12\x1e\n\x04tone\x18\x02 \x01(\x0e\x32\x10.info_tv.v1.Tone\x12\x0e\n\x06\x64\x65tail\x18\x03 \x01(\t\x12\x1d\n\x10progress_percent\x18\x04 \x01(\rH\x00\x88\x01\x01\x42\x13\n\x11_progress_percent\"\x8f\x01\n\x04View\x12\r\n\x05title\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\x12\x0f\n\x07\x63ontext\x18\x03 \x01(\t\x12\"\n\x04icon\x18\x04 \x01(\x0e\x32\x14.info_tv.v1.TaskIcon\x12(\n\x06status\x18\n \x01(\x0b\x32\x16.info_tv.v1.StatusViewH\x00\x42\t\n\x07\x63ontent\"I\n\x04\x43\x61rd\x12\x0f\n\x07\x63\x61rd_id\x18\x01 \x01(\t\x12\x10\n\x08revision\x18\x02 \x01(\x04\x12\x1e\n\x04view\x18\x03 \x01(\x0b\x32\x10.info_tv.v1.View\"+\n\x08Snapshot\x12\x1f\n\x05\x63\x61rds\x18\x01 \x03(\x0b\x32\x10.info_tv.v1.Card\",\n\nCardUpsert\x12\x1e\n\x04\x63\x61rd\x18\x01 \x01(\x0b\x32\x10.info_tv.v1.Card\"\xd0\x01\n\x0cNotification\x12\x17\n\x0fnotification_id\x18\x01 \x01(\t\x12&\n\x08priority\x18\x02 \x01(\x0e\x32\x14.info_tv.v1.Priority\x12 \n\x13\x64isplay_duration_ms\x18\x03 \x01(\rH\x00\x88\x01\x01\x12\x14\n\x0cvalid_for_ms\x18\x04 \x01(\r\x12\x1e\n\x04view\x18\x05 \x01(\x0b\x32\x10.info_tv.v1.View\x12\x0f\n\x07\x63\x61rd_id\x18\x06 \x01(\tB\x16\n\x14_display_duration_ms\"m\n\x0e\x41\x63knowledgment\x12\x13\n\x0bin_reply_to\x18\x01 \x01(\t\x12#\n\x05stage\x18\x02 \x01(\x0e\x32\x14.info_tv.v1.AckStage\x12\x0f\n\x07\x63\x61rd_id\x18\x03 \x01(\t\x12\x10\n\x08revision\x18\x04 \x01(\x04\"Q\n\x05\x45rror\x12\x13\n\x0bin_reply_to\x18\x01 \x01(\t\x12#\n\x04\x63ode\x18\x02 \x01(\x0e\x32\x15.info_tv.v1.ErrorCode\x12\x0e\n\x06\x64\x65tail\x18\x03 \x01(\t*h\n\x04Tone\x12\x14\n\x10TONE_UNSPECIFIED\x10\x00\x12\x10\n\x0cTONE_NEUTRAL\x10\x01\x12\x12\n\x0eTONE_ATTENTION\x10\x02\x12\x11\n\rTONE_POSITIVE\x10\x03\x12\x11\n\rTONE_NEGATIVE\x10\x04*\x87\x01\n\x08TaskIcon\x12\x12\n\x0eTASK_ICON_TASK\x10\x00\x12\x12\n\x0eTASK_ICON_CODE\x10\x01\x12\x12\n\x0eTASK_ICON_TEST\x10\x02\x12\x13\n\x0fTASK_ICON_BUILD\x10\x03\x12\x14\n\x10TASK_ICON_REVIEW\x10\x04\x12\x14\n\x10TASK_ICON_DEPLOY\x10\x05*S\n\x08Priority\x12\x18\n\x14PRIORITY_UNSPECIFIED\x10\x00\x12\x15\n\x11PRIORITY_ORDINARY\x10\x01\x12\x16\n\x12PRIORITY_IMPORTANT\x10\x02*V\n\x08\x41\x63kStage\x12\x19\n\x15\x41\x43K_STAGE_UNSPECIFIED\x10\x00\x12\x16\n\x12\x41\x43K_STAGE_ACCEPTED\x10\x01\x12\x17\n\x13\x41\x43K_STAGE_PRESENTED\x10\x02*\x88\x01\n\tErrorCode\x12\x1a\n\x16\x45RROR_CODE_UNSPECIFIED\x10\x00\x12\x16\n\x12\x45RROR_CODE_INVALID\x10\x01\x12\x13\n\x0f\x45RROR_CODE_BUSY\x10\x02\x12\x1a\n\x16\x45RROR_CODE_UNSUPPORTED\x10\x03\x12\x16\n\x12\x45RROR_CODE_EXPIRED\x10\x04\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x64\x65vice.proto\x12\ninfo_tv.v1\"\xd8\x03\n\x08\x45nvelope\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\x12\x12\n\nsession_id\x18\x02 \x01(\t\x12\x12\n\nmessage_id\x18\x03 \x01(\t\x12\"\n\x05hello\x18\n \x01(\x0b\x32\x11.info_tv.v1.HelloH\x00\x12(\n\x08snapshot\x18\x0b \x01(\x0b\x32\x14.info_tv.v1.SnapshotH\x00\x12-\n\x0b\x63\x61rd_upsert\x18\x0c \x01(\x0b\x32\x16.info_tv.v1.CardUpsertH\x00\x12\x30\n\x0cnotification\x18\r \x01(\x0b\x32\x18.info_tv.v1.NotificationH\x00\x12\x34\n\x0e\x61\x63knowledgment\x18\x0e \x01(\x0b\x32\x1a.info_tv.v1.AcknowledgmentH\x00\x12\"\n\x05\x65rror\x18\x0f \x01(\x0b\x32\x11.info_tv.v1.ErrorH\x00\x12 \n\x04ping\x18\x10 \x01(\x0b\x32\x10.info_tv.v1.PingH\x00\x12 \n\x04pong\x18\x11 \x01(\x0b\x32\x10.info_tv.v1.PongH\x00\x12\x35\n\x0f\x64\x65vice_settings\x18\x12 \x01(\x0b\x32\x1a.info_tv.v1.DeviceSettingsH\x00\x42\x06\n\x04\x62ody\"[\n\x05Hello\x12\x0f\n\x07\x62oot_id\x18\x01 \x01(\x04\x12\x11\n\tmax_cards\x18\x02 \x01(\r\x12\x12\n\ntask_icons\x18\x03 \x01(\x08\x12\x1a\n\x12\x62rightness_control\x18\x04 \x01(\x08\"\x06\n\x04Ping\"\x06\n\x04Pong\"H\n\x0e\x44\x65viceSettings\x12\x1f\n\x12\x62rightness_percent\x18\x01 \x01(\rH\x00\x88\x01\x01\x42\x15\n\x13_brightness_percent\"~\n\nStatusView\x12\x0c\n\x04text\x18\x01 \x01(\t\x12\x1e\n\x04tone\x18\x02 \x01(\x0e\x32\x10.info_tv.v1.Tone\x12\x0e\n\x06\x64\x65tail\x18\x03 \x01(\t\x12\x1d\n\x10progress_percent\x18\x04 \x01(\rH\x00\x88\x01\x01\x42\x13\n\x11_progress_percent\"\x8f\x01\n\x04View\x12\r\n\x05title\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\x12\x0f\n\x07\x63ontext\x18\x03 \x01(\t\x12\"\n\x04icon\x18\x04 \x01(\x0e\x32\x14.info_tv.v1.TaskIcon\x12(\n\x06status\x18\n \x01(\x0b\x32\x16.info_tv.v1.StatusViewH\x00\x42\t\n\x07\x63ontent\"I\n\x04\x43\x61rd\x12\x0f\n\x07\x63\x61rd_id\x18\x01 \x01(\t\x12\x10\n\x08revision\x18\x02 \x01(\x04\x12\x1e\n\x04view\x18\x03 \x01(\x0b\x32\x10.info_tv.v1.View\"+\n\x08Snapshot\x12\x1f\n\x05\x63\x61rds\x18\x01 \x03(\x0b\x32\x10.info_tv.v1.Card\",\n\nCardUpsert\x12\x1e\n\x04\x63\x61rd\x18\x01 \x01(\x0b\x32\x10.info_tv.v1.Card\"\xd0\x01\n\x0cNotification\x12\x17\n\x0fnotification_id\x18\x01 \x01(\t\x12&\n\x08priority\x18\x02 \x01(\x0e\x32\x14.info_tv.v1.Priority\x12 \n\x13\x64isplay_duration_ms\x18\x03 \x01(\rH\x00\x88\x01\x01\x12\x14\n\x0cvalid_for_ms\x18\x04 \x01(\r\x12\x1e\n\x04view\x18\x05 \x01(\x0b\x32\x10.info_tv.v1.View\x12\x0f\n\x07\x63\x61rd_id\x18\x06 \x01(\tB\x16\n\x14_display_duration_ms\"\xa5\x01\n\x0e\x41\x63knowledgment\x12\x13\n\x0bin_reply_to\x18\x01 \x01(\t\x12#\n\x05stage\x18\x02 \x01(\x0e\x32\x14.info_tv.v1.AckStage\x12\x0f\n\x07\x63\x61rd_id\x18\x03 \x01(\t\x12\x10\n\x08revision\x18\x04 \x01(\x04\x12\x1f\n\x12\x62rightness_percent\x18\x05 \x01(\rH\x00\x88\x01\x01\x42\x15\n\x13_brightness_percent\"Q\n\x05\x45rror\x12\x13\n\x0bin_reply_to\x18\x01 \x01(\t\x12#\n\x04\x63ode\x18\x02 \x01(\x0e\x32\x15.info_tv.v1.ErrorCode\x12\x0e\n\x06\x64\x65tail\x18\x03 \x01(\t*h\n\x04Tone\x12\x14\n\x10TONE_UNSPECIFIED\x10\x00\x12\x10\n\x0cTONE_NEUTRAL\x10\x01\x12\x12\n\x0eTONE_ATTENTION\x10\x02\x12\x11\n\rTONE_POSITIVE\x10\x03\x12\x11\n\rTONE_NEGATIVE\x10\x04*\x87\x01\n\x08TaskIcon\x12\x12\n\x0eTASK_ICON_TASK\x10\x00\x12\x12\n\x0eTASK_ICON_CODE\x10\x01\x12\x12\n\x0eTASK_ICON_TEST\x10\x02\x12\x13\n\x0fTASK_ICON_BUILD\x10\x03\x12\x14\n\x10TASK_ICON_REVIEW\x10\x04\x12\x14\n\x10TASK_ICON_DEPLOY\x10\x05*S\n\x08Priority\x12\x18\n\x14PRIORITY_UNSPECIFIED\x10\x00\x12\x15\n\x11PRIORITY_ORDINARY\x10\x01\x12\x16\n\x12PRIORITY_IMPORTANT\x10\x02*m\n\x08\x41\x63kStage\x12\x19\n\x15\x41\x43K_STAGE_UNSPECIFIED\x10\x00\x12\x16\n\x12\x41\x43K_STAGE_ACCEPTED\x10\x01\x12\x17\n\x13\x41\x43K_STAGE_PRESENTED\x10\x02\x12\x15\n\x11\x41\x43K_STAGE_APPLIED\x10\x03*\xa1\x01\n\tErrorCode\x12\x1a\n\x16\x45RROR_CODE_UNSPECIFIED\x10\x00\x12\x16\n\x12\x45RROR_CODE_INVALID\x10\x01\x12\x13\n\x0f\x45RROR_CODE_BUSY\x10\x02\x12\x1a\n\x16\x45RROR_CODE_UNSUPPORTED\x10\x03\x12\x16\n\x12\x45RROR_CODE_EXPIRED\x10\x04\x12\x17\n\x13\x45RROR_CODE_HARDWARE\x10\x05\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'device_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_TONE']._serialized_start=1374
-  _globals['_TONE']._serialized_end=1478
-  _globals['_TASKICON']._serialized_start=1481
-  _globals['_TASKICON']._serialized_end=1616
-  _globals['_PRIORITY']._serialized_start=1618
-  _globals['_PRIORITY']._serialized_end=1701
-  _globals['_ACKSTAGE']._serialized_start=1703
-  _globals['_ACKSTAGE']._serialized_end=1789
-  _globals['_ERRORCODE']._serialized_start=1792
-  _globals['_ERRORCODE']._serialized_end=1928
+  _globals['_TONE']._serialized_start=1588
+  _globals['_TONE']._serialized_end=1692
+  _globals['_TASKICON']._serialized_start=1695
+  _globals['_TASKICON']._serialized_end=1830
+  _globals['_PRIORITY']._serialized_start=1832
+  _globals['_PRIORITY']._serialized_end=1915
+  _globals['_ACKSTAGE']._serialized_start=1917
+  _globals['_ACKSTAGE']._serialized_end=2026
+  _globals['_ERRORCODE']._serialized_start=2029
+  _globals['_ERRORCODE']._serialized_end=2190
   _globals['_ENVELOPE']._serialized_start=29
-  _globals['_ENVELOPE']._serialized_end=446
-  _globals['_HELLO']._serialized_start=448
-  _globals['_HELLO']._serialized_end=511
-  _globals['_PING']._serialized_start=513
-  _globals['_PING']._serialized_end=519
-  _globals['_PONG']._serialized_start=521
-  _globals['_PONG']._serialized_end=527
-  _globals['_STATUSVIEW']._serialized_start=529
-  _globals['_STATUSVIEW']._serialized_end=655
-  _globals['_VIEW']._serialized_start=658
-  _globals['_VIEW']._serialized_end=801
-  _globals['_CARD']._serialized_start=803
-  _globals['_CARD']._serialized_end=876
-  _globals['_SNAPSHOT']._serialized_start=878
-  _globals['_SNAPSHOT']._serialized_end=921
-  _globals['_CARDUPSERT']._serialized_start=923
-  _globals['_CARDUPSERT']._serialized_end=967
-  _globals['_NOTIFICATION']._serialized_start=970
-  _globals['_NOTIFICATION']._serialized_end=1178
-  _globals['_ACKNOWLEDGMENT']._serialized_start=1180
-  _globals['_ACKNOWLEDGMENT']._serialized_end=1289
-  _globals['_ERROR']._serialized_start=1291
-  _globals['_ERROR']._serialized_end=1372
+  _globals['_ENVELOPE']._serialized_end=501
+  _globals['_HELLO']._serialized_start=503
+  _globals['_HELLO']._serialized_end=594
+  _globals['_PING']._serialized_start=596
+  _globals['_PING']._serialized_end=602
+  _globals['_PONG']._serialized_start=604
+  _globals['_PONG']._serialized_end=610
+  _globals['_DEVICESETTINGS']._serialized_start=612
+  _globals['_DEVICESETTINGS']._serialized_end=684
+  _globals['_STATUSVIEW']._serialized_start=686
+  _globals['_STATUSVIEW']._serialized_end=812
+  _globals['_VIEW']._serialized_start=815
+  _globals['_VIEW']._serialized_end=958
+  _globals['_CARD']._serialized_start=960
+  _globals['_CARD']._serialized_end=1033
+  _globals['_SNAPSHOT']._serialized_start=1035
+  _globals['_SNAPSHOT']._serialized_end=1078
+  _globals['_CARDUPSERT']._serialized_start=1080
+  _globals['_CARDUPSERT']._serialized_end=1124
+  _globals['_NOTIFICATION']._serialized_start=1127
+  _globals['_NOTIFICATION']._serialized_end=1335
+  _globals['_ACKNOWLEDGMENT']._serialized_start=1338
+  _globals['_ACKNOWLEDGMENT']._serialized_end=1503
+  _globals['_ERROR']._serialized_start=1505
+  _globals['_ERROR']._serialized_end=1586
 # @@protoc_insertion_point(module_scope)

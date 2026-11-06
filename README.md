@@ -77,6 +77,13 @@ See [current UI previews](docs/bubble-ui-validation.md).
 
 ## Build the firmware
 
+Device backlight settings are available through `PUT /v1/device/settings` with
+`{"brightness_percent":30}` (integer 0..100; zero turns the backlight off).
+`GET /v1/device/settings` distinguishes the target from device Applied feedback.
+The host retains the target for its process lifetime and restores it on reconnect.
+The brightness revision is built and desktop-tested, but not flashed. Update host
+and firmware together; see [brightness control](docs/brightness-control.md).
+
 Use an activated **ESP-IDF v6.1** environment, separate from the host uv environment:
 
 ```powershell

@@ -78,4 +78,25 @@ int main(int argc, char** argv) {
   auto unknown = makeSnapshot();
   unknown.envelope.body.snapshot.cards[0].view.icon = static_cast<info_tv_v1_TaskIcon>(6);
   CHECK(info_tv::validateCommand(unknown.envelope));
+
+  // Zero must survive both the setting and Applied-feedback presence bits.
+  auto setting = makeCommand("brightness");
+  setting.envelope.which_body = info_tv_v1_Envelope_device_settings_tag;
+  setting.envelope.body.device_settings.has_brightness_percent = true;
+  CHECK(!info_tv::validateCommand(setting.envelope));
+  auto settingsSize = info_tv::encodeEnvelope(setting.envelope, encoded.data(), encoded.size());
+  CHECK(info_tv::decodeEnvelope(encoded.data(), settingsSize, roundtrip));
+  CHECK(roundtrip.body.device_settings.has_brightness_percent);
+  CHECK(roundtrip.body.device_settings.brightness_percent == 0);
+  setting.envelope.which_body = info_tv_v1_Envelope_acknowledgment_tag;
+  setting.envelope.body.acknowledgment = info_tv_v1_Acknowledgment{};
+  auto& ack = setting.envelope.body.acknowledgment;
+  std::strcpy(ack.in_reply_to, "brightness");
+  ack.stage = info_tv_v1_AckStage_ACK_STAGE_APPLIED;
+  ack.has_brightness_percent = true;
+  settingsSize = info_tv::encodeEnvelope(setting.envelope, encoded.data(), encoded.size());
+  CHECK(info_tv::decodeEnvelope(encoded.data(), settingsSize, roundtrip));
+  CHECK(roundtrip.body.acknowledgment.stage == info_tv_v1_AckStage_ACK_STAGE_APPLIED);
+  CHECK(roundtrip.body.acknowledgment.has_brightness_percent);
+  CHECK(roundtrip.body.acknowledgment.brightness_percent == 0);
 }

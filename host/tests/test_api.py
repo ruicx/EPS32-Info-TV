@@ -117,3 +117,36 @@ def test_conversation_fields_round_trip_and_update_one_card() -> None:
         assert records[0]["icon"] == "test"
         submission["icon"] = "build"
         assert client.post("/v1/task-events", json=submission).status_code == 409
+
+
+def test_offline_brightness_is_pending_and_isolated_per_app() -> None:
+    """Retain offline zero without claiming application or creating a task."""
+    with TestClient(create_app(Settings("unused"), OfflineTransport())) as client:
+        response = client.put("/v1/device/settings", json={"brightness_percent": 0})
+        assert response.status_code == 202
+        assert response.json() == {"brightness_percent": 0, "applied_brightness_percent": None,
+                                   "delivery": {"state": "pending"}}
+        assert client.get("/v1/device/settings").json() == response.json()
+        assert client.get("/v1/device").json()["settings"] == response.json()
+        assert client.get("/v1/tasks").json() == []
+    with TestClient(create_app(Settings("unused"), OfflineTransport())) as other:
+        assert other.get("/v1/device/settings").json()["brightness_percent"] == 100
+
+
+@pytest.mark.parametrize("submission", [
+    {}, {"brightness_percent": -1}, {"brightness_percent": 101},
+    {"brightness_percent": True}, {"brightness_percent": 30.5},
+    {"brightness_percent": "30"}, {"brightness_percent": None},
+    {"brightness_percent": 30, "screen_x": 2},
+])
+def test_invalid_brightness_preserves_target(submission: dict[str, object]) -> None:
+    """Reject malformed settings without changing the retained target.
+
+    Parameters
+    ----------
+    submission : dict[str, object]
+        Invalid settings body.
+    """
+    with TestClient(create_app(Settings("unused"), OfflineTransport())) as client:
+        assert client.put("/v1/device/settings", json=submission).status_code == 422
+        assert client.get("/v1/device/settings").json()["brightness_percent"] == 100

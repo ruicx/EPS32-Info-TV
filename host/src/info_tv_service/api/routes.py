@@ -4,7 +4,7 @@ from typing import cast
 
 from fastapi import APIRouter, HTTPException, Request
 
-from info_tv_service.api.models import TaskEventRequest
+from info_tv_service.api.models import DeviceSettingsRequest, TaskEventRequest
 from info_tv_service.runtime import ServiceRuntime
 from info_tv_service.tasks.store import AdmissionError
 
@@ -93,6 +93,49 @@ def create_router() -> APIRouter:
              "card_id": record.card_id, "delivery": runtime.device.card_status(record.card_id)}
             for record in runtime.store.list_tasks()
         ]
+
+    @router.put("/device/settings", status_code=202)
+    async def set_device_settings(body: DeviceSettingsRequest, request: Request) -> dict[str, object]:
+        """Retain the target brightness until the device reports application.
+
+        Parameters
+        ----------
+        body : DeviceSettingsRequest
+            Validated absolute brightness level.
+        request : Request
+            Request carrying the application context.
+
+        Returns
+        -------
+        dict[str, object]
+            Target, last reported value, and delivery status.
+
+        Raises
+        ------
+        HTTPException
+            If the device coordinator stopped unexpectedly.
+        """
+        runtime = runtime_from_request(request)
+        if runtime.failure:
+            raise HTTPException(503, runtime.failure)
+        runtime.device.set_brightness(body.brightness_percent)
+        return runtime.device.settings_status()
+
+    @router.get("/device/settings")
+    async def device_settings(request: Request) -> dict[str, object]:
+        """Query desired brightness and actual device application feedback.
+
+        Parameters
+        ----------
+        request : Request
+            Request carrying the application context.
+
+        Returns
+        -------
+        dict[str, object]
+            Target, last reported value, and delivery status.
+        """
+        return runtime_from_request(request).device.settings_status()
 
     @router.get("/device")
     async def device_status(request: Request) -> dict[str, object]:

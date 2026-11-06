@@ -96,9 +96,21 @@ def test_http_to_cpp_firmware_core() -> None:
         while client.get("/v1/device").json()["state"] != "online":
             assert time.monotonic() < deadline, "C++ handshake did not finish"
             time.sleep(0.01)
+        assert client.put("/v1/device/settings", json={"brightness_percent": 0}).status_code == 202
+        while client.get("/v1/device/settings").json()["applied_brightness_percent"] != 0:
+            assert time.monotonic() < deadline, "C++ brightness setting was not applied"
+            time.sleep(0.01)
         body = {"event_id": uuid4().hex, "source": "demo", "task_id": "cpp-build", "sequence": 1,
                 "state": "running", "title": "Python to C++", "progress_percent": 42, "icon": "test"}
         assert client.post("/v1/task-events", json=body).status_code == 202
+        while not client.get("/v1/tasks").json()[0]["delivery"].get("accepted"):
+            assert time.monotonic() < deadline, "Backlight-off card was not admitted"
+            time.sleep(0.01)
+        assert not client.get("/v1/tasks").json()[0]["delivery"]["presented"]
+        assert client.put("/v1/device/settings", json={"brightness_percent": 30}).status_code == 202
+        while client.get("/v1/device/settings").json()["applied_brightness_percent"] != 30:
+            assert time.monotonic() < deadline
+            time.sleep(0.01)
         while True:
             tasks = client.get("/v1/tasks").json()
             if tasks[0]["delivery"].get("presented"):

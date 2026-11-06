@@ -5,5 +5,5 @@ idf_component_register(
          "protocol/codec.cpp" "protocol/framing.cpp" "protocol/generated/device.pb.c"
          "ui/display_state.cpp" "ui/presentation_controller.cpp" "ui/screen_view.cpp"
     INCLUDE_DIRS "."
-    REQUIRES esp_driver_gpio esp_driver_spi esp_driver_usb_serial_jtag esp_lcd esp_timer nanopb lvgl)
+    REQUIRES esp_driver_gpio esp_driver_ledc esp_driver_spi esp_driver_usb_serial_jtag esp_lcd esp_timer nanopb lvgl)
 target_compile_features(${COMPONENT_LIB} PUBLIC cxx_std_17)

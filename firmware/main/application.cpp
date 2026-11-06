@@ -1,6 +1,7 @@
 #include "application.h"
 
 #include <cassert>
+#include <cstring>
 
 #include "esp_timer.h"
 
@@ -41,15 +42,26 @@ void Application::uiTask(void* context) {
     Feedback feedback{};
     if (!app.display_.hasPendingFrame()) {
       const auto completed = app.display_.completedGeneration();
-      if (completed && completed != acknowledged) {
+      if (completed && completed != acknowledged && app.display_.backlightEnabled()) {
         while (app.presentation_.onFramePresented(completed, nowMs, feedback))
           app.queueFeedback(feedback);
         acknowledged = completed;
       }
       if (uxQueueSpacesAvailable(app.feedback_) >= policy::kRowsPerPage + 1 &&
           xQueueReceive(app.commands_, &app.uiCommand_, 0) == pdTRUE &&
-          app.presentation_.handleCommand(app.uiCommand_, nowMs, feedback))
+          app.presentation_.handleCommand(app.uiCommand_, nowMs, feedback)) {
+        if (app.uiCommand_.envelope.which_body == info_tv_v1_Envelope_device_settings_tag &&
+            feedback.error == info_tv_v1_ErrorCode_ERROR_CODE_UNSPECIFIED) {
+          if (app.display_.setBrightness(feedback.brightnessPercent)) {
+            feedback.stage = info_tv_v1_AckStage_ACK_STAGE_APPLIED;
+          } else {
+            feedback.stage = info_tv_v1_AckStage_ACK_STAGE_UNSPECIFIED;
+            feedback.error = info_tv_v1_ErrorCode_ERROR_CODE_HARDWARE;
+            std::strcpy(feedback.detail, "Backlight PWM update failed");
+          }
+        }
         app.queueFeedback(feedback);
+      }
       const auto& model = app.presentation_.tick(nowMs);
       if (model.generation != rendered) {
         app.view_.render(model);

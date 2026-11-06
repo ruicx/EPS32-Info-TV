@@ -27,6 +27,8 @@ class PeerTransport:
         self.withhold_cards = False
         self.last_session = ""
         self.task_icons = True
+        self.brightness_control = True
+        self.withhold_settings = False
 
     async def open(self) -> None:
         """Start a fresh connection while preserving captured history."""
@@ -72,14 +74,20 @@ class PeerTransport:
                 response.hello.boot_id = 123
                 response.hello.max_cards = 8
                 response.hello.task_icons = self.task_icons
+                response.hello.brightness_control = self.brightness_control
             elif kind == "ping":
                 response.pong.SetInParent()
             else:
                 self.last_session = command.session_id
                 if kind == "card_upsert" and self.withhold_cards:
                     continue
+                if kind == "device_settings" and self.withhold_settings:
+                    continue
                 response.acknowledgment.in_reply_to = command.message_id
                 response.acknowledgment.stage = pb.ACK_STAGE_ACCEPTED
+                if kind == "device_settings":
+                    response.acknowledgment.stage = pb.ACK_STAGE_APPLIED
+                    response.acknowledgment.brightness_percent = command.device_settings.brightness_percent
             self.incoming.put_nowait(encode_frame(response.SerializeToString()))
 
 
@@ -259,6 +267,115 @@ def test_notifications_are_not_starved_by_pending_cards() -> None:
             await wait_until(lambda: sum(message.HasField("card_upsert") for message in peer.commands) == 2)
             kinds = [message.WhichOneof("body") for message in peer.commands if message.WhichOneof("body") in ("card_upsert", "notification")]
             assert kinds == ["card_upsert", "notification", "card_upsert"]
+        finally:
+            await stop(task)
+    asyncio.run(scenario())
+
+
+def test_brightness_coalesces_requires_applied_and_resynchronizes_zero() -> None:
+    """Distinguish request/admission/application and restore zero after reconnect."""
+    async def scenario() -> None:
+        """Inject wrong-stage/value feedback before completing the real setting."""
+        peer = PeerTransport()
+        store = TaskStore()
+        session = DeviceSession(peer, store.list_tasks)
+        task = asyncio.create_task(session.run())
+        try:
+            await wait_until(lambda: session.online)
+            assert session.settings_status()["applied_brightness_percent"] == 100
+            peer.withhold_settings = True
+            for percent in (10, 30, 70):
+                session.set_brightness(percent)
+            await wait_until(lambda: any(message.HasField("device_settings") and
+                message.device_settings.brightness_percent == 70 for message in peer.commands))
+            commands = [message for message in peer.commands if message.HasField("device_settings")]
+            assert [message.device_settings.brightness_percent for message in commands] == [100, 70]
+            command = commands[-1]
+            response = make_envelope(session.session_id)
+            ack = response.acknowledgment
+            ack.in_reply_to = command.message_id
+            ack.stage = pb.ACK_STAGE_ACCEPTED
+            session._handle_feedback(response)
+            assert session.settings_status()["applied_brightness_percent"] == 100
+            ack.stage = pb.ACK_STAGE_APPLIED
+            session._handle_feedback(response)  # A missing reported value is not known zero.
+            ack.brightness_percent = 71
+            session._handle_feedback(response)
+            assert session.settings_status()["applied_brightness_percent"] == 100
+            ack.brightness_percent = 70
+            ack.in_reply_to = "unrelated"
+            session._handle_feedback(response)
+            assert session.settings_status()["applied_brightness_percent"] == 100
+            ack.in_reply_to = command.message_id
+            peer.incoming.put_nowait(encode_frame(response.SerializeToString()))
+            await wait_until(lambda: session.settings_status()["applied_brightness_percent"] == 70)
+            assert session.settings_status()["delivery"] == {
+                "message_id": command.message_id, "applied": True, "error": None}
+            assert not session._deliveries[command.message_id].presented
+            session._deliveries.clear()  # Simulate eviction from bounded operation history.
+            assert session.settings_status()["delivery"] == {
+                "message_id": command.message_id, "applied": True, "error": None}
+            peer.withhold_settings = False
+            session.set_brightness(0)
+            await wait_until(lambda: session.settings_status()["applied_brightness_percent"] == 0)
+            peer.fail = True
+            await wait_until(lambda: not session.online)
+            assert session.settings_status()["applied_brightness_percent"] is None
+            await wait_until(lambda: peer.opens >= 2 and session.online)
+            assert session.settings_status()["brightness_percent"] == 0
+            assert session.settings_status()["applied_brightness_percent"] == 0
+            assert store.list_tasks() == []
+        finally:
+            await stop(task)
+    asyncio.run(scenario())
+
+
+def test_brightness_retry_retains_identity_and_reports_hardware_failure() -> None:
+    """Retry one absolute operation without claiming success after rejection."""
+    async def scenario() -> None:
+        """Lose a settings reply, then reject the retried operation."""
+        peer = PeerTransport()
+        store = TaskStore()
+        session = DeviceSession(peer, store.list_tasks)
+        task = asyncio.create_task(session.run())
+        try:
+            await wait_until(lambda: session.online)
+            peer.withhold_settings = True
+            session.set_brightness(30)
+            await wait_until(lambda: sum(message.HasField("device_settings") and
+                message.device_settings.brightness_percent == 30 for message in peer.commands) >= 2)
+            commands = [message for message in peer.commands if message.HasField("device_settings")
+                        and message.device_settings.brightness_percent == 30]
+            assert commands[0].message_id == commands[1].message_id
+            response = make_envelope(session.session_id)
+            response.error.in_reply_to = commands[0].message_id
+            response.error.code = pb.ERROR_CODE_HARDWARE
+            response.error.detail = "PWM failed"
+            peer.incoming.put_nowait(encode_frame(response.SerializeToString()))
+            await wait_until(lambda: "PWM failed" in str(session.settings_status()))
+            assert session.settings_status()["applied_brightness_percent"] == 100
+            assert not session._deliveries[commands[0].message_id].applied
+            peer.withhold_settings = False
+            session.set_brightness(30)
+            await wait_until(lambda: session.settings_status()["applied_brightness_percent"] == 30)
+        finally:
+            await stop(task)
+    asyncio.run(scenario())
+
+
+def test_firmware_without_brightness_is_rejected_before_snapshot() -> None:
+    """An unsupported device cannot silently ignore target brightness."""
+    async def scenario() -> None:
+        """Advertise missing brightness capability and inspect the diagnostic."""
+        peer = PeerTransport()
+        peer.brightness_control = False
+        store = TaskStore()
+        session = DeviceSession(peer, store.list_tasks)
+        task = asyncio.create_task(session.run())
+        try:
+            await wait_until(lambda: "brightness control" in str(session.get_status()))
+            assert not session.online
+            assert not any(message.HasField("snapshot") for message in peer.commands)
         finally:
             await stop(task)
     asyncio.run(scenario())

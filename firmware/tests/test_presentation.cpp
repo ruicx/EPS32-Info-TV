@@ -59,9 +59,45 @@ void testPagedOverview() {
   CHECK(controller.tick(34001).pageIndex == 0);
 }
 
+/** Admit settings independently without acknowledging hardware application. */
+void testDeviceSettings() {
+  info_tv::DisplayState state;
+  info_tv::PresentationController controller(state);
+  info_tv::Feedback feedback{};
+  auto setting = makeCommand("brightness");
+  setting.envelope.which_body = info_tv_v1_Envelope_device_settings_tag;
+  auto& settings = setting.envelope.body.device_settings;
+  settings.has_brightness_percent = true;
+  settings.brightness_percent = 30;
+  CHECK(controller.handleCommand(setting, 0, feedback));
+  CHECK(feedback.error == info_tv_v1_ErrorCode_ERROR_CODE_INVALID);
+  CHECK(controller.handleCommand(makeSnapshot(), 1, feedback));
+  const auto generation = controller.tick(1).generation;
+  for (uint32_t percent : {0, 30, 100}) {
+    settings.brightness_percent = percent;
+    CHECK(controller.handleCommand(setting, 2, feedback));
+    CHECK(feedback.stage == info_tv_v1_AckStage_ACK_STAGE_ACCEPTED);
+    CHECK(feedback.brightnessPercent == percent);
+    CHECK(controller.tick(2).generation == generation);
+    CHECK(state.cardCount() == 1);
+  }
+  settings.brightness_percent = 101;
+  CHECK(controller.handleCommand(setting, 3, feedback));
+  CHECK(feedback.error == info_tv_v1_ErrorCode_ERROR_CODE_INVALID);
+  settings.has_brightness_percent = false;
+  CHECK(controller.handleCommand(setting, 4, feedback));
+  CHECK(feedback.error == info_tv_v1_ErrorCode_ERROR_CODE_INVALID);
+  std::strcpy(setting.envelope.session_id, "old-session");
+  settings.has_brightness_percent = true;
+  settings.brightness_percent = 30;
+  CHECK(controller.handleCommand(setting, 5, feedback));
+  CHECK(feedback.error == info_tv_v1_ErrorCode_ERROR_CODE_INVALID);
+}
+
 /** Verify UI admission, actual visibility, interruption, restoration, and expiry. */
 int main() {
   testPagedOverview();
+  testDeviceSettings();
   info_tv::DisplayState state;
   info_tv::PresentationController controller(state);
   info_tv::Feedback feedback{};

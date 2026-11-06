@@ -2,11 +2,13 @@
 
 Status: Version 1 with eight-card overview extensions tested on desktop, firmware-built, and flashed on 2026-11-05. Five cards and two notifications returned actual device Presented feedback. The user confirmed physical text, layout, and page rotation; earlier detailed recovery evidence applies to the original demo.
 
-Updated: 2026-11-05
+Updated: 2026-11-06
 
 Subsequent revision: Task-purpose icons and compact five-row pages are
 desktop-tested and firmware-built, but have not been flashed. The earlier physical
 confirmation applies to the original overview. See [Bubble UI validation](bubble-ui-validation.md).
+Device brightness control is also implemented and firmware-built without flashing;
+see [Brightness control](brightness-control.md) for the API and validation scope.
 
 ## 1. Contract and Generation
 
@@ -33,7 +35,8 @@ and a boot-local sequence. Feedback explicitly refers to the original command.
 | Snapshot | Host to device | Validate and atomically replace the overview |
 | CardUpsert | Host to device | Create or replace a card by identity/revision |
 | Notification | Host to device | Independently admit a temporary presentation |
-| Acknowledgment | Device to host | UI Accepted or first-refresh Presented |
+| DeviceSettings | Host to device | Apply an absolute device brightness setting |
+| Acknowledgment | Device to host | UI Accepted, first-refresh Presented, or settings Applied |
 | Error | Device to host | Correlated rejection and diagnostic reason |
 | Ping / Pong | Host / device | Current-session liveness |
 
@@ -75,20 +78,23 @@ The generated worst-case envelope size is 4045 bytes, within the existing
 ## 4. Sessions, Revisions, and Recovery
 
 Host startup creates a new service-session identity; reconnect retains it.
-Exchange Hello, send the current overview snapshot, and wait for UI Accepted
-before declaring the connection online. Snapshots never contain notification history.
+Exchange Hello, send the current overview snapshot, and wait for UI Accepted.
+Then send the current target brightness and wait for Applied before declaring
+the connection online. Snapshots never contain notification history.
 Device Hello now includes `max_cards: 8`; zero identifies older firmware without
 the multi-conversation overview. The host refuses synchronization if capacity is
 less than eight and reports that firmware must be updated. This makes the required
 paired update explicit while keeping field numbers and protocol version stable.
 The icon revision also requires `Hello.task_icons = true`; a missing/false value
 identifies firmware that needs updating before this host synchronizes content.
+Brightness control additionally requires `Hello.brightness_control = true`.
 
 Each card has an independent identity and increasing nonzero revision. Older
 revisions cannot overwrite current state; equal revisions with conflicting content
 are rejected. Retries retain operation identity. Firmware remembers 64 recently
 accepted identities within the current service session, so retries do not reapply
-snapshots or reset presentation. The host permits one command awaiting Accepted.
+snapshots or reset presentation. The host permits one command awaiting Accepted
+or, for device settings, Applied.
 Identity and semantic content, rather than byte-equal Protobuf, govern deduplication.
 
 Snapshots validate all cards and unique identities before mutation. New sessions
@@ -133,7 +139,17 @@ The five-row overview emits a separate Presented acknowledgment for every visibl
 card after the shared refresh completes. Later pages stay unpresented until shown.
 Feedback has its own identity and is not recursively acknowledged.
 
-The host waits one second for Accepted, sends at most three times within the
+When brightness is zero, the device still processes commands and renders cached
+content, but withholds Presented until the backlight is enabled. Hidden or
+superseded content does not acquire retrospective presentation feedback.
+
+**Applied** means the backlight driver successfully accepted the requested PWM
+setting. Settings acknowledgments echo the present `brightness_percent` field,
+including zero, and refer to the original command. This does not measure optical
+brightness or imply that any message was Presented. Hardware failures return
+`ERROR_CODE_HARDWARE` instead.
+
+The host waits one second for Accepted or settings Applied, sends at most three times within the
 connection, and does not wait for Presented before continuing. Rejections include
 diagnostic details; queue saturation is not claimed as successful admission.
 Feedback congestion forces resynchronization rather than blocking local UI timing.
@@ -144,3 +160,18 @@ progress. Link failure before acknowledgment leaves delivery potentially uncerta
 
 State and deduplication are in memory. Restart, power loss, and cache eviction do
 not provide durable delivery. Powered offline caching requires continued device power.
+
+## 7. Device Brightness Settings
+
+`DeviceSettings` uses envelope body tag 18. It requires the optional
+`brightness_percent` field to be present with an integer 0..100. Missing input is
+invalid; zero turns the backlight off. Settings require the current snapshot
+session, do not occupy card/notification capacity, and do not reset page timers.
+Firmware reapplies this absolute setting on retries and replies only after the
+PWM driver succeeds. The host ignores admission-only, unrelated, missing-value,
+or mismatched-value feedback as proof of application.
+
+The host coalesces unsent settings to the latest target, keeps the target across
+reconnections, and resynchronizes it after each snapshot. The default target is
+100. Targets and feedback are retained only for the current service process;
+there is no disk/NVS persistence. Applied brightness is unknown while disconnected.

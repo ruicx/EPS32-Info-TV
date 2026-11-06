@@ -54,6 +54,10 @@ void DeviceSession::sendFeedback(const Feedback& feedback) {
     std::strcpy(ack.card_id, feedback.cardId);
     ack.revision = feedback.revision;
     ack.stage = feedback.stage;
+    if (feedback.stage == info_tv_v1_AckStage_ACK_STAGE_APPLIED) {
+      ack.has_brightness_percent = true;
+      ack.brightness_percent = feedback.brightnessPercent;
+    }
   }
   send();
 }
@@ -77,6 +81,7 @@ void DeviceSession::dispatch(uint64_t nowMs) {
     reply_.body.hello.boot_id = bootId_;
     reply_.body.hello.max_cards = policy::kMaxCards;
     reply_.body.hello.task_icons = true;
+    reply_.body.hello.brightness_control = true;
     send();
     return;
   }

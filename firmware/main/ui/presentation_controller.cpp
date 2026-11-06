@@ -32,6 +32,13 @@ bool PresentationController::handleCommand(const DisplayCommand& command, uint64
     std::strcpy(feedback.detail, "Snapshot required for this session");
     return true;
   }
+  if (envelope.which_body == info_tv_v1_Envelope_device_settings_tag) {
+    // Admission is not application. The UI owner must apply PWM before replying.
+    // Absolute settings can safely be reapplied when their response was lost.
+    feedback.stage = info_tv_v1_AckStage_ACK_STAGE_ACCEPTED;
+    feedback.brightnessPercent = envelope.body.device_settings.brightness_percent;
+    return true;
+  }
   if (sameSession && state_.accepted(envelope.message_id)) {
     feedback.stage = info_tv_v1_AckStage_ACK_STAGE_ACCEPTED;
     return true;

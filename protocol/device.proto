@@ -15,6 +15,7 @@ message Envelope {
     Error error = 15;
     Ping ping = 16;
     Pong pong = 17;
+    DeviceSettings device_settings = 18;
   }
 }
 
@@ -25,9 +26,15 @@ message Hello {
   uint32 max_cards = 2;
   // Required by hosts that send task-purpose icons.
   bool task_icons = 3;
+  bool brightness_control = 4;
 }
 message Ping {}
 message Pong {}
+
+// Absolute device settings; presence distinguishes off (0) from missing input.
+message DeviceSettings {
+  optional uint32 brightness_percent = 1;
+}
 
 enum Tone {
   TONE_UNSPECIFIED = 0;
@@ -84,6 +91,8 @@ enum AckStage {
   ACK_STAGE_UNSPECIFIED = 0;
   ACK_STAGE_ACCEPTED = 1;
   ACK_STAGE_PRESENTED = 2;
+  // Hardware accepted the setting; this is independent of LCD presentation.
+  ACK_STAGE_APPLIED = 3;
 }
 message Acknowledgment {
   string in_reply_to = 1;
@@ -91,6 +100,7 @@ message Acknowledgment {
   // Presented identifies one actually visible card within a snapshot.
   string card_id = 3;
   uint64 revision = 4;
+  optional uint32 brightness_percent = 5;
 }
 enum ErrorCode {
   ERROR_CODE_UNSPECIFIED = 0;
@@ -98,6 +108,7 @@ enum ErrorCode {
   ERROR_CODE_BUSY = 2;
   ERROR_CODE_UNSUPPORTED = 3;
   ERROR_CODE_EXPIRED = 4;
+  ERROR_CODE_HARDWARE = 5;
 }
 message Error {
   string in_reply_to = 1;

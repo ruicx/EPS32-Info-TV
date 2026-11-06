@@ -35,17 +35,20 @@ class Delivery:
         Whether visible first-refresh completion was reported.
     error : str or None
         Rejection or uncertain delivery outcome.
+    applied : bool
+        Whether device hardware application was reported for a setting.
     """
 
     message_id: str
     accepted: bool = False
     presented: bool = False
     error: str | None = None
+    applied: bool = False
 
 
 @dataclass
 class Pending:
-    """Retain one command until Accepted or bounded delivery failure.
+    """Retain one command until Accepted/Applied or bounded delivery failure.
 
     Parameters
     ----------
@@ -93,16 +96,20 @@ class DeviceSession:
         self._last_received = 0.0
         self._last_ping = 0.0
         self._card_sent_since_notice = False
+        self._brightness_percent = 100
+        self._applied_brightness: int | None = None
+        self._brightness_dirty = True
+        self._brightness_delivery: Delivery | None = None
         self._logger = logging.getLogger(__name__)
 
     @property
     def online(self) -> bool:
-        """Return whether overview synchronization completed.
+        """Return whether overview and device-setting synchronization completed.
 
         Returns
         -------
         bool
-            True only after the current snapshot was accepted by the UI.
+            True after the snapshot was accepted and target brightness applied.
         """
         return self._state == "online"
 
@@ -137,6 +144,38 @@ class DeviceSession:
         """
         self._notifications.append((notification, time.monotonic() + NOTIFICATION_VALIDITY_MS / 1000))
 
+    def set_brightness(self, percent: int) -> None:
+        """Coalesce an already-validated absolute brightness request.
+
+        Parameters
+        ----------
+        percent : int
+            Target backlight level in 0..100, retained for this process lifetime.
+        """
+        self._brightness_percent = percent
+        self._brightness_dirty = True
+        self._brightness_delivery = None
+
+    def settings_status(self) -> dict[str, object]:
+        """Report target brightness separately from correlated hardware feedback.
+
+        Returns
+        -------
+        dict[str, object]
+            Current target, last reported level, and latest setting delivery.
+            The reported level is unknown after disconnection until resynchronized.
+        """
+        delivery = self._brightness_delivery
+        return {
+            "brightness_percent": self._brightness_percent,
+            "applied_brightness_percent": self._applied_brightness,
+            "delivery": {
+                "message_id": delivery.message_id,
+                "applied": delivery.applied,
+                "error": delivery.error,
+            } if delivery else {"state": "pending"},
+        }
+
     def get_status(self) -> dict[str, object]:
         """Expose connection state without claiming visibility from transmission.
 
@@ -148,8 +187,10 @@ class DeviceSession:
         return {
             "state": self._state, "session_id": self.session_id,
             "last_error": self._last_error,
+            "settings": self.settings_status(),
             "deliveries": [
-                {"message_id": key, "accepted": value.accepted, "presented": value.presented, "error": value.error}
+                {"message_id": key, "accepted": value.accepted, "presented": value.presented,
+                 "applied": value.applied, "error": value.error}
                 for key, value in self._deliveries.items()
             ],
         }
@@ -207,6 +248,9 @@ class DeviceSession:
                 if self._pending is not None:
                     self._mark_error(self._pending.envelope.message_id, "Connection lost; outcome may be unknown")
                 self._pending = None
+                self._applied_brightness = None
+                self._brightness_dirty = True
+                self._brightness_delivery = None
                 await self._transport.close()
             await asyncio.sleep(RECONNECT_SECONDS)
 
@@ -267,6 +311,8 @@ class DeviceSession:
                     raise OSError("Device firmware lacks the eight-card overview; update firmware")
                 if not response.hello.task_icons:
                     raise OSError("Device firmware lacks task icons; update firmware")
+                if not response.hello.brightness_control:
+                    raise OSError("Device firmware lacks brightness control; update firmware")
                 break
             if time.monotonic() >= deadline:
                 raise TimeoutError("Device Hello timeout")
@@ -293,6 +339,11 @@ class DeviceSession:
                 self._handle_feedback(response)
             if self._pending is not None:
                 await self._retry_if_due()
+            elif self._state in ("configuring", "online") and self._brightness_dirty:
+                command = make_envelope(self.session_id)
+                command.device_settings.brightness_percent = self._brightness_percent
+                self._brightness_dirty = False
+                await self._start_command(command)
             elif self.online:
                 self._expire_notifications()
                 if self._notifications and (not self._dirty or self._card_sent_since_notice):
@@ -321,7 +372,7 @@ class DeviceSession:
         Parameters
         ----------
         envelope : Envelope
-            Snapshot, card update, or notification.
+            Snapshot, card update, notification, or device settings.
         expires : float or None
             Original monotonic notification validity deadline.
         """
@@ -330,6 +381,8 @@ class DeviceSession:
         if envelope.HasField("card_upsert"):
             cards.append(envelope.card_upsert.card)
         self._deliveries[envelope.message_id] = Delivery(envelope.message_id)
+        if envelope.HasField("device_settings"):
+            self._brightness_delivery = self._deliveries[envelope.message_id]
         for card in cards:
             self._card_delivery[card.card_id] = (card.revision, envelope.message_id)
             self._deliveries[f"{envelope.message_id}:{card.card_id}"] = Delivery(envelope.message_id)
@@ -362,21 +415,41 @@ class DeviceSession:
         Raises
         ------
         OSError
-            If the required recovery snapshot was rejected.
+            If a required recovery snapshot or settings command was rejected.
         """
         if envelope.HasField("error"):
             identity = envelope.error.in_reply_to
             self._mark_error(identity, envelope.error.detail or "Device rejected command")
             if self._pending and self._pending.envelope.message_id == identity:
-                snapshot = self._pending.envelope.HasField("snapshot")
+                required = self._pending.envelope.HasField("snapshot") or self._state == "configuring"
                 self._pending = None
-                if snapshot:
-                    raise OSError("Device rejected recovery snapshot")
+                if required:
+                    raise OSError("Device rejected recovery synchronization")
             return
         if not envelope.HasField("acknowledgment"):
             return
         ack = envelope.acknowledgment
+        if ack.stage == pb.ACK_STAGE_APPLIED:
+            pending = self._pending
+            if (pending is None or pending.envelope.message_id != ack.in_reply_to
+                    or not pending.envelope.HasField("device_settings")
+                    or not ack.HasField("brightness_percent")
+                    or ack.brightness_percent != pending.envelope.device_settings.brightness_percent):
+                return
+            self._applied_brightness = ack.brightness_percent
+            delivery = self._deliveries[ack.in_reply_to]
+            delivery.accepted = True
+            delivery.applied = True
+            self._pending = None
+            if self._state == "configuring" and not self._brightness_dirty:
+                self._state = "online"
+                self._last_error = None
+            return
         if ack.stage not in (pb.ACK_STAGE_ACCEPTED, pb.ACK_STAGE_PRESENTED):
+            return
+        if self._pending and self._pending.envelope.HasField("device_settings") and (
+            self._pending.envelope.message_id == ack.in_reply_to
+        ):
             return
         if ack.stage == pb.ACK_STAGE_ACCEPTED:
             for key, delivery in self._deliveries.items():
@@ -384,8 +457,7 @@ class DeviceSession:
                     delivery.accepted = True
             if self._pending and self._pending.envelope.message_id == ack.in_reply_to:
                 if self._pending.envelope.HasField("snapshot"):
-                    self._state = "online"
-                    self._last_error = None
+                    self._state = "configuring"
                 self._pending = None
         else:
             key = f"{ack.in_reply_to}:{ack.card_id}" if ack.card_id else ack.in_reply_to
@@ -403,7 +475,7 @@ class DeviceSession:
         Raises
         ------
         TimeoutError
-            If three transmissions received no UI acceptance.
+            If three transmissions received no required acceptance/application.
         """
         pending = self._pending
         if pending is None or time.monotonic() - pending.sent_at < ACK_TIMEOUT_SECONDS:
@@ -416,7 +488,8 @@ class DeviceSession:
                 return
             pending.envelope.notification.valid_for_ms = remaining
         if pending.attempts >= MAX_SEND_ATTEMPTS:
-            raise TimeoutError("UI Accepted acknowledgment timeout")
+            stage = "Applied" if pending.envelope.HasField("device_settings") else "UI Accepted"
+            raise TimeoutError(f"{stage} acknowledgment timeout")
         pending.attempts += 1
         pending.sent_at = time.monotonic()
         await self._send(pending.envelope)

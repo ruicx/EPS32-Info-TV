@@ -4,6 +4,7 @@
 #include <cstddef>
 
 #include "driver/gpio.h"
+#include "driver/ledc.h"
 #include "driver/spi_master.h"
 #include "esp_check.h"
 #include "esp_lcd_panel_vendor.h"
@@ -21,7 +22,21 @@ void DisplayDriver::initialize() {
   backlight.pin_bit_mask = 1ULL << board::kBacklight;
   backlight.mode = GPIO_MODE_OUTPUT;
   ESP_ERROR_CHECK(gpio_config(&backlight));
-  setBrightness(false);
+  ESP_ERROR_CHECK(gpio_set_level(static_cast<gpio_num_t>(board::kBacklight), 1));
+  ledc_timer_config_t backlightTimer{};
+  backlightTimer.speed_mode = LEDC_LOW_SPEED_MODE;
+  backlightTimer.duty_resolution = LEDC_TIMER_8_BIT;
+  backlightTimer.timer_num = LEDC_TIMER_0;
+  backlightTimer.freq_hz = 4000;
+  backlightTimer.clk_cfg = LEDC_AUTO_CLK;
+  ESP_ERROR_CHECK(ledc_timer_config(&backlightTimer));
+  ledc_channel_config_t backlightChannel{};
+  backlightChannel.gpio_num = board::kBacklight;
+  backlightChannel.speed_mode = LEDC_LOW_SPEED_MODE;
+  backlightChannel.channel = LEDC_CHANNEL_0;
+  backlightChannel.timer_sel = LEDC_TIMER_0;
+  backlightChannel.duty = 256;  // Continuous high keeps the active-low backlight off.
+  ESP_ERROR_CHECK(ledc_channel_config(&backlightChannel));
   spi_bus_config_t bus{};
   bus.mosi_io_num = board::kMosi;
   bus.miso_io_num = -1;
@@ -60,11 +75,17 @@ void DisplayDriver::initialize() {
   esp_lcd_panel_io_callbacks_t callbacks{};
   callbacks.on_color_trans_done = transferDone;
   ESP_ERROR_CHECK(esp_lcd_panel_io_register_event_callbacks(io_, &callbacks, this));
-  setBrightness(true);
+  ESP_ERROR_CHECK(setBrightness(100) ? ESP_OK : ESP_FAIL);
 }
 
-void DisplayDriver::setBrightness(bool enabled) {
-  ESP_ERROR_CHECK(gpio_set_level(static_cast<gpio_num_t>(board::kBacklight), enabled ? 0 : 1));
+bool DisplayDriver::setBrightness(uint32_t percent) {
+  if (percent > 100) return false;
+  // Eight-bit LEDC supports duty 0..256, including continuous low/high endpoints.
+  const uint32_t duty = ((100 - percent) * 256 + 50) / 100;
+  if (ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty) != ESP_OK ||
+      ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0) != ESP_OK) return false;
+  brightnessPercent_ = percent;
+  return true;
 }
 
 void DisplayDriver::flush(lv_display_t* display, const lv_area_t* area, uint8_t* pixels) {

@@ -82,7 +82,7 @@ lv_obj_t* ScreenView::progressBar(lv_obj_t* parent, int x, int y, int width) {
 
 void ScreenView::initialize() {
   auto* screen = lv_screen_active();
-  lv_obj_set_style_bg_color(screen, lv_color_hex(0x101820), 0);
+  lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
   lv_obj_set_style_text_color(screen, lv_color_hex(0xf0f4f8), 0);
   lv_obj_set_style_text_font(screen, &lv_font_source_han_sans_sc_16_cjk, 0);
   lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);

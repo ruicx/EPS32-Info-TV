@@ -42,6 +42,9 @@ const char* validateCommand(const Envelope& envelope) {
   if (envelope.protocol_version != 1) return "Unsupported protocol version";
   if (!envelope.session_id[0] || !envelope.message_id[0]) return "Missing operation identity";
   switch (envelope.which_body) {
+    case info_tv_v1_Envelope_device_settings_tag:
+      return envelope.body.device_settings.has_brightness_percent &&
+          envelope.body.device_settings.brightness_percent <= 100 ? nullptr : "Invalid brightness";
     case info_tv_v1_Envelope_snapshot_tag: {
       const auto& snapshot = envelope.body.snapshot;
       for (size_t index = 0; index < snapshot.cards_count; ++index) {

@@ -13,8 +13,10 @@ class DisplayDriver {
  public:
   /** Initialize the board and LVGL display from the UI task. */
   void initialize();
-  /** Switch the active-low backlight without assuming calibrated brightness. */
-  void setBrightness(bool enabled);
+  /** Apply an active-low PWM level in 0..100; return false on driver failure. */
+  bool setBrightness(uint32_t percent);
+  /** Return whether the last successfully applied level enables the backlight. */
+  bool backlightEnabled() const { return brightnessPercent_ > 0; }
   /** Force one refresh associated with a presentation generation. */
   void present(uint32_t generation);
   /** Return whether the current refresh still owns the DMA buffer. */
@@ -32,6 +34,7 @@ class DisplayDriver {
   esp_lcd_panel_io_handle_t io_ = nullptr;
   esp_lcd_panel_handle_t panel_ = nullptr;
   lv_display_t* display_ = nullptr;
+  uint32_t brightnessPercent_ = 0;
   std::atomic<bool> lastFlush_{false};
   std::atomic<uint32_t> activeGeneration_{0};
   std::atomic<uint32_t> completedGeneration_{0};
