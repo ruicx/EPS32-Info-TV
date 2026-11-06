@@ -236,7 +236,8 @@ int main(int argc, char** argv) {
   CHECK(hasLabel("消息接口"));
   CHECK(hasLabel("RUN") && hasLabel("WAIT") && hasLabel("FAIL"));
   CHECK(hasLabel(LV_SYMBOL_OK));
-  CHECK(hasLabel("23\xc2\xb0" "C") && hasLabel("Clear"));
+  CHECK(hasLabel("23\xc2\xb0" "C") && !hasLabel("Clear"));
+  CHECK(hasLabel(LV_SYMBOL_USB) && !hasLabel("USB online"));
   CHECK(visibleBars() == 1 && visibleBars(42) == 1);
   lv_refr_now(display);
   save(capture, std::string(argv[1]) + "-overview.ppm");
@@ -295,7 +296,7 @@ int main(int argc, char** argv) {
   checkBounds();
   CHECK(hasLabel("RUN"));
   CHECK(visibleBars() == 0);
-  CHECK(hasLabel("Offline"));
+  CHECK(hasLabel(LV_SYMBOL_CLOSE) && !hasLabel(LV_SYMBOL_USB));
   lv_refr_now(display);
   save(capture, std::string(argv[1]) + "-offline.ppm");
   model.kind = info_tv::RenderModel::Kind::kNotification;
@@ -333,7 +334,7 @@ int main(int argc, char** argv) {
   screen.render(model);
   checkBounds();
   CHECK(hasLabel("No tasks yet") && !hasLabel("#edf2f7 1#/3"));
-  CHECK(hasLabel("Clear"));
+  CHECK(!hasLabel("Clear"));
   CHECK(!hasLabel("last: running"));
   CHECK(visibleBars() == 0);
   lv_refr_now(display);
@@ -386,7 +387,7 @@ int main(int argc, char** argv) {
   screen.render(model);
   checkBounds();
   CHECK(hasLabel("ORG Rain") && hasLabel(LV_SYMBOL_WARNING));
-  CHECK(!hasLabel("18\xc2\xb0 / 26\xc2\xb0"));
+  CHECK(hasLabel("18\xc2\xb0 / 26\xc2\xb0"));
   lv_refr_now(display);
   save(capture, std::string(argv[1]) + "-weather-alert.ppm");
   model.kind = info_tv::RenderModel::Kind::kNotification;
@@ -407,7 +408,7 @@ int main(int argc, char** argv) {
   model.weatherNotification = false;
   model.weatherFresh = false;
   screen.render(model);
-  CHECK(hasLabel("ORG Rain") && !hasLabel("Stale"));
+  CHECK(hasLabel("ORG Rain") && hasLabel("Stale"));
   model.weatherAlertActive = false;
   screen.render(model);
   CHECK(hasLabel("Stale"));

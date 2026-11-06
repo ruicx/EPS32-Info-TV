@@ -4,14 +4,14 @@ Status: Version 1 with eight-card overview extensions tested on desktop, firmwar
 
 Updated: 2026-11-06
 
-Subsequent revision: Task-purpose icons and compact five-row pages are
-desktop-tested and firmware-built, but have not been flashed. The earlier physical
-confirmation applies to the original overview. See [Bubble UI validation](bubble-ui-validation.md).
-Device brightness control is also implemented and firmware-built without flashing;
-see [Brightness control](brightness-control.md) for the API and validation scope.
-The current UI has three message rows and a persistent companion/weather area;
-see [Companion UI validation](companion-ui-validation.md). This revision is also
-desktop-tested and firmware-built without flashing.
+The latest three-row companion/weather firmware was
+[flashed on 2026-11-06](hardware-validation.md#7-companion-weather-and-alert-firmware-deployment).
+Five simulated cards and a TEST weather notification returned actual device
+Presented feedback; brightness 100% returned Applied feedback. The earlier visual
+confirmation applies to the original overview. See
+[Companion UI validation](companion-ui-validation.md),
+[Brightness control](brightness-control.md), and
+[Weather UI validation](weather-ui-validation.md) for scope and remaining checks.
 
 ## 1. Contract and Generation
 

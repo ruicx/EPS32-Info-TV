@@ -2,7 +2,9 @@
 
 Date: 2026-11-06
 
-Status: Implemented, desktop-tested, and firmware-built. Not flashed.
+Status: Implemented, desktop-tested, and firmware-built. Firmware incorporating
+this style was [flashed on 2026-11-06](hardware-validation.md#7-companion-weather-and-alert-firmware-deployment);
+visual confirmation remains pending.
 
 The subsequent [weather extension](weather-ui-validation.md) adds local weather
 icons, daily ranges, and hazard alerts. The images below retain this styling

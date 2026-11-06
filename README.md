@@ -68,7 +68,9 @@ Each row shows an icon, title, and state, with a thin progress bar when known.
 Use optional `icon` values `task` (default), `code`, `test`, `build`, `review`, or
 `deploy`; `progress_percent` accepts an integer 0..100 or null.
 Waiting/failed rows sort first; all pages remain reachable. The compact icon
-revision passed desktop checks and a firmware build; it has not been flashed.
+revision passed desktop checks and a firmware build. The latest companion/weather
+firmware was [flashed on 2026-11-06](docs/hardware-validation.md#7-companion-weather-and-alert-firmware-deployment);
+five cards and a TEST weather alert returned actual device Presented feedback.
 The original three-row overview was flashed on 2026-11-05; five cards and two notifications
 reported actual device Presented feedback. The user confirmed physical text,
 layout, and page rotation on the same date. Update the firmware together with the host: older firmware
@@ -83,6 +85,8 @@ locally. No city or weather provider is configured automatically.
 Weather now supports local condition icons and optional `daily_low_c` /
 `daily_high_c`. `PUT /v1/weather/alert` controls one independent hazard marker
 with first/upgrade notifications. See [weather previews and API](docs/weather-ui-validation.md).
+Connection status is a small USB/offline icon in the header, leaving separate
+weather range/freshness and warning lines; see [current layout](docs/header-connection-ui.md).
 
 Character artwork: [YunYueSama / codex-deepseek-pet](https://github.com/YunYueSama/codex-deepseek-pet),
 modified by selecting a frame, trimming transparency, and resizing. See the
@@ -94,7 +98,8 @@ Device backlight settings are available through `PUT /v1/device/settings` with
 `{"brightness_percent":30}` (integer 0..100; zero turns the backlight off).
 `GET /v1/device/settings` distinguishes the target from device Applied feedback.
 The host retains the target for its process lifetime and restores it on reconnect.
-The brightness revision is built and desktop-tested, but not flashed. Update host
+The brightness revision is built and desktop-tested; the latest flashed firmware
+returned Applied feedback at 100%. Update host
 and firmware together; see [brightness control](docs/brightness-control.md).
 
 Use an activated **ESP-IDF v6.1** environment, separate from the host uv environment:

@@ -6,7 +6,9 @@ message styling.
 
 Date: 2026-11-06
 
-Status: Desktop-rendered and firmware-built; not flashed. The previous static
+Status: Desktop-rendered and firmware-built. Firmware incorporating this animation
+was [flashed on 2026-11-06](hardware-validation.md#7-companion-weather-and-alert-firmware-deployment);
+visual smoothness remains unconfirmed. The previous static
 companion/weather layout is committed as `a146a79`. Animation is a subsequent
 change and does not modify the host API or wire protocol.
 

@@ -162,3 +162,143 @@ Local evidence:
 
 The new UI's desktop screenshots and test scope are recorded in
 [Multi-conversation Validation](multi-conversation-validation.md).
+
+## 7. Companion, weather, and alert firmware deployment
+
+Date: 2026-11-06. The user connected the device and requested flashing the latest
+tested firmware, commit `aabb11d`.
+
+The ESP32-S3 was confirmed on COM6 with USB VID:PID `303A:1001` and MAC
+`58:e6:c5:68:6c:70`. The verified prior project host processes were stopped after
+saving their device/task state. Addresses `0x0..0x10ffff` were backed up to
+`.local/device-backups/info-tv-before-weather-20261106.bin` before writing:
+
+- Length: 1,114,112 bytes, including bootloader, partition table, and the complete
+  1 MiB app partition. Earlier region and full-Flash backups remain intact.
+- SHA-256: `89C46A4371125B9EBFB3E0497D90BC5F8982C0C2EB90AF62D1EF2072B276A3D1`.
+
+Esptool 5.6.0 wrote and hash-verified the following images with DIO, 80 MHz,
+16 MiB Flash settings, then hard-reset the device. No eFuses were programmed.
+
+| Image | Address | Length |
+| --- | --- | --- |
+| Bootloader | `0x0` | 21,120 bytes |
+| Partition table | `0x8000` | 3,072 bytes |
+| Application | `0x10000` | 872,624 bytes |
+
+Application SHA-256:
+`9B3EBBCA825962B7FB055668C1C3581609B8DE2DF4ECE19AC921A7E04A40618C`.
+
+The updated production host was started hidden at `http://127.0.0.1:8765`,
+using COM6. Launcher PID was 30928; server PID was 49024 at deployment. These
+are observations, not stable process identifiers. The device reached `online`
+with no reported error, requiring the eight-card, task-icon, brightness,
+weather, and weather-details capability handshake. Brightness 100% returned
+Applied feedback. This confirms driver application, not optical calibration.
+
+Five simulated Codex/agy cards each returned Accepted and actual device
+Presented feedback, exercising both three-row overview pages. Two task-state
+notifications also returned Presented. Synthetic weather `Shanghai`, 23 degrees
+Celsius, daily range 18..26, was accepted independently of the cards.
+
+A separate orange `TEST Rain` warning from `Demo` was submitted with a 60-second
+lifetime and detail `Demo only; no real warning.` Its important notification
+returned Accepted and Presented. After the notification interval, the host still
+reported an active alert. The test alert was explicitly withdrawn; the clear
+was accepted, and synthetic clear weather was restored and accepted. Final
+device state was `online`, alert `unavailable`, brightness Applied at 100%, and
+all five simulated task cards retained. Weather and warning values are fixtures,
+not actual observations or real alerts.
+
+Presented confirms firmware UI refresh/DMA completion. Visual appearance,
+animation smoothness, physical warning-marker behavior, and panel brightness
+still await user observation; no new visual confirmation is recorded here.
+
+Local evidence:
+
+- `.local/hardware-validation/before-weather-flash.json`
+- `.local/hardware-validation/weather-backup.log` and `weather-flash.log`
+- `.local/hardware-validation/weather-conversations-demo.log` and `weather-demo-tasks.json`
+- `.local/hardware-validation/weather-alert-request.json`, `weather-alert-presented.json`,
+  and `weather-alert-after-notification.json`
+- `.local/hardware-validation/weather-deployment-device.json`
+- `.local/device-backups/info-tv-before-weather-20261106.bin.json`
+- `.local/run/host-process.json` and `host-weather.stdout.log` / `host-weather.stderr.log`
+
+See [Weather UI validation](weather-ui-validation.md) for the API and desktop
+scope. The background host is manually started, not an installed/autostart service.
+
+## 8. Header connection icon deployment
+
+Date: 2026-11-06. During the connected-device UI trial, connection status moved
+from the weather footer to the header, freeing a separate weather line. Source:
+`aabb11d` plus the uncommitted header/weather-line UI changes. The implementation
+and actual desktop captures are in [Header connection UI](header-connection-ui.md).
+
+The same ESP32-S3 MAC `58:e6:c5:68:6c:70` was verified on COM6. Before writing,
+the current device/task state was saved and the project host stopped. The
+`0x0..0x10ffff` region backup is
+`.local/device-backups/info-tv-before-header-20261106.bin` (1,114,112 bytes),
+SHA-256 `C83274D765C9806DBC816C5B24F2CDAB0C66233D41C047E34647EEB23F7DED88`.
+Previous backups remain intact.
+
+Esptool wrote and hash-verified bootloader (21,120 bytes at `0x0`), partition
+table (3,072 bytes at `0x8000`), and application (872,608 bytes at `0x10000`),
+using the same DIO/80 MHz/16 MiB settings, then hard-reset the device. No eFuses
+were programmed. Application SHA-256:
+`B14058BBC45FA29301D0185C0D8A052DB1E62497FD7EE83161A105EE7E03B760`.
+
+The production host was restarted hidden on the same loopback URL/COM6. COM6
+was temporarily held during HTTP state restoration, so the five saved demo
+conversations were admitted while offline and old transition notices were not
+replayed. The temporary port holder was disposed before normal synchronization.
+The existing synthetic Shanghai weather, current temperature, and daily range
+were restored with reduced remaining freshness rather than a renewed lifetime.
+
+After release, the device reached `online` without a remaining error. All five
+cards returned actual device Presented feedback through the recovery snapshot;
+the weather snapshot was accepted. The test alert remained withdrawn. Launcher
+PID was 1136 and server PID 34764 at deployment; these are observations only.
+Physical icon readability and layout still await user confirmation. No physical
+Bluetooth or Wi-Fi path was tested or added.
+
+Additional local evidence:
+
+- `.local/hardware-validation/before-header-flash.json`
+- `.local/hardware-validation/header-backup.log` and `header-flash.log`
+- `.local/hardware-validation/header-restored-admissions.json`
+- `.local/hardware-validation/header-deployment-device.json` and `header-deployment-tasks.json`
+- `.local/device-backups/info-tv-before-header-20261106.bin.json`
+- `.local/run/host-process.json` and `host-header.stdout.log` / `host-header.stderr.log`
+
+## 9. Weather label simplification
+
+Date: 2026-11-06. The user agreed to remove redundant condition names such as
+`Clear`. The daily range now sits directly below the current temperature, and
+the bottom line is reserved for warnings. `Stale` and `Not set` remain visible
+when applicable. This supersedes the condition/range placement in section 8.
+
+Four native CTest targets and the ESP-IDF v6.1 build passed. Source remains
+`aabb11d` plus the uncommitted header/weather UI changes. The same COM6 device
+and MAC were verified; its `0x0..0x10ffff` region was backed up to
+`.local/device-backups/info-tv-before-weather-clean-20261106.bin` (1,114,112 bytes),
+SHA-256 `ED9C8C16A86380194349966A33D32F9D089EC86536F1E017400300AEA8587EDD`.
+
+Esptool wrote and hash-verified the bootloader, partition table, and the new
+872,368-byte application, using the same addresses and DIO/80 MHz/16 MiB
+settings. No eFuses were programmed. App SHA-256:
+`326DC136CC431DB024EF66433ED7A1651A435B1BB4D99F9D26B1ED42F472B539`.
+
+The host was restarted hidden with the same silent offline restoration used in
+section 8. All five demo cards returned device Presented feedback; the synthetic
+Shanghai weather/range was restored with reduced freshness and accepted in the
+snapshot. Final state was `online` with no remaining error. Launcher PID was
+36480 and server PID 11856 at deployment. The alert remained withdrawn. Visual
+confirmation of the revised layout remains pending.
+
+Evidence uses `.local/hardware-validation/before-weather-clean-flash.json`,
+`weather-clean-backup.log`, `weather-clean-flash.log`,
+`weather-clean-restored-admissions.json`, `weather-clean-deployment-device.json`,
+and `weather-clean-deployment-tasks.json`. Backup metadata is adjacent to the
+image. Process metadata remains `.local/run/host-process.json`; current logs are
+`host-weather-clean.stdout.log` and `host-weather-clean.stderr.log` there.

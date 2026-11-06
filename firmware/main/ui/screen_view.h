@@ -35,13 +35,13 @@ class ScreenView {
   lv_obj_t* status_ = nullptr;
   lv_obj_t* detail_ = nullptr;
   lv_obj_t* progress_ = nullptr;
-  lv_obj_t* footer_ = nullptr;
   lv_obj_t* page_ = nullptr;
   lv_obj_t* connection_ = nullptr;
   lv_obj_t* empty_ = nullptr;
   lv_obj_t* location_ = nullptr;
   lv_obj_t* temperature_ = nullptr;
   lv_obj_t* conditions_ = nullptr;
+  lv_obj_t* weatherDetails_ = nullptr;
   lv_obj_t* weatherIcon_ = nullptr;
   lv_obj_t* weatherAlertIcon_ = nullptr;
   info_tv_v1_WeatherCondition weatherCondition_ = info_tv_v1_WeatherCondition_WEATHER_CONDITION_UNKNOWN;

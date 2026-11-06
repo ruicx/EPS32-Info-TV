@@ -2,8 +2,9 @@
 
 Date: 2026-11-06
 
-Status: Implemented, desktop-tested, and firmware-built. Not flashed. Previous
-physical confirmation applies to the earlier message UI, not this revision.
+Status: Implemented, desktop-tested, and firmware-built. Firmware incorporating
+this layout was [flashed on 2026-11-06](hardware-validation.md#7-companion-weather-and-alert-firmware-deployment).
+Previous visual confirmation applies to the earlier message UI, not this revision.
 
 This record describes the static layout committed as `a146a79`. The subsequent
 [local animation revision](companion-animation.md) adds blinking and occasional

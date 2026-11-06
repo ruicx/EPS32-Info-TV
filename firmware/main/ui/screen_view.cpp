@@ -55,19 +55,6 @@ const char* compactState(const char* text) {
   return text;
 }
 
-/** Name the bounded weather catalog without requiring additional font glyphs. */
-const char* weatherCondition(info_tv_v1_WeatherCondition condition) {
-  switch (condition) {
-    case info_tv_v1_WeatherCondition_WEATHER_CONDITION_CLEAR: return "Clear";
-    case info_tv_v1_WeatherCondition_WEATHER_CONDITION_CLOUDY: return "Cloudy";
-    case info_tv_v1_WeatherCondition_WEATHER_CONDITION_RAIN: return "Rain";
-    case info_tv_v1_WeatherCondition_WEATHER_CONDITION_SNOW: return "Snow";
-    case info_tv_v1_WeatherCondition_WEATHER_CONDITION_STORM: return "Storm";
-    case info_tv_v1_WeatherCondition_WEATHER_CONDITION_FOG: return "Fog";
-    default: return "Unknown";
-  }
-}
-
 /** Sample upstream idle poses by elapsed time, skipping missed frames. */
 const lv_image_dsc_t* companionFrame(uint64_t nowMs) {
   const lv_image_dsc_t* shifts[] = {&whale_shift_0, &whale_shift_1, &whale_shift_2,
@@ -233,31 +220,27 @@ void ScreenView::initialize() {
   temperature_ = label(screen, 106, 174, 86, 22);
   lv_obj_set_style_text_font(temperature_, &lv_font_montserrat_16, 0);
   conditions_ = label(screen, 106, 198, 122, 18);
+  weatherDetails_ = label(screen, 124, 220, 104, 18);
+  lv_obj_set_style_text_font(weatherDetails_, &smallFont_, 0);
   weatherIcon_ = lv_obj_create(screen);
   lv_obj_remove_style_all(weatherIcon_);
   lv_obj_set_pos(weatherIcon_, 196, 169);
   lv_obj_set_size(weatherIcon_, 32, 29);
   lv_obj_remove_flag(weatherIcon_, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_event_cb(weatherIcon_, drawWeatherIcon, LV_EVENT_DRAW_MAIN, this);
-  weatherAlertIcon_ = label(screen, 106, 198, 16, 18);
+  weatherAlertIcon_ = label(screen, 106, 220, 16, 18);
   lv_obj_set_style_text_font(weatherAlertIcon_, &smallFont_, 0);
   lv_label_set_text(weatherAlertIcon_, LV_SYMBOL_WARNING);
   lv_obj_set_style_text_font(conditions_, &smallFont_, 0);
   lv_obj_set_style_text_color(location_, lv_color_hex(0xb1bdcb), 0);
   lv_obj_set_style_text_color(conditions_, lv_color_hex(0x9baabd), 0);
-  connection_ = lv_obj_create(screen);
-  lv_obj_remove_style_all(connection_);
-  lv_obj_set_pos(connection_, 106, 226);
-  lv_obj_set_size(connection_, 5, 5);
-  lv_obj_set_style_radius(connection_, LV_RADIUS_CIRCLE, 0);
-  lv_obj_set_style_bg_opa(connection_, LV_OPA_COVER, 0);
-  footer_ = label(screen, 117, 220, 111, 20);
+  connection_ = label(screen, 176, 7, 16, 18);
+  lv_obj_set_style_text_font(connection_, &smallFont_, 0);
+  lv_obj_set_style_text_align(connection_, LV_TEXT_ALIGN_CENTER, 0);
   page_ = label(screen, 197, 7, 31, 18);
   lv_label_set_recolor(page_, true);
-  for (auto* object : {footer_, page_}) {
-    lv_obj_set_style_text_font(object, &smallFont_, 0);
-    lv_obj_set_style_text_color(object, lv_color_hex(0x9baabd), 0);
-  }
+  lv_obj_set_style_text_font(page_, &smallFont_, 0);
+  lv_obj_set_style_text_color(page_, lv_color_hex(0x9baabd), 0);
   lv_obj_set_style_text_align(page_, LV_TEXT_ALIGN_RIGHT, 0);
   for (size_t row = 0; row < policy::kRowsPerPage; ++row) {
     rowBubbles_[row] = bubble(29 + row * 38, 34);
@@ -355,14 +338,16 @@ void ScreenView::render(const RenderModel& model) {
       lv_obj_set_style_bg_color(progress_, color, LV_PART_INDICATOR);
     }
   }
-  lv_obj_set_style_bg_color(connection_, lv_color_hex(model.connected ? 0x82dcb4 : 0xffcf7a), 0);
-  lv_label_set_text(footer_, model.connected ? "USB online" : "Offline");
+  lv_label_set_text(connection_, model.connected ? LV_SYMBOL_USB : LV_SYMBOL_CLOSE);
+  lv_obj_set_style_text_color(connection_, lv_color_hex(model.connected ? 0x82dcb4 : 0x718093), 0);
   const auto& weather = model.weather;
   lv_label_set_text(location_, weather.has_temperature_c ? weather.location :
       model.weatherAlertActive ? model.weatherAlert.location : "Weather");
   weatherCondition_ = weather.condition;
   weatherIconFresh_ = model.weatherFresh;
   lv_obj_add_flag(weatherIcon_, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(conditions_, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(weatherDetails_, LV_OBJ_FLAG_HIDDEN);
   if (weather.has_temperature_c) {
     lv_obj_remove_flag(weatherIcon_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_invalidate(weatherIcon_);
@@ -372,27 +357,26 @@ void ScreenView::render(const RenderModel& model) {
       std::snprintf(text, sizeof(text), "%d\xc2\xb0 / %d\xc2\xb0",
                     static_cast<int>(weather.daily_low_c), static_cast<int>(weather.daily_high_c));
       lv_label_set_text(conditions_, text);
-    } else {
-      lv_label_set_text(conditions_, model.weatherFresh ? weatherCondition(weather.condition) : "Stale");
+      lv_obj_remove_flag(conditions_, LV_OBJ_FLAG_HIDDEN);
+    } else if (!model.weatherFresh) {
+      lv_label_set_text(conditions_, "Stale");
+      lv_obj_remove_flag(conditions_, LV_OBJ_FLAG_HIDDEN);
     }
   } else {
     lv_label_set_text(temperature_, "--\xc2\xb0" "C");
     lv_label_set_text(conditions_, "Not set");
+    lv_obj_remove_flag(conditions_, LV_OBJ_FLAG_HIDDEN);
   }
   lv_obj_add_flag(weatherAlertIcon_, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_set_pos(conditions_, 106, 198);
-  lv_obj_set_width(conditions_, 122);
-  lv_obj_set_style_text_color(conditions_, lv_color_hex(0x9baabd), 0);
   if (model.weatherAlertActive) {
     const auto severity = model.weatherAlert.severity;
     const char* levels[] = {"", "BLU", "YLW", "ORG", "RED"};
     const uint32_t colors[] = {0, 0x8bc5ff, 0xffdf7a, 0xffb16b, 0xff9b9b};
     std::snprintf(text, sizeof(text), "%s %s", levels[severity], model.weatherAlert.title);
-    lv_label_set_text(conditions_, text);
-    lv_obj_set_pos(conditions_, 124, 198);
-    lv_obj_set_width(conditions_, 104);
+    lv_label_set_text(weatherDetails_, text);
+    lv_obj_remove_flag(weatherDetails_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_remove_flag(weatherAlertIcon_, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_style_text_color(conditions_, lv_color_hex(colors[severity]), 0);
+    lv_obj_set_style_text_color(weatherDetails_, lv_color_hex(colors[severity]), 0);
     lv_obj_set_style_text_color(weatherAlertIcon_, lv_color_hex(colors[severity]), 0);
   }
   lv_obj_set_style_text_color(temperature_, lv_color_hex(model.weatherFresh ? 0xf0f4f8 : 0x9baabd), 0);

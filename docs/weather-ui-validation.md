@@ -2,9 +2,17 @@
 
 Date: 2026-11-06
 
-Status: Implemented, desktop-tested, and firmware-built. Not flashed. Weather
+Status: Implemented, desktop-tested, firmware-built, and flashed on 2026-11-06.
+Five demo cards and a TEST alert notification returned actual device Presented
+feedback; visual confirmation remains pending. See the
+[deployment record](hardware-validation.md#7-companion-weather-and-alert-firmware-deployment). Weather
 and alerts remain producer-supplied; no provider or automatic city detection is
 configured. All screenshots use synthetic fixtures, not actual warnings.
+
+The subsequent [header connection revision](header-connection-ui.md) moves USB
+status to the top bar, omits redundant condition names, and places the daily
+range/freshness and warnings on separate lines. The captures below preserve the
+original weather layout.
 
 ## Actual LVGL output
 

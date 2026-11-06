@@ -3,8 +3,10 @@
 Date: 2026-11-06
 
 Status: Implemented in the host API, shared protocol, and ESP32-S3 backlight
-driver. Desktop checks and a firmware build passed. The firmware has not been
-flashed; actual panel brightness and PWM behavior still require physical validation.
+driver. Desktop checks and a firmware build passed. The latest firmware was
+[flashed on 2026-11-06](hardware-validation.md#7-companion-weather-and-alert-firmware-deployment)
+and returned Applied feedback at 100%. Actual panel brightness and PWM behavior
+still require physical validation.
 
 ## Local API
 

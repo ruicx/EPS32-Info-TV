@@ -16,7 +16,14 @@ whale companion and persistent weather. Counts and page position are in the
 header. Sparse pages leave black space, and zero tasks show a short idle label.
 This supersedes the five-row layout. See
 [Companion UI validation](companion-ui-validation.md) for current previews, the
-weather API, asset attribution, and desktop verification. It has not been flashed.
+weather API, asset attribution, and desktop verification. The latest firmware was
+[flashed on 2026-11-06](hardware-validation.md#7-companion-weather-and-alert-firmware-deployment);
+visual confirmation remains pending.
+
+The [header connection revision](header-connection-ui.md) moves actual USB/offline
+status to a small header icon. Weather now has separate daily-range/freshness and
+warning lines; redundant condition names are omitted. Bluetooth and Wi-Fi transport
+remain unimplemented.
 
 The latest [message UI polish](message-ui-polish.md) uses neutral bordered
 surfaces, compact colored status badges, and a quieter header with an attention
@@ -41,7 +48,7 @@ require every category to use the same bubble height or number of text lines.
 
 | Category | Examples | Lifecycle | Implementation status |
 | --- | --- | --- | --- |
-| Task status | Codex or agy execution state | Update one persistent entry per conversation/task; state transitions can also notify | Compact rows, preset icons, and progress bars implemented; not flashed |
+| Task status | Codex or agy execution state | Update one persistent entry per conversation/task; state transitions can also notify | Compact rows, preset icons, and progress bars implemented and flashed; visual confirmation pending |
 | Schedule reminder | Upcoming meeting or deadline | Keep the next eligible item in the overview and temporarily expand it at reminder time | Not implemented |
 | Information card | Weather or a device metric | Replace current values and show freshness/validity | Producer-supplied weather occupies the persistent area; generic metrics and weather retrieval are not implemented |
 | Instant notification | External message, task completion, or failure alert | Temporarily display, then restore the overview | Task transition notifications implemented; generic external notification API not implemented |
@@ -102,11 +109,11 @@ Task purpose is independent of source identity.
 Use a dark background, muted metadata, and neutral surfaces with thin borders. Amber, red,
 green, and blue accents accompany the state text for attention, failure,
 completion, and ordinary progress in icons, status badges, and progress bars. Offline bubbles use a neutral surface and
-an `Offline` indicator without a live percentage. Keep the connection indicator
-in the persistent area and the page count in the header, outside the bubbles.
+a disconnected header icon without a live percentage. Keep the connection
+indicator and page count in the header, outside the bubbles.
 
 The bottom 88 px are reserved for a full-body character on the left and weather
-plus connection state on the right. One or two rows stay aligned to the top;
+plus separate weather detail lines on the right. One or two rows stay aligned to the top;
 unused slots remain black. Zero tasks show `No tasks yet`. The bottom area does
 not move when cards arrive, leave a partial page, or are replaced by a notification.
 
@@ -168,8 +175,8 @@ so later updates must repeat an icon that should remain selected. Cards and
 notifications share the same preset. The firmware uses bundled LVGL symbols,
 not arbitrary images or emoji. The host requires `Hello.task_icons = true`
 before synchronization, so this revision needs a paired host/firmware update.
-All six presets and progress presence are covered by desktop tests; the new
-firmware has not been flashed.
+All six presets and progress presence are covered by desktop tests. Firmware
+incorporating these features was flashed on 2026-11-06; see the deployment record above.
 
 ### Multiple Agent Conversations Updating Continuously
 
@@ -264,8 +271,8 @@ exists, calendar content occupies no space. The source, eligibility rules, and
 reminder lead time remain open; this behavior is not implemented yet.
 
 Weather uses one main temperature, city, and local weather icon in the persistent
-area. Its supplemental line shows an active hazard alert first, then stale data,
-daily low/high when supplied, or condition text. First/upgrade alerts can show
+area. Daily low/high or freshness has a dedicated line; the bottom line is
+reserved for an active hazard alert. First/upgrade alerts can show
 an important notification; notification dismissal retains the valid marker.
 Missing data shows `Not set`; expired cached data shows `Stale` with a
 dimmed temperature. This state is separate from USB connection status. A
