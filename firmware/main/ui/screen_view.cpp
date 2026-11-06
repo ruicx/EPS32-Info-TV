@@ -3,6 +3,10 @@
 #include <cstdio>
 #include <cstring>
 
+extern "C" {
+LV_IMAGE_DECLARE(whale_idle);
+}
+
 namespace info_tv {
 namespace {
 /** Map a reported state to a readable foreground accent. */
@@ -44,6 +48,19 @@ const char* compactState(const char* text) {
   if (!std::strcmp(text, "completed")) return "DONE";
   if (!std::strcmp(text, "failed")) return "FAIL";
   return text;
+}
+
+/** Name the bounded weather catalog without requiring additional font glyphs. */
+const char* weatherCondition(info_tv_v1_WeatherCondition condition) {
+  switch (condition) {
+    case info_tv_v1_WeatherCondition_WEATHER_CONDITION_CLEAR: return "Clear";
+    case info_tv_v1_WeatherCondition_WEATHER_CONDITION_CLOUDY: return "Cloudy";
+    case info_tv_v1_WeatherCondition_WEATHER_CONDITION_RAIN: return "Rain";
+    case info_tv_v1_WeatherCondition_WEATHER_CONDITION_SNOW: return "Snow";
+    case info_tv_v1_WeatherCondition_WEATHER_CONDITION_STORM: return "Storm";
+    case info_tv_v1_WeatherCondition_WEATHER_CONDITION_FOG: return "Fog";
+    default: return "Unknown";
+  }
 }
 }  // namespace
 
@@ -88,29 +105,43 @@ void ScreenView::initialize() {
   lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
   smallFont_ = lv_font_montserrat_14;
   smallFont_.fallback = &lv_font_source_han_sans_sc_16_cjk;
-  header_ = label(screen, 12, 5, 110, 20);
-  summary_ = label(screen, 124, 7, 104, 18);
+  header_ = label(screen, 12, 5, 70, 20);
+  summary_ = label(screen, 82, 7, 104, 18);
   lv_obj_set_style_text_font(summary_, &smallFont_, 0);
   lv_obj_set_style_text_align(summary_, LV_TEXT_ALIGN_RIGHT, 0);
-  message_ = bubble(37, 175);
-  icon_ = label(message_, 10, 9, 18, 20);
+  message_ = bubble(29, 110);
+  icon_ = label(message_, 10, 5, 18, 20);
   lv_obj_set_style_text_font(icon_, &lv_font_montserrat_16, 0);
-  sender_ = label(message_, 34, 9, 174, 20);
+  sender_ = label(message_, 34, 5, 174, 20);
   lv_obj_set_style_text_font(sender_, &smallFont_, 0);
   lv_obj_set_style_text_color(sender_, lv_color_hex(0xb1bdcb), 0);
-  title_ = label(message_, 10, 34, 198, 44);
-  status_ = label(message_, 10, 82, 198, 22);
-  detail_ = label(message_, 10, 108, 198, 44);
+  title_ = label(message_, 10, 27, 198, 22);
+  status_ = label(message_, 10, 51, 198, 22);
+  detail_ = label(message_, 10, 76, 198, 20);
   lv_obj_set_style_text_color(detail_, lv_color_hex(0xc7d2df), 0);
-  progress_ = progressBar(message_, 10, 160, 198);
+  progress_ = progressBar(message_, 10, 102, 198);
+  empty_ = label(screen, 12, 65, 216, 22);
+  lv_label_set_text(empty_, "No tasks yet");
+  lv_obj_set_style_text_align(empty_, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_color(empty_, lv_color_hex(0x9baabd), 0);
+  auto* character = lv_image_create(screen);
+  lv_image_set_src(character, &whale_idle);
+  lv_obj_set_pos(character, 14, 152);
+  location_ = label(screen, 106, 151, 122, 20);
+  temperature_ = label(screen, 106, 174, 122, 22);
+  lv_obj_set_style_text_font(temperature_, &lv_font_montserrat_16, 0);
+  conditions_ = label(screen, 106, 198, 122, 18);
+  lv_obj_set_style_text_font(conditions_, &smallFont_, 0);
+  lv_obj_set_style_text_color(location_, lv_color_hex(0xb1bdcb), 0);
+  lv_obj_set_style_text_color(conditions_, lv_color_hex(0x9baabd), 0);
   connection_ = lv_obj_create(screen);
   lv_obj_remove_style_all(connection_);
-  lv_obj_set_pos(connection_, 12, 226);
+  lv_obj_set_pos(connection_, 106, 226);
   lv_obj_set_size(connection_, 5, 5);
   lv_obj_set_style_radius(connection_, LV_RADIUS_CIRCLE, 0);
   lv_obj_set_style_bg_opa(connection_, LV_OPA_COVER, 0);
-  footer_ = label(screen, 23, 220, 174, 20);
-  page_ = label(screen, 197, 220, 31, 20);
+  footer_ = label(screen, 117, 220, 111, 20);
+  page_ = label(screen, 197, 7, 31, 18);
   for (auto* object : {footer_, page_}) {
     lv_obj_set_style_text_font(object, &smallFont_, 0);
     lv_obj_set_style_text_color(object, lv_color_hex(0x9baabd), 0);
@@ -134,19 +165,22 @@ void ScreenView::render(const RenderModel& model) {
   char text[256];
   const bool notification = model.kind == RenderModel::Kind::kNotification;
   const bool overview = model.kind == RenderModel::Kind::kOverview;
+  lv_obj_add_flag(empty_, LV_OBJ_FLAG_HIDDEN);
   for (auto* object : {message_, progress_})
     lv_obj_add_flag(object, LV_OBJ_FLAG_HIDDEN);
   for (size_t row = 0; row < policy::kRowsPerPage; ++row) {
     lv_obj_add_flag(rowBubbles_[row], LV_OBJ_FLAG_HIDDEN);
   }
-  lv_label_set_text(header_, notification ? "New message" : "Messages");
+  std::snprintf(text, sizeof(text), "%u %s", static_cast<unsigned>(model.cardCount),
+                model.cardCount == 1 ? "task" : "tasks");
+  lv_label_set_text(header_, text);
   lv_label_set_text(summary_, "");
-  if (overview) {
-    std::snprintf(text, sizeof(text), "%u sessions", static_cast<unsigned>(model.cardCount));
-    lv_label_set_text(header_, text);
+  if (model.attentionCount) {
     std::snprintf(text, sizeof(text), "%u need you", static_cast<unsigned>(model.attentionCount));
     lv_label_set_text(summary_, text);
-    lv_obj_set_style_text_color(summary_, lv_color_hex(model.attentionCount ? 0xffcf7a : 0x9baabd), 0);
+    lv_obj_set_style_text_color(summary_, lv_color_hex(0xffcf7a), 0);
+  }
+  if (overview) {
     for (size_t row = 0; row < model.rowCount; ++row) {
       const auto& view = model.rows[row].card.view;
       const auto& status = view.content.status;
@@ -166,18 +200,13 @@ void ScreenView::render(const RenderModel& model) {
         lv_obj_set_style_bg_color(rowProgress_[row], color, LV_PART_INDICATOR);
       }
     }
-  } else {
+  } else if (notification) {
     lv_obj_remove_flag(message_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_bg_color(message_, lv_color_hex(0x1e2c3e), 0);
     lv_obj_set_style_text_color(status_, lv_color_hex(0x8bc5ff), 0);
   }
   if (model.kind == RenderModel::Kind::kEmpty) {
-    lv_label_set_text(icon_, iconSymbol(info_tv_v1_TaskIcon_TASK_ICON_TASK));
-    lv_obj_set_style_text_color(icon_, lv_color_hex(0x8bc5ff), 0);
-    lv_label_set_text(sender_, "INFO TV");
-    lv_label_set_text(title_, "Ready for tasks");
-    lv_label_set_text(status_, model.connected ? "No messages yet" : "Waiting for host");
-    lv_label_set_text(detail_, "Submit a task through the local service.");
+    lv_obj_remove_flag(empty_, LV_OBJ_FLAG_HIDDEN);
   } else if (notification) {
     const auto& status = model.view.content.status;
     std::snprintf(text, sizeof(text), "%s #%.4s%s%s", model.view.source, model.cardId,
@@ -203,9 +232,19 @@ void ScreenView::render(const RenderModel& model) {
     }
   }
   lv_obj_set_style_bg_color(connection_, lv_color_hex(model.connected ? 0x82dcb4 : 0xffcf7a), 0);
-  lv_label_set_text(footer_, !model.connected ? "Offline | last state" :
-                    notification ? "Returns to overview" : "USB online");
-  if (overview) {
+  lv_label_set_text(footer_, model.connected ? "USB online" : "Offline");
+  const auto& weather = model.weather;
+  lv_label_set_text(location_, weather.has_temperature_c ? weather.location : "Weather");
+  if (weather.has_temperature_c) {
+    std::snprintf(text, sizeof(text), "%ld\xc2\xb0" "C", static_cast<long>(weather.temperature_c));
+    lv_label_set_text(temperature_, text);
+    lv_label_set_text(conditions_, model.weatherFresh ? weatherCondition(weather.condition) : "Stale");
+  } else {
+    lv_label_set_text(temperature_, "--\xc2\xb0" "C");
+    lv_label_set_text(conditions_, "Not set");
+  }
+  lv_obj_set_style_text_color(temperature_, lv_color_hex(model.weatherFresh ? 0xf0f4f8 : 0x9baabd), 0);
+  if (overview && model.pageCount > 1) {
     std::snprintf(text, sizeof(text), "%u/%u",
                   static_cast<unsigned>(model.pageIndex + (model.pageCount ? 1 : 0)),
                   static_cast<unsigned>(model.pageCount));

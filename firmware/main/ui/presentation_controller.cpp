@@ -48,6 +48,8 @@ bool PresentationController::handleCommand(const DisplayCommand& command, uint64
     case info_tv_v1_Envelope_snapshot_tag:
       if (!sameSession) hasActive_ = false;
       state_.applySnapshot(envelope);
+      weather_ = envelope.body.snapshot.has_weather ? envelope.body.snapshot.weather : info_tv_v1_Weather{};
+      weatherExpiresAtMs_ = command.receivedAtMs + weather_.valid_for_ms;
       connected_ = true;
       pageIndex_ = 0;
       nextRotationMs_ = nowMs + policy::kRotationMs;
@@ -57,6 +59,10 @@ bool PresentationController::handleCommand(const DisplayCommand& command, uint64
       break;
     case info_tv_v1_Envelope_notification_tag:
       accepted = state_.enqueueNotification(envelope, command.receivedAtMs, nowMs);
+      break;
+    case info_tv_v1_Envelope_weather_tag:
+      weather_ = envelope.body.weather;
+      weatherExpiresAtMs_ = command.receivedAtMs + weather_.valid_for_ms;
       break;
     default:
       accepted = false;
@@ -114,6 +120,8 @@ const RenderModel& PresentationController::tick(uint64_t nowMs) {
   }
   RenderModel candidate{};
   candidate.connected = connected_;
+  candidate.weather = weather_;
+  candidate.weatherFresh = weather_.has_temperature_c && nowMs < weatherExpiresAtMs_;
   candidate.cardCount = state_.cardCount();
   candidate.pageCount = (state_.cardCount() + policy::kRowsPerPage - 1) / policy::kRowsPerPage;
   for (size_t index = 0; index < state_.cardCount(); ++index) {
@@ -148,7 +156,12 @@ const RenderModel& PresentationController::tick(uint64_t nowMs) {
       candidate.connected != render_.connected || candidate.pageIndex != render_.pageIndex ||
       candidate.cardCount != render_.cardCount || candidate.attentionCount != render_.attentionCount ||
       candidate.rowCount != render_.rowCount || std::strcmp(candidate.messageId, render_.messageId) ||
-      std::strcmp(candidate.sessionId, render_.sessionId);
+      std::strcmp(candidate.sessionId, render_.sessionId) ||
+      candidate.weatherFresh != render_.weatherFresh ||
+      candidate.weather.has_temperature_c != render_.weather.has_temperature_c ||
+      candidate.weather.temperature_c != render_.weather.temperature_c ||
+      candidate.weather.condition != render_.weather.condition ||
+      std::strcmp(candidate.weather.location, render_.weather.location);
   for (size_t row = 0; row < candidate.rowCount && !changed; ++row) {
     changed = !sameCard(candidate.rows[row].card, render_.rows[row].card) ||
         std::strcmp(candidate.rows[row].messageId, render_.rows[row].messageId);

@@ -56,6 +56,8 @@ struct RenderModel {
   size_t pageCount = 0;
   size_t attentionCount = 0;
   bool connected = false;
+  info_tv_v1_Weather weather{};
+  bool weatherFresh = false;
 };
 
 static_assert(std::is_trivially_copyable_v<DisplayCommand>);

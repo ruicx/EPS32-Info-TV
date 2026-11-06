@@ -33,6 +33,10 @@ class ScreenView {
   lv_obj_t* footer_ = nullptr;
   lv_obj_t* page_ = nullptr;
   lv_obj_t* connection_ = nullptr;
+  lv_obj_t* empty_ = nullptr;
+  lv_obj_t* location_ = nullptr;
+  lv_obj_t* temperature_ = nullptr;
+  lv_obj_t* conditions_ = nullptr;
   std::array<lv_obj_t*, policy::kRowsPerPage> rowBubbles_{};
   std::array<lv_obj_t*, policy::kRowsPerPage> rowIcons_{};
   std::array<lv_obj_t*, policy::kRowsPerPage> rowTitles_{};

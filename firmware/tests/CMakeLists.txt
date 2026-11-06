@@ -32,7 +32,7 @@ if(INFO_TV_BUILD_UI_TESTS)
     target_include_directories(info_tv_lvgl PUBLIC "${LVGL}")
     target_compile_definitions(info_tv_lvgl PUBLIC
         LV_CONF_PATH="${CMAKE_CURRENT_LIST_DIR}/lv_conf.h" LV_LVGL_H_INCLUDE_SIMPLE)
-    add_executable(test_screen test_screen.cpp "${APP}/ui/screen_view.cpp")
+    add_executable(test_screen test_screen.cpp "${APP}/ui/screen_view.cpp" "${APP}/ui/assets/whale_idle.c")
     target_link_libraries(test_screen PRIVATE info_tv_core info_tv_lvgl)
     add_test(NAME screen COMMAND test_screen "${CMAKE_CURRENT_BINARY_DIR}/screen")
     set_tests_properties(screen PROPERTIES LABELS "unit")

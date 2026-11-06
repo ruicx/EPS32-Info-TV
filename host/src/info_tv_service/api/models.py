@@ -2,11 +2,46 @@
 
 from __future__ import annotations
 
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from info_tv_service.tasks.models import TaskEvent, TaskIcon, TaskState
+
+
+class WeatherRequest(BaseModel):
+    """Replace weather with producer-supplied values and bounded freshness."""
+
+    model_config = ConfigDict(extra="forbid")
+    location: str = Field(min_length=1, max_length=24, strict=True)
+    temperature_c: int = Field(ge=-100, le=100, strict=True)
+    condition: Literal["unknown", "clear", "cloudy", "rain", "snow", "storm", "fog"]
+    valid_for_seconds: int = Field(default=1800, ge=1, le=3600, strict=True)
+
+    @field_validator("location")
+    @classmethod
+    def validate_location(cls, value: str) -> str:
+        """Validate the device's bounded city label.
+
+        Parameters
+        ----------
+        value : str
+            Submitted location.
+
+        Returns
+        -------
+        str
+            Unchanged nonblank location.
+
+        Raises
+        ------
+        ValueError
+            If the label is blank, contains controls, or exceeds 24 UTF-8 bytes.
+        """
+        if not value.strip() or not value.isprintable() or len(value.encode("utf-8")) > 24:
+            raise ValueError("Location must be nonblank, printable, and at most 24 UTF-8 bytes")
+        return value
 
 
 class DeviceSettingsRequest(BaseModel):

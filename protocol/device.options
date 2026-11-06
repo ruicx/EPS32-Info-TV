@@ -13,3 +13,4 @@ info_tv.v1.Acknowledgment.in_reply_to max_size:37
 info_tv.v1.Acknowledgment.card_id max_size:37
 info_tv.v1.Error.in_reply_to max_size:37
 info_tv.v1.Error.detail max_size:97
+info_tv.v1.Weather.location max_size:25

@@ -4,7 +4,8 @@ from typing import cast
 
 from fastapi import APIRouter, HTTPException, Request
 
-from info_tv_service.api.models import DeviceSettingsRequest, TaskEventRequest
+from info_tv_service.api.models import DeviceSettingsRequest, TaskEventRequest, WeatherRequest
+from info_tv_service.device.generated import device_pb2 as pb
 from info_tv_service.runtime import ServiceRuntime
 from info_tv_service.tasks.store import AdmissionError
 
@@ -136,6 +137,78 @@ def create_router() -> APIRouter:
             Target, last reported value, and delivery status.
         """
         return runtime_from_request(request).device.settings_status()
+
+    @router.put("/weather", status_code=202)
+    async def set_weather(body: WeatherRequest, request: Request) -> dict[str, object]:
+        """Retain weather independently of the conversation card limit.
+
+        Parameters
+        ----------
+        body : WeatherRequest
+            Validated current conditions with remaining freshness.
+        request : Request
+            Application context.
+
+        Returns
+        -------
+        dict[str, object]
+            Weather freshness and delivery admission.
+
+        Raises
+        ------
+        HTTPException
+            If the device coordinator failed.
+        """
+        runtime = runtime_from_request(request)
+        if runtime.failure:
+            raise HTTPException(503, runtime.failure)
+        runtime.device.set_weather(pb.Weather(
+            location=body.location, temperature_c=body.temperature_c,
+            condition=f"WEATHER_CONDITION_{body.condition.upper()}",
+            valid_for_ms=body.valid_for_seconds * 1000,
+        ))
+        return runtime.device.weather_status()
+
+    @router.get("/weather")
+    async def weather_status(request: Request) -> dict[str, object]:
+        """Query retained weather without claiming it is still fresh.
+
+        Parameters
+        ----------
+        request : Request
+            Application context.
+
+        Returns
+        -------
+        dict[str, object]
+            Unavailable, fresh, or stale weather and delivery status.
+        """
+        return runtime_from_request(request).device.weather_status()
+
+    @router.delete("/weather", status_code=202)
+    async def clear_weather(request: Request) -> dict[str, object]:
+        """Clear the retained weather and queue its removal on the device.
+
+        Parameters
+        ----------
+        request : Request
+            Application context.
+
+        Returns
+        -------
+        dict[str, object]
+            Unavailable weather with pending delivery.
+
+        Raises
+        ------
+        HTTPException
+            If the device coordinator failed.
+        """
+        runtime = runtime_from_request(request)
+        if runtime.failure:
+            raise HTTPException(503, runtime.failure)
+        runtime.device.set_weather(pb.Weather())
+        return runtime.device.weather_status()
 
     @router.get("/device")
     async def device_status(request: Request) -> dict[str, object]:

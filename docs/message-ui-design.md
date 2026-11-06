@@ -1,11 +1,18 @@
 # Message Interface and Screen UI Design Draft
 
-Status: The multi-conversation overview direction has been accepted. Phase one is implemented and has passed desktop checks and a firmware build; calendar, weather, and general notifications remain design proposals. The firmware was flashed on 2026-11-05. Five cards and two notifications received actual device Presented feedback, and the user confirmed that physical text, layout, and page rotation were normal.
+Status: The multi-conversation overview direction has been accepted. Tasks and producer-supplied weather are implemented and desktop-tested; calendar, external weather retrieval, and general notifications remain proposals. The original firmware was flashed on 2026-11-05. Five cards and two notifications received actual device Presented feedback, and the user confirmed that physical text, layout, and page rotation were normal.
 
 Visual update: The compact bubble layout and task-purpose icons below are a subsequent firmware UI
 revision. Its desktop previews and verification are recorded in
 [Bubble UI validation](bubble-ui-validation.md); the earlier physical confirmation
 applies to the original layout.
+
+Current layout (2026-11-06): Three compact rows share the screen with a full-body
+whale companion and persistent weather. Counts and page position are in the
+header. Sparse pages leave black space, and zero tasks show a short idle label.
+This supersedes the five-row layout. See
+[Companion UI validation](companion-ui-validation.md) for current previews, the
+weather API, asset attribution, and desktop verification. It has not been flashed.
 
 Date: 2026-11-05
 
@@ -28,7 +35,7 @@ require every category to use the same bubble height or number of text lines.
 | --- | --- | --- | --- |
 | Task status | Codex or agy execution state | Update one persistent entry per conversation/task; state transitions can also notify | Compact rows, preset icons, and progress bars implemented; not flashed |
 | Schedule reminder | Upcoming meeting or deadline | Keep the next eligible item in the overview and temporarily expand it at reminder time | Not implemented |
-| Information card | Weather or a device metric | Replace current values and show freshness/validity | Weather and metric templates are not implemented |
+| Information card | Weather or a device metric | Replace current values and show freshness/validity | Producer-supplied weather occupies the persistent area; generic metrics and weather retrieval are not implemented |
 | Instant notification | External message, task completion, or failure alert | Temporarily display, then restore the overview | Task transition notifications implemented; generic external notification API not implemented |
 
 Task status and its transition notification describe the same underlying task.
@@ -76,10 +83,10 @@ When tasks are waiting or have failed, prioritize their content while preserving
 
 ### Compact Task Overview
 
-Show at most five rounded message bubbles at once. Each has a task-purpose icon,
+Show at most three rounded message bubbles at once. Each has a task-purpose icon,
 conversation title, and compact state on one text line. A thin progress bar uses
 reserved space below the text when a percentage is known. Rotate groups when
-there are more than five entries. Source, project, and detail appear in the
+there are more than three entries. Source, project, and detail appear in the
 expanded notification; producers should use distinguishable short titles.
 
 All bubbles are rounded rectangles with smooth edges and no tails.
@@ -87,8 +94,13 @@ Task purpose is independent of source identity.
 Use a dark background, muted metadata, and softly tinted surfaces. Amber, red,
 green, and blue accents accompany the state text for attention, failure,
 completion, and ordinary progress. Offline bubbles use a neutral surface and
-an `Offline | last state` footer without a live percentage. Keep the connection indicator and
-page count outside the bubbles.
+an `Offline` indicator without a live percentage. Keep the connection indicator
+in the persistent area and the page count in the header, outside the bubbles.
+
+The bottom 88 px are reserved for a full-body character on the left and weather
+plus connection state on the right. One or two rows stay aligned to the top;
+unused slots remain black. Zero tasks show `No tasks yet`. The bottom area does
+not move when cards arrive, leave a partial page, or are replaced by a notification.
 
 Both layouts use the same content model. Choosing a layout must not require callers to change their submissions, and both layouts do not have to be implemented together.
 
@@ -98,7 +110,7 @@ A single-line rounded rectangle shows `icon | title | state` for agent tasks.
 Known states use `RUN`, `WAIT`, `DONE`, and `FAIL`. Reserve a fixed width for state,
 truncate the title to the remaining width, and keep source/project/detail in the expanded notification.
 Short titles should distinguish conversations when their names would otherwise
-be identical. Five entries fit per page in the desktop-verified implementation.
+be identical. Three entries fit per page in the desktop-verified implementation.
 Elapsed time is omitted until its meaning and reporting are confirmed.
 
 Execution timing is not available in the current task API or device view.
@@ -153,7 +165,7 @@ firmware has not been flashed.
 
 ### Multiple Agent Conversations Updating Continuously
 
-Additional scenario: The user has several Codex and agy conversations open simultaneously. The default page for this case is the conversation overview; single cards present important content and state-transition notifications. Phase one supports at most eight persistent entries, five per compact page, with six-second rotation.
+Additional scenario: The user has several Codex and agy conversations open simultaneously. The default page for this case is the conversation overview; single cards present important content and state-transition notifications. The current UI supports at most eight persistent task entries, three per compact page, with six-second rotation. Weather has a separate slot.
 
 **Each conversation has one persistent display entry.** Task updates within that conversation replace its entry, while other conversations remain independent. Do not collapse all conversations from one application into one entry or create a new card for every chat response.
 
@@ -171,24 +183,24 @@ A readable `conversation_title` has been added, and `context` identifies the pro
 
 ```text
 +--------------------------------+
-| 8 sessions          2 need you  |
+| 8 tasks       2 need you   1/3  |
 | ( [code] Message API    WAIT )  |
 |                                |
 | ( [build] Login flow    FAIL )  |
 |                                |
 | ( [test] Unit tests      RUN )  |
 |   ========-----------------    |
-| ( [review] UI review     RUN )  |
-|   -------------------------    |
-| ( [deploy] Deploy       DONE )  |
-|   =========================    |
-| USB online                 1/2 |
+|                                |
+| Full-body companion  Shanghai  |
+|                       23 C     |
+|                       Clear    |
+|                       USB online|
 +--------------------------------+
 ```
 
 Display behavior:
 
-- Show at most five conversations per compact page. Keep the page stable when everything fits; otherwise rotate groups, initially every six seconds. Page numbers indicate additional content, and the header always shows the global attention count.
+- Show at most three conversations per compact page. Keep the page stable when everything fits; otherwise rotate groups every six seconds. The header holds page position when there is more than one page, and a nonzero global attention count.
 - Sort waiting and failed conversations first, running conversations next, and recently completed conversations last. Preserve stable ordering within each group. Visit every page before repeating so unresolved attention items cannot permanently hide other conversations.
 - Ordinary progress and summary updates change the existing entry without jumping pages or resetting the rotation timer. Entering waiting or failed state triggers one important notification. After it ends, restore the overview page containing that conversation, then continue rotation.
 - Notify once when an execution completes. When the next execution begins in the same conversation, its existing entry returns to running state. The adapter explicitly associates the current execution; delayed results from an older execution cannot replace it.
@@ -225,10 +237,10 @@ System labels remain English. The enabled LVGL Source Han Sans SC 16 px CJK font
 
 ### Notification Page
 
-Use one large message bubble to emphasize the source, state, task or event title,
-and a two-line summary. Retain the same typography and state colors as the overview,
-with space for a two-line title and an optional progress bar. The footer can
-indicate "Return to your computer" or "Returns to overview". Do not add
+Use one 110 px message bubble in the upper area, retaining the companion/weather
+area. Source/project, title, state, and summary each occupy one bounded line,
+with an optional progress bar. Longer text truncates; full details remain on the
+computer. Retain the overview's typography and state colors. Do not add
 confirmation, approval, or retry buttons.
 
 Keep the initial defaults of five seconds for ordinary notifications and ten seconds for important notifications. Equal-priority notifications retain arrival order; important notifications can interrupt ordinary ones. Whether an interrupted ordinary notification resumes remains an open product rule; the current demo ends it.
@@ -243,15 +255,17 @@ or is canceled, remove it and select the next eligible item. If no eligible item
 exists, calendar content occupies no space. The source, eligibility rules, and
 reminder lead time remain open; this behavior is not implemented yet.
 
-Weather uses one main value with limited supporting text. Time and animation
-belong on the idle page rather than occupying the center of every task card.
-The idle threshold and how information cards share the overview remain to be
-decided.
+Weather uses one main temperature with city and condition in the persistent
+area. Missing data shows `Not set`; expired cached data shows `Stale` with a
+dimmed temperature. This state is separate from USB connection status. A static
+full-body character stays beside it. Time and future animation must not obscure
+message content. External weather retrieval and other information cards remain
+future work.
 
 ### Text, Color, and Expiry
 
 - Initial proposed sizes are 16 px for Chinese body text and 20 px for main titles, checked at the native 240 px screen size. Actual fonts and character coverage require firmware validation.
-- Limit main titles and summaries to two lines each. Truncate at complete character boundaries, with no scrolling text by default. Callers should provide short summaries.
+- Current compact and notification titles/summaries each occupy one line. Truncate at complete character boundaries, with no scrolling text by default. Callers should provide short summaries.
 - Convey running, attention, completed, and failed states with both text and color. Color must not be the only indicator.
 - Disconnection is a connection condition; expiry is a content condition. Express them separately. Weather can show "Updated at 14:20 / Data expired". Offline task content should say "Last reported: running" rather than imply live execution.
 - Omit durations when there is no reliable basis. Last update time, execution elapsed time, and current-stage elapsed time are different measures.
@@ -297,7 +311,12 @@ Require a timezone-aware `expires_at` in this proposal. Expired notifications mu
 
 The service generates notifications for task state transitions. Producers must not also submit a general notification for the same transition, which would create duplicates across interfaces.
 
-Define calendar and weather business data before freezing their URLs or introducing a universal endpoint:
+The minimal weather API is now `PUT /v1/weather`, `GET /v1/weather`, and
+`DELETE /v1/weather`; its validated fields and freshness lifecycle are documented
+in [Companion UI validation](companion-ui-validation.md#weather-api). It supports
+one producer-supplied observation, with last-admitted replacement and a bounded
+remaining lifetime, not multi-source observation ordering or provider retrieval.
+The richer business models below remain proposals:
 
 | Content | Proposed minimum business data | Updates and withdrawal |
 | --- | --- | --- |
@@ -331,7 +350,10 @@ Service admission, device acceptance, and first actual display are separate mile
 
 Current input limits are 64 UTF-8 bytes for a title and 160 bytes for detail, roughly 21 and 53 common Chinese characters respectively. Mixed text must be checked by encoded byte length. These are transport bounds, not readability guarantees. Reject oversized input explicitly; the display layer only truncates otherwise valid content to fit its layout.
 
-The device currently supports eight cards and eight notifications, and service records remain until restart. These implementation limits require an explicit capacity policy before combining tasks, calendar, and weather. At capacity, reject new independent entries while allowing updates to existing ones. Agree on capacity and selection rules before adding more content.
+The device currently supports eight cards, eight notifications, and one separate
+weather observation. Service records remain until restart. Weather does not use
+task capacity. At capacity, reject new independent task entries while allowing
+updates to existing ones. Calendar integration still requires a selection policy.
 
 Suggested validation sequence:
 

@@ -32,6 +32,8 @@ class PresentationController {
   bool connected_ = false;
   uint64_t activeUntilMs_ = 0;
   uint64_t nextRotationMs_ = 0;
+  info_tv_v1_Weather weather_{};
+  uint64_t weatherExpiresAtMs_ = 0;
   size_t pageIndex_ = 0;
   std::array<size_t, policy::kMaxCards> order_{};
 };

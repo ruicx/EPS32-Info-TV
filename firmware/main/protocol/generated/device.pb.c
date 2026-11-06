@@ -30,6 +30,9 @@ PB_BIND(info_tv_v1_View, info_tv_v1_View, 2)
 PB_BIND(info_tv_v1_Card, info_tv_v1_Card, 2)
 
 
+PB_BIND(info_tv_v1_Weather, info_tv_v1_Weather, AUTO)
+
+
 PB_BIND(info_tv_v1_Snapshot, info_tv_v1_Snapshot, 4)
 
 
@@ -43,6 +46,8 @@ PB_BIND(info_tv_v1_Acknowledgment, info_tv_v1_Acknowledgment, AUTO)
 
 
 PB_BIND(info_tv_v1_Error, info_tv_v1_Error, AUTO)
+
+
 
 
 

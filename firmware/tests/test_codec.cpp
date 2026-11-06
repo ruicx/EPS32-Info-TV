@@ -48,6 +48,12 @@ int main(int argc, char** argv) {
   // The worst-case eight-card snapshot, including metadata, fits one wire frame.
   auto maximum = makeSnapshot("maximum");
   auto& cards = maximum.envelope.body.snapshot;
+  cards.has_weather = true;
+  cards.weather.has_temperature_c = true;
+  cards.weather.temperature_c = -100;
+  cards.weather.condition = info_tv_v1_WeatherCondition_WEATHER_CONDITION_STORM;
+  cards.weather.valid_for_ms = 3600000;
+  std::memset(cards.weather.location, 'w', sizeof(cards.weather.location) - 1);
   cards.cards_count = 8;
   for (size_t index = 0; index < 8; ++index) {
     cards.cards[index] = makeCard();
@@ -68,6 +74,20 @@ int main(int argc, char** argv) {
   CHECK(info_tv::decodeEnvelope(encoded.data(), maximumSize, roundtrip));
   CHECK(!info_tv::validateCommand(roundtrip));
   CHECK(roundtrip.body.snapshot.cards_count == 8);
+  CHECK(roundtrip.body.snapshot.weather.temperature_c == -100);
+  auto weather = makeCommand("weather");
+  weather.envelope.which_body = info_tv_v1_Envelope_weather_tag;
+  CHECK(!info_tv::validateCommand(weather.envelope));  // Explicit clear.
+  weather.envelope.body.weather = cards.weather;
+  CHECK(!info_tv::validateCommand(weather.envelope));
+  weather.envelope.body.weather.temperature_c = 101;
+  CHECK(info_tv::validateCommand(weather.envelope));
+  weather.envelope.body.weather = cards.weather;
+  weather.envelope.body.weather.valid_for_ms = 0;
+  CHECK(info_tv::validateCommand(weather.envelope));
+  weather.envelope.body.weather = cards.weather;
+  weather.envelope.body.weather.condition = static_cast<info_tv_v1_WeatherCondition>(7);
+  CHECK(info_tv::validateCommand(weather.envelope));
   auto metadata = makeCard();
   auto changed = metadata;
   std::strcpy(changed.view.context, "different-project");

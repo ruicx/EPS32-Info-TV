@@ -9,6 +9,9 @@ desktop-tested and firmware-built, but have not been flashed. The earlier physic
 confirmation applies to the original overview. See [Bubble UI validation](bubble-ui-validation.md).
 Device brightness control is also implemented and firmware-built without flashing;
 see [Brightness control](brightness-control.md) for the API and validation scope.
+The current UI has three message rows and a persistent companion/weather area;
+see [Companion UI validation](companion-ui-validation.md). This revision is also
+desktop-tested and firmware-built without flashing.
 
 ## 1. Contract and Generation
 
@@ -36,6 +39,7 @@ and a boot-local sequence. Feedback explicitly refers to the original command.
 | CardUpsert | Host to device | Create or replace a card by identity/revision |
 | Notification | Host to device | Independently admit a temporary presentation |
 | DeviceSettings | Host to device | Apply an absolute device brightness setting |
+| Weather | Host to device | Replace or clear independently retained weather |
 | Acknowledgment | Device to host | UI Accepted, first-refresh Presented, or settings Applied |
 | Error | Device to host | Correlated rejection and diagnostic reason |
 | Ping / Pong | Host / device | Current-session liveness |
@@ -72,7 +76,7 @@ Up to eight cards are retained. UTF-8 capacities excluding C terminators are:
 title/source/context/status text 64 bytes, detail 160 bytes, identities 36 bytes, error detail
 96 bytes. Strings containing NUL are rejected by the host API.
 Shared compatibility input is under `protocol/test_vectors/`.
-The generated worst-case envelope size is 4045 bytes, within the existing
+The generated worst-case envelope size is 4087 bytes, within the existing
 4096-byte frame payload limit; the maximum eight-card snapshot is round-trip tested.
 
 ## 4. Sessions, Revisions, and Recovery
@@ -88,6 +92,13 @@ paired update explicit while keeping field numbers and protocol version stable.
 The icon revision also requires `Hello.task_icons = true`; a missing/false value
 identifies firmware that needs updating before this host synchronizes content.
 Brightness control additionally requires `Hello.brightness_control = true`.
+Persistent weather additionally requires `Hello.weather = true`. A snapshot can
+include bounded weather values with remaining freshness, separate from cards.
+Weather updates require a location, presence-aware integer temperature -100..100,
+known condition enum, and remaining validity 1..3600000 ms. A fully empty Weather
+clears the persistent area. Location capacity is 24 UTF-8 bytes. Retries retain
+the original deadline; accepted duplicates never renew it. See the
+[weather API and wire behavior](companion-ui-validation.md#weather-api).
 
 Each card has an independent identity and increasing nonzero revision. Older
 revisions cannot overwrite current state; equal revisions with conflicting content
@@ -135,7 +146,7 @@ Decode success and unchecked task handoff are insufficient.
 first refresh completed. Card feedback includes card identity/revision, including
 individual cards within a snapshot. Hidden or superseded revisions are not falsely
 reported visible. Feedback does not establish that the user read the content.
-The five-row overview emits a separate Presented acknowledgment for every visible
+The three-row overview emits a separate Presented acknowledgment for every visible
 card after the shared refresh completes. Later pages stay unpresented until shown.
 Feedback has its own identity and is not recursively acknowledged.
 

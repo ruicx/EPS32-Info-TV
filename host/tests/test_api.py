@@ -150,3 +150,46 @@ def test_invalid_brightness_preserves_target(submission: dict[str, object]) -> N
     with TestClient(create_app(Settings("unused"), OfflineTransport())) as client:
         assert client.put("/v1/device/settings", json=submission).status_code == 422
         assert client.get("/v1/device/settings").json()["brightness_percent"] == 100
+
+
+def test_weather_is_independent_offline_clearable_and_isolated() -> None:
+    """Retain real zero-degree weather without taking a task slot."""
+    with TestClient(create_app(Settings("unused"), OfflineTransport())) as client:
+        assert client.get("/v1/weather").json()["state"] == "unavailable"
+        weather = {"location": "Harbin", "temperature_c": 0, "condition": "snow"}
+        response = client.put("/v1/weather", json=weather)
+        assert response.status_code == 202
+        assert response.json()["state"] == "fresh"
+        assert response.json()["temperature_c"] == 0
+        assert response.json()["delivery"] == {"state": "pending"}
+        assert client.get("/v1/tasks").json() == []
+        assert client.get("/v1/device").json()["weather"]["location"] == "Harbin"
+        assert client.delete("/v1/weather").json()["state"] == "unavailable"
+    with TestClient(create_app(Settings("unused"), OfflineTransport())) as other:
+        assert other.get("/v1/weather").json()["state"] == "unavailable"
+
+
+@pytest.mark.parametrize("field,value", [
+    ("location", ""), ("location", "   "), ("location", "\0city"),
+    ("location", "city\n"), ("location", "\x7fcity"), ("location", "界" * 9), ("location", 123),
+    ("temperature_c", True), ("temperature_c", "23"), ("temperature_c", 23.5),
+    ("temperature_c", None), ("temperature_c", -101), ("temperature_c", 101),
+    ("condition", "typhoon"), ("valid_for_seconds", 0), ("valid_for_seconds", 3601),
+    ("valid_for_seconds", True), ("screen_x", 20),
+])
+def test_invalid_weather_does_not_replace_values(field: str, value: object) -> None:
+    """Reject malformed weather without altering the retained observation.
+
+    Parameters
+    ----------
+    field : str
+        Field to replace or introduce.
+    value : object
+        Invalid JSON input.
+    """
+    with TestClient(create_app(Settings("unused"), OfflineTransport())) as client:
+        weather: dict[str, object] = {"location": "Shanghai", "temperature_c": 23, "condition": "clear"}
+        assert client.put("/v1/weather", json=weather).status_code == 202
+        weather[field] = value
+        assert client.put("/v1/weather", json=weather).status_code == 422
+        assert client.get("/v1/weather").json()["temperature_c"] == 23

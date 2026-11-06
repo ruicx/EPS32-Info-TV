@@ -96,6 +96,13 @@ def test_http_to_cpp_firmware_core() -> None:
         while client.get("/v1/device").json()["state"] != "online":
             assert time.monotonic() < deadline, "C++ handshake did not finish"
             time.sleep(0.01)
+        assert client.put("/v1/weather", json={
+            "location": "Harbin", "temperature_c": 0, "condition": "snow",
+        }).status_code == 202
+        while not client.get("/v1/weather").json()["delivery"].get("accepted"):
+            assert time.monotonic() < deadline, "C++ weather was not admitted"
+            time.sleep(0.01)
+        assert client.get("/v1/tasks").json() == []
         assert client.put("/v1/device/settings", json={"brightness_percent": 0}).status_code == 202
         while client.get("/v1/device/settings").json()["applied_brightness_percent"] != 0:
             assert time.monotonic() < deadline, "C++ brightness setting was not applied"

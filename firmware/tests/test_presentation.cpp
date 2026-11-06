@@ -21,7 +21,7 @@ void testPagedOverview() {
   snapshot.envelope.body.snapshot.cards[7].view.content.status.tone = info_tv_v1_Tone_TONE_NEGATIVE;
   CHECK(controller.handleCommand(snapshot, 0, feedback));
   auto model = controller.tick(0);
-  CHECK(model.pageCount == 2 && model.pageIndex == 0 && model.rowCount == 5);
+  CHECK(model.pageCount == 3 && model.pageIndex == 0 && model.rowCount == 3);
   CHECK(model.attentionCount == 2 && model.cardCount == 8);
   CHECK(!std::strcmp(model.rows[0].card.card_id, "card-6"));
   CHECK(!std::strcmp(model.rows[1].card.card_id, "card-7"));
@@ -35,7 +35,7 @@ void testPagedOverview() {
   auto upsert = makeCommand("hidden-update");
   upsert.envelope.which_body = info_tv_v1_Envelope_card_upsert_tag;
   upsert.envelope.body.card_upsert.has_card = true;
-  upsert.envelope.body.card_upsert.card = makeCard("card-3", 2);
+  upsert.envelope.body.card_upsert.card = makeCard("card-1", 2);
   CHECK(controller.handleCommand(upsert, 5999, feedback));
   CHECK(controller.tick(5999).generation == model.generation);
   model = controller.tick(6000);
@@ -44,8 +44,19 @@ void testPagedOverview() {
   CHECK(!controller.onFramePresented(model.generation - 1, 6000, feedback));
   CHECK(controller.onFramePresented(model.generation, 6000, feedback));
   CHECK(!std::strcmp(feedback.messageId, "hidden-update"));
-  CHECK(controller.tick(12000).pageIndex == 0);
-  CHECK(controller.tick(18000).pageIndex == 1);
+  auto weather = makeCommand("weather-during-page");
+  weather.envelope.which_body = info_tv_v1_Envelope_weather_tag;
+  weather.receivedAtMs = 6100;
+  weather.envelope.body.weather.has_temperature_c = true;
+  weather.envelope.body.weather.temperature_c = 23;
+  std::strcpy(weather.envelope.body.weather.location, "Shanghai");
+  weather.envelope.body.weather.valid_for_ms = 60000;
+  CHECK(controller.handleCommand(weather, 6100, feedback));
+  CHECK(controller.tick(6100).weatherFresh);
+  CHECK(controller.tick(11999).pageIndex == 1);
+  CHECK(controller.tick(12000).pageIndex == 2);
+  CHECK(controller.tick(12000).rowCount == 2);
+  CHECK(controller.tick(18000).pageIndex == 0);
 
   auto note = makeNotification("related", true);
   std::strcpy(note.envelope.body.notification.card_id, "card-5");
@@ -54,9 +65,55 @@ void testPagedOverview() {
   CHECK(controller.onFramePresented(model.generation, 18001, feedback));
   CHECK(controller.tick(28000).kind == info_tv::RenderModel::Kind::kNotification);
   model = controller.tick(28001);
-  CHECK(model.kind == info_tv::RenderModel::Kind::kOverview && model.pageIndex == 1);
-  CHECK(controller.tick(34000).pageIndex == 1);
+  CHECK(model.kind == info_tv::RenderModel::Kind::kOverview && model.pageIndex == 2);
+  CHECK(controller.tick(34000).pageIndex == 2);
   CHECK(controller.tick(34001).pageIndex == 0);
+}
+
+/** Keep weather independent of cards and expire it without renewing on retries. */
+void testWeather() {
+  info_tv::DisplayState state;
+  info_tv::PresentationController controller(state);
+  info_tv::Feedback feedback{};
+  auto snapshot = makeSnapshot();
+  snapshot.envelope.body.snapshot.cards_count = 0;
+  snapshot.envelope.body.snapshot.has_weather = true;
+  auto& weather = snapshot.envelope.body.snapshot.weather;
+  weather.has_temperature_c = true;
+  weather.temperature_c = 0;
+  weather.condition = info_tv_v1_WeatherCondition_WEATHER_CONDITION_SNOW;
+  std::strcpy(weather.location, "Harbin");
+  weather.valid_for_ms = 1000;
+  CHECK(controller.handleCommand(snapshot, 0, feedback));
+  auto model = controller.tick(0);
+  CHECK(model.kind == info_tv::RenderModel::Kind::kEmpty);
+  CHECK(model.weatherFresh && model.weather.temperature_c == 0);
+  CHECK(!controller.onFramePresented(model.generation, 0, feedback));
+  snapshot.receivedAtMs = 500;
+  CHECK(controller.handleCommand(snapshot, 500, feedback));
+  CHECK(controller.tick(999).weatherFresh);
+  CHECK(!controller.tick(1000).weatherFresh);
+  auto update = makeCommand("weather-update");
+  update.envelope.which_body = info_tv_v1_Envelope_weather_tag;
+  update.envelope.body.weather = weather;
+  update.envelope.body.weather.temperature_c = -10;
+  update.receivedAtMs = 1000;
+  CHECK(controller.handleCommand(update, 1000, feedback));
+  CHECK(feedback.stage == info_tv_v1_AckStage_ACK_STAGE_ACCEPTED);
+  CHECK(controller.tick(1000).weather.temperature_c == -10);
+  CHECK(controller.tick(1000).weatherFresh && state.cardCount() == 0);
+  info_tv::DisplayCommand offline{};
+  offline.linkLost = true;
+  controller.handleCommand(offline, 1500, feedback);
+  CHECK(controller.tick(1500).weatherFresh && !controller.tick(1500).connected);
+  CHECK(!controller.tick(2000).weatherFresh);
+  std::strcpy(update.envelope.message_id, "clear-weather");
+  update.envelope.body.weather = info_tv_v1_Weather{};
+  CHECK(controller.handleCommand(update, 2001, feedback));
+  CHECK(!controller.tick(2001).weather.has_temperature_c);
+  std::strcpy(update.envelope.session_id, "old-session");
+  CHECK(controller.handleCommand(update, 2002, feedback));
+  CHECK(feedback.error == info_tv_v1_ErrorCode_ERROR_CODE_INVALID);
 }
 
 /** Admit settings independently without acknowledging hardware application. */
@@ -98,6 +155,7 @@ void testDeviceSettings() {
 int main() {
   testPagedOverview();
   testDeviceSettings();
+  testWeather();
   info_tv::DisplayState state;
   info_tv::PresentationController controller(state);
   info_tv::Feedback feedback{};

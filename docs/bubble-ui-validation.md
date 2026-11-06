@@ -2,6 +2,10 @@
 
 Date: 2026-11-05
 
+Historical layout: The five-row icon revision documented here has been superseded
+by [the three-row companion and weather layout](companion-ui-validation.md).
+These PNGs preserve the earlier revision; the screen test now renders the new UI.
+
 Updated: 2026-11-06. The outer screen background is pure black (`#000000`);
 bubble colors and progress tracks retain their existing palette. The previews
 below reflect this change. Independent backlight settings are documented in

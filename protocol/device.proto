@@ -16,6 +16,7 @@ message Envelope {
     Ping ping = 16;
     Pong pong = 17;
     DeviceSettings device_settings = 18;
+    Weather weather = 19;
   }
 }
 
@@ -27,6 +28,7 @@ message Hello {
   // Required by hosts that send task-purpose icons.
   bool task_icons = 3;
   bool brightness_control = 4;
+  bool weather = 5;
 }
 message Ping {}
 message Pong {}
@@ -69,7 +71,27 @@ message Card {
   uint64 revision = 2;
   View view = 3;
 }
-message Snapshot { repeated Card cards = 1; }
+// A zero-validity empty message clears weather. Other updates require all data.
+enum WeatherCondition {
+  WEATHER_CONDITION_UNKNOWN = 0;
+  WEATHER_CONDITION_CLEAR = 1;
+  WEATHER_CONDITION_CLOUDY = 2;
+  WEATHER_CONDITION_RAIN = 3;
+  WEATHER_CONDITION_SNOW = 4;
+  WEATHER_CONDITION_STORM = 5;
+  WEATHER_CONDITION_FOG = 6;
+}
+message Weather {
+  string location = 1;
+  optional sint32 temperature_c = 2;
+  WeatherCondition condition = 3;
+  // Remaining freshness at transmission; retries may only shorten it.
+  uint32 valid_for_ms = 4;
+}
+message Snapshot {
+  repeated Card cards = 1;
+  Weather weather = 2;
+}
 message CardUpsert { Card card = 1; }
 
 enum Priority {

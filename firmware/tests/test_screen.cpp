@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <cstdio>
 #include <cstring>
@@ -95,9 +96,14 @@ int main(int argc, char** argv) {
   model.kind = info_tv::RenderModel::Kind::kOverview;
   model.connected = true;
   model.cardCount = 8;
-  model.rowCount = 5;
-  model.pageCount = 2;
+  model.rowCount = 3;
+  model.pageCount = 3;
   model.attentionCount = 2;
+  model.weather.has_temperature_c = true;
+  model.weather.temperature_c = 23;
+  model.weather.condition = info_tv_v1_WeatherCondition_WEATHER_CONDITION_CLEAR;
+  std::strcpy(model.weather.location, "Shanghai");
+  model.weatherFresh = true;
   const char* titles[] = {"消息接口", "Login", "Unit tests", "UI review", "Deploy"};
   const char* states[] = {"waiting input", "failed", "running", "running", "completed"};
   const info_tv_v1_TaskIcon icons[] = {info_tv_v1_TaskIcon_TASK_ICON_CODE,
@@ -121,14 +127,48 @@ int main(int argc, char** argv) {
   }
   screen.render(model);
   checkBounds();
-  CHECK(hasLabel("8 sessions"));
+  CHECK(hasLabel("8 tasks") && hasLabel("1/3"));
   CHECK(hasLabel("2 need you"));
   CHECK(hasLabel("消息接口"));
-  CHECK(hasLabel("RUN") && hasLabel("WAIT") && hasLabel("FAIL") && hasLabel("DONE"));
-  CHECK(hasLabel(LV_SYMBOL_OK) && hasLabel(LV_SYMBOL_UPLOAD));
-  CHECK(visibleBars() == 3 && visibleBars(0) == 1 && visibleBars(100) == 1);
+  CHECK(hasLabel("RUN") && hasLabel("WAIT") && hasLabel("FAIL"));
+  CHECK(hasLabel(LV_SYMBOL_OK));
+  CHECK(hasLabel("23\xc2\xb0" "C") && hasLabel("Clear"));
+  CHECK(visibleBars() == 1 && visibleBars(42) == 1);
   lv_refr_now(display);
   save(capture, std::string(argv[1]) + "-overview.ppm");
+  const auto overviewPixels = capture.pixels;
+  auto sparse = model;
+  sparse.rowCount = 2;
+  sparse.pageIndex = 2;
+  sparse.rows[0] = model.rows[2];
+  std::strcpy(sparse.rows[0].card.view.title, "Docs update");
+  sparse.rows[0].card.view.icon = info_tv_v1_TaskIcon_TASK_ICON_REVIEW;
+  sparse.rows[0].card.view.content.status.has_progress_percent = false;
+  sparse.rows[1] = model.rows[2];
+  std::strcpy(sparse.rows[1].card.view.title, "Deploy");
+  sparse.rows[1].card.view.icon = info_tv_v1_TaskIcon_TASK_ICON_DEPLOY;
+  std::strcpy(sparse.rows[1].card.view.content.status.text, "completed");
+  sparse.rows[1].card.view.content.status.tone = info_tv_v1_Tone_TONE_POSITIVE;
+  sparse.rows[1].card.view.content.status.progress_percent = 100;
+  screen.render(sparse);
+  checkBounds();
+  CHECK(!hasLabel("Unit tests") && hasLabel("3/3"));
+  CHECK(hasLabel("Shanghai") && visibleBars(100) == 1);
+  lv_refr_now(display);
+  CHECK(std::equal(capture.pixels.begin() + 148 * 240 * 3, capture.pixels.end(),
+                   overviewPixels.begin() + 148 * 240 * 3));
+  save(capture, std::string(argv[1]) + "-two.ppm");
+  sparse.rowCount = sparse.cardCount = 1;
+  sparse.pageCount = 1;
+  sparse.pageIndex = sparse.attentionCount = 0;
+  screen.render(sparse);
+  checkBounds();
+  CHECK(!hasLabel("Login") && !hasLabel("1/1") && !hasLabel("2 need you"));
+  CHECK(hasLabel("1 task"));
+  lv_refr_now(display);
+  CHECK(std::equal(capture.pixels.begin() + 148 * 240 * 3, capture.pixels.end(),
+                   overviewPixels.begin() + 148 * 240 * 3));
+  save(capture, std::string(argv[1]) + "-one.ppm");
   auto longModel = model;
   longModel.rowCount = 1;
   std::memset(longModel.rows[0].card.view.source, 's', 64);
@@ -145,20 +185,22 @@ int main(int argc, char** argv) {
   checkBounds();
   CHECK(hasLabel("RUN"));
   CHECK(visibleBars() == 0);
-  CHECK(hasLabel("Offline | last state"));
+  CHECK(hasLabel("Offline"));
   lv_refr_now(display);
   save(capture, std::string(argv[1]) + "-offline.ppm");
   model.kind = info_tv::RenderModel::Kind::kNotification;
   model.connected = true;
   model.view = model.rows[0].card.view;
   std::strcpy(model.cardId, model.rows[0].card.card_id);
-  std::strcpy(model.view.content.status.detail, "Please return to your computer.");
+  std::strcpy(model.view.content.status.detail, "Return to computer.");
   screen.render(model);
   checkBounds();
   CHECK(!hasLabel("Unit tests"));
-  CHECK(hasLabel("Please return to your computer."));
+  CHECK(hasLabel("Return to computer."));
   CHECK(visibleBars() == 0);
   lv_refr_now(display);
+  CHECK(std::equal(capture.pixels.begin() + 148 * 240 * 3, capture.pixels.end(),
+                   overviewPixels.begin() + 148 * 240 * 3));
   save(capture, std::string(argv[1]) + "-notification.ppm");
   model.view = model.rows[2].card.view;
   std::strcpy(model.cardId, model.rows[2].card.card_id);
@@ -177,18 +219,44 @@ int main(int argc, char** argv) {
   CHECK(visibleBars() == 0);
   model.kind = info_tv::RenderModel::Kind::kEmpty;
   model.connected = true;
+  model.cardCount = model.rowCount = model.pageCount = model.attentionCount = 0;
   screen.render(model);
   checkBounds();
-  CHECK(hasLabel("No messages yet"));
+  CHECK(hasLabel("No tasks yet") && !hasLabel("1/3"));
+  CHECK(hasLabel("Clear"));
   CHECK(!hasLabel("last: running"));
   CHECK(visibleBars() == 0);
   lv_refr_now(display);
   save(capture, std::string(argv[1]) + "-empty.ppm");
+  model.weatherFresh = false;
+  screen.render(model);
+  checkBounds();
+  CHECK(hasLabel("Stale"));
+  lv_refr_now(display);
+  save(capture, std::string(argv[1]) + "-stale.ppm");
+  model.weather = {};
+  screen.render(model);
+  checkBounds();
+  CHECK(hasLabel("Not set") && !hasLabel("23\xc2\xb0" "C"));
+  lv_refr_now(display);
+  save(capture, std::string(argv[1]) + "-unavailable.ppm");
   model.kind = info_tv::RenderModel::Kind::kOverview;
+  model.rowCount = model.cardCount = 3;
+  model.pageCount = 1;
+  model.attentionCount = 0;
+  model.rows[0].card.view.icon = info_tv_v1_TaskIcon_TASK_ICON_REVIEW;
+  model.rows[1].card.view.icon = info_tv_v1_TaskIcon_TASK_ICON_DEPLOY;
+  model.rows[0].card.view.content.status.has_progress_percent = true;
+  model.rows[0].card.view.content.status.progress_percent = 0;
+  model.rows[1].card.view.content.status.has_progress_percent = true;
+  model.rows[1].card.view.content.status.progress_percent = 100;
+  std::strcpy(model.rows[1].card.view.content.status.text, "completed");
   screen.render(model);
   checkBounds();
   CHECK(hasLabel("Unit tests"));
   CHECK(visibleBars() == 3);
-  CHECK(!hasLabel("Ready for tasks"));
+  CHECK(visibleBars(0) == 1 && visibleBars(100) == 1);
+  CHECK(hasLabel("DONE") && hasLabel(LV_SYMBOL_UPLOAD) && hasLabel(LV_SYMBOL_EYE_OPEN));
+  CHECK(!hasLabel("No tasks yet") && !hasLabel("2 need you") && !hasLabel("1/1"));
   lv_deinit();
 }

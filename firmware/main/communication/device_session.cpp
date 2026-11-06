@@ -82,6 +82,7 @@ void DeviceSession::dispatch(uint64_t nowMs) {
     reply_.body.hello.max_cards = policy::kMaxCards;
     reply_.body.hello.task_icons = true;
     reply_.body.hello.brightness_control = true;
+    reply_.body.hello.weather = true;
     send();
     return;
   }

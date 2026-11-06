@@ -3,7 +3,10 @@
 import asyncio
 from collections.abc import Callable
 from dataclasses import replace
+from typing import cast
 from uuid import uuid4
+
+import pytest
 
 from info_tv_service.device.codec import make_envelope
 from info_tv_service.device.framing import FrameDecoder, encode_frame
@@ -28,7 +31,9 @@ class PeerTransport:
         self.last_session = ""
         self.task_icons = True
         self.brightness_control = True
+        self.weather = True
         self.withhold_settings = False
+        self.withhold_weather = False
 
     async def open(self) -> None:
         """Start a fresh connection while preserving captured history."""
@@ -75,6 +80,7 @@ class PeerTransport:
                 response.hello.max_cards = 8
                 response.hello.task_icons = self.task_icons
                 response.hello.brightness_control = self.brightness_control
+                response.hello.weather = self.weather
             elif kind == "ping":
                 response.pong.SetInParent()
             else:
@@ -82,6 +88,8 @@ class PeerTransport:
                 if kind == "card_upsert" and self.withhold_cards:
                     continue
                 if kind == "device_settings" and self.withhold_settings:
+                    continue
+                if kind == "weather" and self.withhold_weather:
                     continue
                 response.acknowledgment.in_reply_to = command.message_id
                 response.acknowledgment.stage = pb.ACK_STAGE_ACCEPTED
@@ -376,6 +384,77 @@ def test_firmware_without_brightness_is_rejected_before_snapshot() -> None:
             await wait_until(lambda: "brightness control" in str(session.get_status()))
             assert not session.online
             assert not any(message.HasField("snapshot") for message in peer.commands)
+        finally:
+            await stop(task)
+    asyncio.run(scenario())
+
+
+def test_weather_coalesces_expires_and_does_not_revive_on_reconnect(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Use the original weather deadline through retries and reconnects.
+
+    Parameters
+    ----------
+    monkeypatch : MonkeyPatch
+        Shortens only command retry timing for this scenario.
+    """
+    async def scenario() -> None:
+        """Exercise real delivery scheduling against a controlled peer."""
+        monkeypatch.setattr("info_tv_service.device.session.ACK_TIMEOUT_SECONDS", 0.1)
+        peer = PeerTransport()
+        store = TaskStore()
+        session = DeviceSession(peer, store.list_tasks)
+        session.set_weather(pb.Weather(location="Harbin", temperature_c=0,
+                                       condition=pb.WEATHER_CONDITION_SNOW, valid_for_ms=1000))
+        task = asyncio.create_task(session.run())
+        try:
+            await wait_until(lambda: session.online)
+            snapshot = next(command for command in peer.commands if command.HasField("snapshot"))
+            assert snapshot.snapshot.weather.HasField("temperature_c")
+            assert snapshot.snapshot.weather.temperature_c == 0
+            assert cast(dict[str, object], session.weather_status()["delivery"])["accepted"] is True
+            peer.withhold_weather = True
+            for temperature in (10, 20, 30):
+                session.set_weather(pb.Weather(location="Shanghai", temperature_c=temperature,
+                                               condition=pb.WEATHER_CONDITION_CLEAR, valid_for_ms=250))
+            await wait_until(lambda: len([c for c in peer.commands if c.HasField("weather")]) >= 2)
+            updates = [c for c in peer.commands if c.HasField("weather")]
+            assert updates[0].message_id == updates[1].message_id
+            assert updates[0].weather.temperature_c == updates[1].weather.temperature_c == 30
+            assert 0 < updates[1].weather.valid_for_ms < updates[0].weather.valid_for_ms <= 250
+            peer.withhold_weather = False
+            response = make_envelope(session.session_id)
+            response.acknowledgment.in_reply_to = updates[0].message_id
+            response.acknowledgment.stage = pb.ACK_STAGE_ACCEPTED
+            peer.incoming.put_nowait(encode_frame(response.SerializeToString()))
+            await wait_until(lambda: cast(dict[str, object], session.weather_status()["delivery"]).get("accepted") is True)
+            await wait_until(lambda: session.weather_status()["state"] == "stale")
+            assert session.weather_status()["temperature_c"] == 30
+            assert not session._deliveries[updates[0].message_id].presented
+            peer.fail = True
+            await wait_until(lambda: peer.opens >= 2 and session.online)
+            snapshots = [c for c in peer.commands if c.HasField("snapshot")]
+            assert not snapshots[-1].snapshot.weather.HasField("temperature_c")
+            session.set_weather(pb.Weather())
+            await wait_until(lambda: cast(dict[str, object], session.weather_status()["delivery"]).get("accepted") is True)
+            assert session.weather_status()["state"] == "unavailable"
+            assert store.list_tasks() == []
+        finally:
+            await stop(task)
+    asyncio.run(scenario())
+
+
+def test_firmware_without_weather_is_rejected_before_snapshot() -> None:
+    """An older device cannot silently drop the persistent weather area."""
+    async def scenario() -> None:
+        """Advertise unsupported weather and inspect handshake failure."""
+        peer = PeerTransport()
+        peer.weather = False
+        store = TaskStore()
+        session = DeviceSession(peer, store.list_tasks)
+        task = asyncio.create_task(session.run())
+        try:
+            await wait_until(lambda: "weather status" in str(session.get_status()))
+            assert not any(command.HasField("snapshot") for command in peer.commands)
         finally:
             await stop(task)
     asyncio.run(scenario())

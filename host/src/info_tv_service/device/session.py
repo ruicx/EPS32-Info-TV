@@ -59,7 +59,7 @@ class Pending:
     attempts : int
         Number of transmissions, including the original send.
     expires_at : float or None
-        Original monotonic notification deadline, if applicable.
+        Original monotonic notification or weather deadline, if applicable.
     """
 
     envelope: pb.Envelope
@@ -100,6 +100,10 @@ class DeviceSession:
         self._applied_brightness: int | None = None
         self._brightness_dirty = True
         self._brightness_delivery: Delivery | None = None
+        self._weather = pb.Weather()
+        self._weather_expires_at = 0.0
+        self._weather_dirty = False
+        self._weather_delivery: Delivery | None = None
         self._logger = logging.getLogger(__name__)
 
     @property
@@ -156,6 +160,58 @@ class DeviceSession:
         self._brightness_dirty = True
         self._brightness_delivery = None
 
+    def set_weather(self, weather: pb.Weather) -> None:
+        """Coalesce a validated weather update or explicit empty clear.
+
+        Parameters
+        ----------
+        weather : Weather
+            Absolute values with freshness starting at local admission.
+        """
+        self._weather.CopyFrom(weather)
+        self._weather_expires_at = time.monotonic() + weather.valid_for_ms / 1000
+        self._weather_dirty = True
+        self._weather_delivery = None
+
+    def weather_status(self) -> dict[str, object]:
+        """Describe weather freshness separately from UI acceptance.
+
+        Returns
+        -------
+        dict[str, object]
+            Retained data, remaining freshness, and latest delivery. Weather
+            does not claim a Presented milestone independently of task content.
+        """
+        remaining = max(0, int((self._weather_expires_at - time.monotonic()) * 1000))
+        available = self._weather.HasField("temperature_c")
+        delivery = self._weather_delivery
+        return {
+            "state": "unavailable" if not available else "fresh" if remaining else "stale",
+            "location": self._weather.location if available else None,
+            "temperature_c": self._weather.temperature_c if available else None,
+            "condition": pb.WeatherCondition.Name(self._weather.condition).removeprefix(
+                "WEATHER_CONDITION_").lower() if available else None,
+            "valid_for_ms": remaining if available else 0,
+            "delivery": {"message_id": delivery.message_id, "accepted": delivery.accepted,
+                         "error": delivery.error} if delivery else {"state": "pending"},
+        }
+
+    def _current_weather(self) -> pb.Weather:
+        """Copy only still-fresh weather without extending its original lifetime.
+
+        Returns
+        -------
+        Weather
+            Current values with remaining validity, or an explicit empty clear.
+        """
+        remaining = max(0, int((self._weather_expires_at - time.monotonic()) * 1000))
+        if not remaining or not self._weather.HasField("temperature_c"):
+            return pb.Weather()
+        result = pb.Weather()
+        result.CopyFrom(self._weather)
+        result.valid_for_ms = remaining
+        return result
+
     def settings_status(self) -> dict[str, object]:
         """Report target brightness separately from correlated hardware feedback.
 
@@ -188,6 +244,7 @@ class DeviceSession:
             "state": self._state, "session_id": self.session_id,
             "last_error": self._last_error,
             "settings": self.settings_status(),
+            "weather": self.weather_status(),
             "deliveries": [
                 {"message_id": key, "accepted": value.accepted, "presented": value.presented,
                  "applied": value.applied, "error": value.error}
@@ -251,6 +308,7 @@ class DeviceSession:
                 self._applied_brightness = None
                 self._brightness_dirty = True
                 self._brightness_delivery = None
+                self._weather_delivery = None
                 await self._transport.close()
             await asyncio.sleep(RECONNECT_SECONDS)
 
@@ -313,6 +371,8 @@ class DeviceSession:
                     raise OSError("Device firmware lacks task icons; update firmware")
                 if not response.hello.brightness_control:
                     raise OSError("Device firmware lacks brightness control; update firmware")
+                if not response.hello.weather:
+                    raise OSError("Device firmware lacks weather status; update firmware")
                 break
             if time.monotonic() >= deadline:
                 raise TimeoutError("Device Hello timeout")
@@ -320,8 +380,10 @@ class DeviceSession:
         self._last_received = time.monotonic()
         snapshot = make_envelope(self.session_id)
         snapshot.snapshot.cards.extend(build_card(record) for record in self._tasks())
+        snapshot.snapshot.weather.CopyFrom(self._current_weather())
+        self._weather_dirty = False
         self._dirty.clear()
-        await self._start_command(snapshot)
+        await self._start_command(snapshot, self._weather_expires_at)
         while True:
             now = time.monotonic()
             if now - self._last_received >= HEARTBEAT_TIMEOUT_SECONDS:
@@ -346,7 +408,12 @@ class DeviceSession:
                 await self._start_command(command)
             elif self.online:
                 self._expire_notifications()
-                if self._notifications and (not self._dirty or self._card_sent_since_notice):
+                if self._weather_dirty:
+                    command = make_envelope(self.session_id)
+                    command.weather.CopyFrom(self._current_weather())
+                    self._weather_dirty = False
+                    await self._start_command(command, self._weather_expires_at)
+                elif self._notifications and (not self._dirty or self._card_sent_since_notice):
                     selected = 0
                     for index, (candidate, _) in enumerate(self._notifications):
                         if candidate.priority == pb.PRIORITY_IMPORTANT:
@@ -372,9 +439,9 @@ class DeviceSession:
         Parameters
         ----------
         envelope : Envelope
-            Snapshot, card update, notification, or device settings.
+            Snapshot, card update, notification, weather, or device settings.
         expires : float or None
-            Original monotonic notification validity deadline.
+            Original monotonic notification or weather validity deadline.
         """
         self._pending = Pending(envelope, time.monotonic(), expires_at=expires)
         cards = list(envelope.snapshot.cards) if envelope.HasField("snapshot") else []
@@ -383,6 +450,8 @@ class DeviceSession:
         self._deliveries[envelope.message_id] = Delivery(envelope.message_id)
         if envelope.HasField("device_settings"):
             self._brightness_delivery = self._deliveries[envelope.message_id]
+        if envelope.HasField("weather") or envelope.HasField("snapshot"):
+            self._weather_delivery = self._deliveries[envelope.message_id]
         for card in cards:
             self._card_delivery[card.card_id] = (card.revision, envelope.message_id)
             self._deliveries[f"{envelope.message_id}:{card.card_id}"] = Delivery(envelope.message_id)
@@ -470,7 +539,7 @@ class DeviceSession:
                 delivery.presented = True
 
     async def _retry_if_due(self) -> None:
-        """Retry the current identity without extending notification validity.
+        """Retry the current identity without extending content validity.
 
         Raises
         ------
@@ -482,11 +551,18 @@ class DeviceSession:
             return
         if pending.expires_at is not None:
             remaining = int((pending.expires_at - time.monotonic()) * 1000)
-            if remaining <= 0:
+            if pending.envelope.HasField("notification") and remaining <= 0:
                 self._mark_error(pending.envelope.message_id, "Notification expired")
                 self._pending = None
                 return
-            pending.envelope.notification.valid_for_ms = remaining
+            if pending.envelope.HasField("notification"):
+                pending.envelope.notification.valid_for_ms = remaining
+            else:
+                weather = pending.envelope.weather if pending.envelope.HasField("weather") else pending.envelope.snapshot.weather
+                if remaining <= 0:
+                    weather.Clear()
+                elif weather.HasField("temperature_c"):
+                    weather.valid_for_ms = remaining
         if pending.attempts >= MAX_SEND_ATTEMPTS:
             stage = "Applied" if pending.envelope.HasField("device_settings") else "UI Accepted"
             raise TimeoutError(f"{stage} acknowledgment timeout")

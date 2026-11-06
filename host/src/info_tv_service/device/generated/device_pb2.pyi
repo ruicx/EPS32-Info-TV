@@ -24,6 +24,16 @@ class TaskIcon(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     TASK_ICON_REVIEW: _ClassVar[TaskIcon]
     TASK_ICON_DEPLOY: _ClassVar[TaskIcon]
 
+class WeatherCondition(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    WEATHER_CONDITION_UNKNOWN: _ClassVar[WeatherCondition]
+    WEATHER_CONDITION_CLEAR: _ClassVar[WeatherCondition]
+    WEATHER_CONDITION_CLOUDY: _ClassVar[WeatherCondition]
+    WEATHER_CONDITION_RAIN: _ClassVar[WeatherCondition]
+    WEATHER_CONDITION_SNOW: _ClassVar[WeatherCondition]
+    WEATHER_CONDITION_STORM: _ClassVar[WeatherCondition]
+    WEATHER_CONDITION_FOG: _ClassVar[WeatherCondition]
+
 class Priority(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     PRIORITY_UNSPECIFIED: _ClassVar[Priority]
@@ -56,6 +66,13 @@ TASK_ICON_TEST: TaskIcon
 TASK_ICON_BUILD: TaskIcon
 TASK_ICON_REVIEW: TaskIcon
 TASK_ICON_DEPLOY: TaskIcon
+WEATHER_CONDITION_UNKNOWN: WeatherCondition
+WEATHER_CONDITION_CLEAR: WeatherCondition
+WEATHER_CONDITION_CLOUDY: WeatherCondition
+WEATHER_CONDITION_RAIN: WeatherCondition
+WEATHER_CONDITION_SNOW: WeatherCondition
+WEATHER_CONDITION_STORM: WeatherCondition
+WEATHER_CONDITION_FOG: WeatherCondition
 PRIORITY_UNSPECIFIED: Priority
 PRIORITY_ORDINARY: Priority
 PRIORITY_IMPORTANT: Priority
@@ -71,7 +88,7 @@ ERROR_CODE_EXPIRED: ErrorCode
 ERROR_CODE_HARDWARE: ErrorCode
 
 class Envelope(_message.Message):
-    __slots__ = ("protocol_version", "session_id", "message_id", "hello", "snapshot", "card_upsert", "notification", "acknowledgment", "error", "ping", "pong", "device_settings")
+    __slots__ = ("protocol_version", "session_id", "message_id", "hello", "snapshot", "card_upsert", "notification", "acknowledgment", "error", "ping", "pong", "device_settings", "weather")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     SESSION_ID_FIELD_NUMBER: _ClassVar[int]
     MESSAGE_ID_FIELD_NUMBER: _ClassVar[int]
@@ -84,6 +101,7 @@ class Envelope(_message.Message):
     PING_FIELD_NUMBER: _ClassVar[int]
     PONG_FIELD_NUMBER: _ClassVar[int]
     DEVICE_SETTINGS_FIELD_NUMBER: _ClassVar[int]
+    WEATHER_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     session_id: str
     message_id: str
@@ -96,19 +114,22 @@ class Envelope(_message.Message):
     ping: Ping
     pong: Pong
     device_settings: DeviceSettings
-    def __init__(self, protocol_version: _Optional[int] = ..., session_id: _Optional[str] = ..., message_id: _Optional[str] = ..., hello: _Optional[_Union[Hello, _Mapping]] = ..., snapshot: _Optional[_Union[Snapshot, _Mapping]] = ..., card_upsert: _Optional[_Union[CardUpsert, _Mapping]] = ..., notification: _Optional[_Union[Notification, _Mapping]] = ..., acknowledgment: _Optional[_Union[Acknowledgment, _Mapping]] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., ping: _Optional[_Union[Ping, _Mapping]] = ..., pong: _Optional[_Union[Pong, _Mapping]] = ..., device_settings: _Optional[_Union[DeviceSettings, _Mapping]] = ...) -> None: ...
+    weather: Weather
+    def __init__(self, protocol_version: _Optional[int] = ..., session_id: _Optional[str] = ..., message_id: _Optional[str] = ..., hello: _Optional[_Union[Hello, _Mapping]] = ..., snapshot: _Optional[_Union[Snapshot, _Mapping]] = ..., card_upsert: _Optional[_Union[CardUpsert, _Mapping]] = ..., notification: _Optional[_Union[Notification, _Mapping]] = ..., acknowledgment: _Optional[_Union[Acknowledgment, _Mapping]] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., ping: _Optional[_Union[Ping, _Mapping]] = ..., pong: _Optional[_Union[Pong, _Mapping]] = ..., device_settings: _Optional[_Union[DeviceSettings, _Mapping]] = ..., weather: _Optional[_Union[Weather, _Mapping]] = ...) -> None: ...
 
 class Hello(_message.Message):
-    __slots__ = ("boot_id", "max_cards", "task_icons", "brightness_control")
+    __slots__ = ("boot_id", "max_cards", "task_icons", "brightness_control", "weather")
     BOOT_ID_FIELD_NUMBER: _ClassVar[int]
     MAX_CARDS_FIELD_NUMBER: _ClassVar[int]
     TASK_ICONS_FIELD_NUMBER: _ClassVar[int]
     BRIGHTNESS_CONTROL_FIELD_NUMBER: _ClassVar[int]
+    WEATHER_FIELD_NUMBER: _ClassVar[int]
     boot_id: int
     max_cards: int
     task_icons: bool
     brightness_control: bool
-    def __init__(self, boot_id: _Optional[int] = ..., max_cards: _Optional[int] = ..., task_icons: bool = ..., brightness_control: bool = ...) -> None: ...
+    weather: bool
+    def __init__(self, boot_id: _Optional[int] = ..., max_cards: _Optional[int] = ..., task_icons: bool = ..., brightness_control: bool = ..., weather: bool = ...) -> None: ...
 
 class Ping(_message.Message):
     __slots__ = ()
@@ -160,11 +181,25 @@ class Card(_message.Message):
     view: View
     def __init__(self, card_id: _Optional[str] = ..., revision: _Optional[int] = ..., view: _Optional[_Union[View, _Mapping]] = ...) -> None: ...
 
+class Weather(_message.Message):
+    __slots__ = ("location", "temperature_c", "condition", "valid_for_ms")
+    LOCATION_FIELD_NUMBER: _ClassVar[int]
+    TEMPERATURE_C_FIELD_NUMBER: _ClassVar[int]
+    CONDITION_FIELD_NUMBER: _ClassVar[int]
+    VALID_FOR_MS_FIELD_NUMBER: _ClassVar[int]
+    location: str
+    temperature_c: int
+    condition: WeatherCondition
+    valid_for_ms: int
+    def __init__(self, location: _Optional[str] = ..., temperature_c: _Optional[int] = ..., condition: _Optional[_Union[WeatherCondition, str]] = ..., valid_for_ms: _Optional[int] = ...) -> None: ...
+
 class Snapshot(_message.Message):
-    __slots__ = ("cards",)
+    __slots__ = ("cards", "weather")
     CARDS_FIELD_NUMBER: _ClassVar[int]
+    WEATHER_FIELD_NUMBER: _ClassVar[int]
     cards: _containers.RepeatedCompositeFieldContainer[Card]
-    def __init__(self, cards: _Optional[_Iterable[_Union[Card, _Mapping]]] = ...) -> None: ...
+    weather: Weather
+    def __init__(self, cards: _Optional[_Iterable[_Union[Card, _Mapping]]] = ..., weather: _Optional[_Union[Weather, _Mapping]] = ...) -> None: ...
 
 class CardUpsert(_message.Message):
     __slots__ = ("card",)

@@ -24,6 +24,17 @@ bool validView(const View& view) {
 bool validCard(const Card& card) {
   return card.card_id[0] && card.revision && card.has_view && validView(card.view);
 }
+
+/** Validate a complete weather observation or a fully empty clear. */
+bool validWeather(const info_tv_v1_Weather& weather) {
+  if (!weather.has_temperature_c)
+    return !weather.location[0] && !weather.valid_for_ms &&
+        weather.condition == info_tv_v1_WeatherCondition_WEATHER_CONDITION_UNKNOWN;
+  return weather.location[0] && weather.temperature_c >= -100 && weather.temperature_c <= 100 &&
+      weather.valid_for_ms && weather.valid_for_ms <= 3600000 &&
+      weather.condition >= info_tv_v1_WeatherCondition_WEATHER_CONDITION_UNKNOWN &&
+      weather.condition <= info_tv_v1_WeatherCondition_WEATHER_CONDITION_FOG;
+}
 }  // namespace
 
 bool decodeEnvelope(const uint8_t* data, size_t size, Envelope& output) {
@@ -42,11 +53,14 @@ const char* validateCommand(const Envelope& envelope) {
   if (envelope.protocol_version != 1) return "Unsupported protocol version";
   if (!envelope.session_id[0] || !envelope.message_id[0]) return "Missing operation identity";
   switch (envelope.which_body) {
+    case info_tv_v1_Envelope_weather_tag:
+      return validWeather(envelope.body.weather) ? nullptr : "Invalid weather";
     case info_tv_v1_Envelope_device_settings_tag:
       return envelope.body.device_settings.has_brightness_percent &&
           envelope.body.device_settings.brightness_percent <= 100 ? nullptr : "Invalid brightness";
     case info_tv_v1_Envelope_snapshot_tag: {
       const auto& snapshot = envelope.body.snapshot;
+      if (snapshot.has_weather && !validWeather(snapshot.weather)) return "Invalid snapshot weather";
       for (size_t index = 0; index < snapshot.cards_count; ++index) {
         if (!validCard(snapshot.cards[index])) return "Invalid snapshot card";
         for (size_t other = 0; other < index; ++other) {
