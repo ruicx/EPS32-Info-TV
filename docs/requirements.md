@@ -60,9 +60,13 @@ Remaining display, backlight, touch, PSRAM runtime, and application USB checks b
 ### FR-01 Important Calendar Events
 
 - Display calendar events relevant to the user, with enough information to identify each event and its time.
+- Keep the next eligible event in a compact overview entry. Expand it temporarily
+  at reminder time, then return to the overview with the entry retained. Mark it
+  ongoing at its start; remove it after ending or cancellation and select the next
+  eligible event. With no eligible event, calendar content occupies no space.
 - Deliver calendar content through the Windows service. The calendar producer or retrieval mechanism remains to be specified separately from the common message service.
 - The criteria for identifying important events, calendar sources, display time range, and refresh frequency are to be confirmed.
-- Update existing event information when new content arrives and remind the user when an important event is approaching. Reminder lead time, repetition, and withdrawal after cancellation are to be confirmed.
+- Update existing event information when new content arrives and remind the user when an important event is approaching. Reminder lead time, repetition, and cancellation delivery mechanisms are to be confirmed.
 
 Acceptance direction: After selecting a calendar source, designated important events appear on the device. Changes and cancellations produce the agreed display behavior.
 
@@ -72,6 +76,9 @@ Acceptance direction: After selecting a calendar source, designated important ev
 - Agent software, its hooks, or sender adapters submit messages to the common local Windows service; the service prepares the unified device display representation and handles downstream delivery.
 - The service core does not need to launch agents, monitor their consoles, or parse their private transcript formats to receive a submitted message. Available submission mechanisms for each target remain to be verified during integration design.
 - Supported task states include running, waiting for input, completed, and failed when reported by the source.
+- Allow a task to select a built-in purpose icon independently of its state.
+  The initial catalog is task, code, test, build, review, and deploy. Show a
+  progress bar only when the producer reports a completion percentage.
 - New status for the same task should update existing content rather than create a duplicate card for every change.
 - Do not invent a progress percentage when actual progress is unavailable. Whether to show the current stage, elapsed time, or other information is to be confirmed.
 - Keep concurrent tasks independent. Give waiting-for-input and failed tasks greater attention in the overview.
@@ -139,16 +146,34 @@ The confirmed message flow, producer/service/device responsibilities, and open i
 
 ## 5. Display and Message Lifecycle
 
-Status: The behaviors in this section were accepted by the user on 2026-11-03. Explicitly open details remain undecided.
+Status: The initial behaviors in this section were accepted by the user on
+2026-11-03. The four content categories and next-event calendar presentation were
+accepted on 2026-11-05. Explicitly open details remain undecided.
 
 ### 5.1 Content Categories
 
+The accepted product categories are task status, schedule reminders, information
+cards, and instant notifications. Task status includes agent executions;
+information cards include weather and potential device metrics. Their layouts
+can differ. Compact agent rows with preset icons, title, state, and optional
+progress bars are implemented in the desktop-verified revision. Execution-time
+semantics and fields remain undecided; time is not yet displayed.
+
+Connection, offline, and empty states belong to the interface. Clock and
+animation playback belong to idle presentation rather than an additional message
+category. See [Message Interface and Screen UI Design](message-ui-design.md#accepted-content-classification)
+for category definitions and implementation status.
+
+Content uses two lifecycle behaviors:
+
 | Category | Examples | Required behavior |
 | --- | --- | --- |
-| Persistent state | Current weather, calendar lists, current task status | Replace existing content when the same object is updated |
+| Persistent state | Current weather, next eligible calendar event, current task status | Replace existing content when the same object is updated |
 | One-time notifications | Task completion, meeting reminders, external messages | Enter a notification queue, display according to policy, then leave |
 
-These categories support discussion of update and display behavior. They do not require two separate message formats in the final protocol.
+These lifecycle behaviors do not require two separate message formats in the final
+protocol. A task can have both a persistent status entry and a temporary
+transition notification; the notification does not resolve the underlying task.
 
 ### 5.2 Task Updates and Attention
 

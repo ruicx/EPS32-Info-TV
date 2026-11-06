@@ -85,6 +85,7 @@ def create_router() -> APIRouter:
             {"source": record.event.source, "task_id": record.event.task_id,
              "state": record.event.state, "title": record.event.title,
              "detail": record.event.detail, "progress_percent": record.event.progress_percent,
+             "icon": record.event.icon,
              "conversation_id": record.event.conversation_id,
              "conversation_title": record.event.conversation_title,
              "context": record.event.context, "run_sequence": record.event.run_sequence,

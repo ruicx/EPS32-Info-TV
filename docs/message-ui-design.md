@@ -2,6 +2,11 @@
 
 Status: The multi-conversation overview direction has been accepted. Phase one is implemented and has passed desktop checks and a firmware build; calendar, weather, and general notifications remain design proposals. The firmware was flashed on 2026-11-05. Five cards and two notifications received actual device Presented feedback, and the user confirmed that physical text, layout, and page rotation were normal.
 
+Visual update: The compact bubble layout and task-purpose icons below are a subsequent firmware UI
+revision. Its desktop previews and verification are recorded in
+[Bubble UI validation](bubble-ui-validation.md); the earlier physical confirmation
+applies to the original layout.
+
 Date: 2026-11-05
 
 ## 1. Design Goals
@@ -14,13 +19,32 @@ Keep the accepted behaviors: separate persistent state from notifications, updat
 
 ## 2. Messages to Display
 
+### Accepted Content Classification
+
+The user accepted these four categories on 2026-11-05. Classification does not
+require every category to use the same bubble height or number of text lines.
+
+| Category | Examples | Lifecycle | Implementation status |
+| --- | --- | --- | --- |
+| Task status | Codex or agy execution state | Update one persistent entry per conversation/task; state transitions can also notify | Compact rows, preset icons, and progress bars implemented; not flashed |
+| Schedule reminder | Upcoming meeting or deadline | Keep the next eligible item in the overview and temporarily expand it at reminder time | Not implemented |
+| Information card | Weather or a device metric | Replace current values and show freshness/validity | Weather and metric templates are not implemented |
+| Instant notification | External message, task completion, or failure alert | Temporarily display, then restore the overview | Task transition notifications implemented; generic external notification API not implemented |
+
+Task status and its transition notification describe the same underlying task.
+Showing or dismissing the temporary notification does not create, remove, or
+resolve its persistent entry. Connection, offline, and empty states are interface
+states; clock/animation playback belongs to the idle presentation.
+
+### Content Examples
+
 | Scenario | Question the screen should answer | Persistent content | One-time notification |
 | --- | --- | --- | --- |
 | Agent running | Which project, what work, and which stage? | Source, task title, current stage; percentage only when real progress is available | Ordinary progress changes do not notify |
 | Agent waiting for input | What needs me to return to the computer? | Task title, reason for waiting, clear next step | Important notification on entering the waiting state |
 | Agent failed | What failed, and where should I handle it? | Task title, short reason, next step | Important notification on entering the failed state |
 | Agent completed | What finished, and what was the result? | Short result, removed according to a retention policy to be decided | Notify once per completed task |
-| Calendar | What is the next important event, and how soon? | Title, start/end time, optional location; at most three overview entries | Notify at the agreed reminder lead time |
+| Calendar | What is the next important event, and how soon? | One next eligible event, with title and time; retain it as ongoing until it ends | Expand at the agreed reminder lead time, then restore the overview |
 | Weather | Which location, what conditions, and how fresh is the data? | Location, conditions, temperature, update time; optionally one additional measure | Ordinary refreshes do not notify; weather alert integration is a separate decision |
 | External notification | What just happened, and does it need attention? | Does not enter persistent content by default | Title, two-line summary, source, ordinary or important priority |
 | Idle companion | Is there anything that needs attention? | Local time and optional cached animation | Important notifications can interrupt |
@@ -50,15 +74,86 @@ One item per screen supports viewing from farther away and is a candidate when t
 
 When tasks are waiting or have failed, prioritize their content while preserving display opportunities for other tasks. Progress updates must not restart rotation or let a high-frequency producer occupy the screen indefinitely. Detailed weights and timing remain trial settings.
 
-### Three-Row Overview
+### Compact Task Overview
 
-Show at most three short entries at once, each with a title and one status line. Rotate groups when there are more than three entries. This makes several tasks visible together but requires shorter titles and descriptions, with lower readability from a distance.
+Show at most five rounded message bubbles at once. Each has a task-purpose icon,
+conversation title, and compact state on one text line. A thin progress bar uses
+reserved space below the text when a percentage is known. Rotate groups when
+there are more than five entries. Source, project, and detail appear in the
+expanded notification; producers should use distinguishable short titles.
+
+All bubbles are rounded rectangles with smooth edges and no tails.
+Task purpose is independent of source identity.
+Use a dark background, muted metadata, and softly tinted surfaces. Amber, red,
+green, and blue accents accompany the state text for attention, failure,
+completion, and ordinary progress. Offline bubbles use a neutral surface and
+an `Offline | last state` footer without a live percentage. Keep the connection indicator and
+page count outside the bubbles.
 
 Both layouts use the same content model. Choosing a layout must not require callers to change their submissions, and both layouts do not have to be implemented together.
 
+### Compact Agent Layout and Pending Execution Timing
+
+A single-line rounded rectangle shows `icon | title | state` for agent tasks.
+Known states use `RUN`, `WAIT`, `DONE`, and `FAIL`. Reserve a fixed width for state,
+truncate the title to the remaining width, and keep source/project/detail in the expanded notification.
+Short titles should distinguish conversations when their names would otherwise
+be identical. Five entries fit per page in the desktop-verified implementation.
+Elapsed time is omitted until its meaning and reporting are confirmed.
+
+Execution timing is not available in the current task API or device view.
+The proposed meaning is elapsed time for the current execution, including input
+waiting, frozen on completion/failure and reset for a new execution. This timing
+definition is not yet confirmed. Start/end reporting, unknown timing, and offline
+behavior must be specified before implementing the timer.
+
+### Task Icons and Progress Bars
+
+Allow producers to select a built-in task-purpose icon with an optional `icon`
+identifier. The initial catalog is `task` (default), `code`, `test`,
+`build`, `review`, and `deploy`. These describe task purpose; state text and its
+color continue to express running, waiting, completed, or failed status.
+Source names do not select icons implicitly. The device stores the icon artwork;
+messages carry only a catalog identifier.
+
+The compact layout is `icon | title | state`. A thin progress
+bar sits inside the bottom of the same rounded rectangle when a percentage is
+available. Reserve its space so progress appearing or disappearing does not move
+neighboring entries. Body text remains on one line; title width must be checked
+at the native 240 x 240 resolution. The notification layout can use the same icon
+with its larger progress bar.
+
+Reuse the existing optional integer `progress_percent` field in the range 0..100.
+An omitted or null percentage hides the bar; zero is valid known progress. The
+producer reports completion percentage; the display does not estimate it from
+elapsed time. A value of 100 does not independently change task state, and a
+completed state does not invent an unreported percentage. Waiting and failure
+can retain their last reported percentage while state text/color remain explicit.
+Offline cached content continues to hide percentages and progress bars.
+
+Task-event fields (a fragment, not a complete request):
+
+```json
+{
+  "icon": "test",
+  "title": "Unit tests",
+  "state": "running",
+  "progress_percent": 42
+}
+```
+
+Implementation status: The API accepts the six `icon` strings and rejects unknown
+values with 422; omitting the field selects `task`. Each event is complete state,
+so later updates must repeat an icon that should remain selected. Cards and
+notifications share the same preset. The firmware uses bundled LVGL symbols,
+not arbitrary images or emoji. The host requires `Hello.task_icons = true`
+before synchronization, so this revision needs a paired host/firmware update.
+All six presets and progress presence are covered by desktop tests; the new
+firmware has not been flashed.
+
 ### Multiple Agent Conversations Updating Continuously
 
-Additional scenario: The user has several Codex and agy conversations open simultaneously. The default page for this case is the conversation overview; single cards present important content and state-transition notifications. Phase one supports at most eight persistent entries, three per page, with six-second rotation.
+Additional scenario: The user has several Codex and agy conversations open simultaneously. The default page for this case is the conversation overview; single cards present important content and state-transition notifications. Phase one supports at most eight persistent entries, five per compact page, with six-second rotation.
 
 **Each conversation has one persistent display entry.** Task updates within that conversation replace its entry, while other conversations remain independent. Do not collapse all conversations from one application into one entry or create a new card for every chat response.
 
@@ -72,27 +167,28 @@ Distinguish three identity levels:
 
 Events are still processed by `(source, task_id)`. With conversation association, the host projects task state onto a `(source, conversation_id)` entry. Do not simply reuse a long-lived conversation ID as `task_id`: completion deduplication applies to one execution, so reuse would suppress completion notifications for later executions. HTTP `conversation_id` is also distinct from the device protocol's service `session_id`.
 
-A readable `conversation_title` has been added, and `context` identifies the project or workspace. The primary row text is "source #short-card-ID | short conversation title"; the secondary text is "project | current state and optional progress". The short ID is the first four characters of the service-assigned card UUID. It is only a visual aid and does not replace the full identity. Titles and paths are not identity keys either.
+A readable `conversation_title` has been added, and `context` identifies the project or workspace. The compact overview shows the icon, title, and state, with optional progress below. Notifications show "source #short-card-ID | project" as metadata. The short ID is the first four characters of the service-assigned card UUID. It is only a visual aid and does not replace the full identity. Titles and paths are not identity keys either.
 
 ```text
 +--------------------------------+
-| 5 sessions | 2 need attention   |
+| 8 sessions          2 need you  |
+| ( [code] Message API    WAIT )  |
 |                                |
-| Codex | Message API            |
-| info_tv | Waiting for input    |
+| ( [build] Login flow    FAIL )  |
 |                                |
-| agy | Login flow               |
-| webapp | Failed                |
-|                                |
-| Codex | Unit tests             |
-| info_tv | Running              |
-| USB online          Page 1 / 2 |
+| ( [test] Unit tests      RUN )  |
+|   ========-----------------    |
+| ( [review] UI review     RUN )  |
+|   -------------------------    |
+| ( [deploy] Deploy       DONE )  |
+|   =========================    |
+| USB online                 1/2 |
 +--------------------------------+
 ```
 
 Display behavior:
 
-- Show at most three conversations per page. Keep the page stable when everything fits; otherwise rotate groups, initially every six seconds. Page numbers indicate additional content, and the header always shows the global attention count.
+- Show at most five conversations per compact page. Keep the page stable when everything fits; otherwise rotate groups, initially every six seconds. Page numbers indicate additional content, and the header always shows the global attention count.
 - Sort waiting and failed conversations first, running conversations next, and recently completed conversations last. Preserve stable ordering within each group. Visit every page before repeating so unresolved attention items cannot permanently hide other conversations.
 - Ordinary progress and summary updates change the existing entry without jumping pages or resetting the rotation timer. Entering waiting or failed state triggers one important notification. After it ends, restore the overview page containing that conversation, then continue rotation.
 - Notify once when an execution completes. When the next execution begins in the same conversation, its existing entry returns to running state. The adapter explicitly associates the current execution; delayed results from an older execution cannot replace it.
@@ -129,13 +225,28 @@ System labels remain English. The enabled LVGL Source Han Sans SC 16 px CJK font
 
 ### Notification Page
 
-Use the full screen to emphasize the source, state, task or event title, and a two-line summary. The footer can indicate "Return to your computer" or "Returns to overview". Do not add confirmation, approval, or retry buttons.
+Use one large message bubble to emphasize the source, state, task or event title,
+and a two-line summary. Retain the same typography and state colors as the overview,
+with space for a two-line title and an optional progress bar. The footer can
+indicate "Return to your computer" or "Returns to overview". Do not add
+confirmation, approval, or retry buttons.
 
 Keep the initial defaults of five seconds for ordinary notifications and ten seconds for important notifications. Equal-priority notifications retain arrival order; important notifications can interrupt ordinary ones. Whether an interrupted ordinary notification resumes remains an open product rule; the current demo ends it.
 
 ### Daily Information and Idle Pages
 
-Use a short list for calendar content and one main value with limited supporting text for weather. Time and animation belong on the idle page rather than occupying the center of every task card. The idle threshold and automatic rotation of weather/calendar pages remain to be decided.
+Keep one next eligible calendar item in the overview as a compact title/time
+entry. At the reminder lead time, temporarily expand it to show supporting
+details such as location or joining instructions. Restore the overview afterward
+while retaining the calendar entry. Mark it ongoing when it starts; when it ends
+or is canceled, remove it and select the next eligible item. If no eligible item
+exists, calendar content occupies no space. The source, eligibility rules, and
+reminder lead time remain open; this behavior is not implemented yet.
+
+Weather uses one main value with limited supporting text. Time and animation
+belong on the idle page rather than occupying the center of every task card.
+The idle threshold and how information cards share the overview remain to be
+decided.
 
 ### Text, Color, and Expiry
 
@@ -229,4 +340,4 @@ Suggested validation sequence:
 3. Complete necessary display fields and Chinese fonts, then implement the chosen layout → Use desktop tests and physical screen photographs; a browser prototype does not establish hardware behavior.
 4. Add update time, cancellation, deletion, and local expiry before calendar/weather integration → Verify that rescheduling or disconnection cannot produce stale reminders.
 
-Design topics include the roles of single-card and three-row layouts, daily home-page content, separate project/next-action fields, and whether the top touch input only changes pages or skips notifications. The multi-conversation default and project label are implemented as described above; the remaining choices are still open. Touch is a GPIO5 top electrode and remains untested, so do not design it as a touchscreen. Skipping a notification does not change business state.
+Design topics include the roles of focus and compact overview layouts, daily home-page content, separate project/next-action fields, and whether the top touch input only changes pages or skips notifications. The compact multi-conversation default, task icons, progress bars, and project label are implemented as described above; the remaining choices are still open. Touch is a GPIO5 top electrode and remains untested, so do not design it as a touchscreen. Skipping a notification does not change business state.

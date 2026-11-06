@@ -11,7 +11,9 @@ namespace info_tv {
 namespace {
 /** Check the supported view template and scalar bounds. */
 bool validView(const View& view) {
-  if (!view.title[0] || view.which_content != info_tv_v1_View_status_tag) return false;
+  if (!view.title[0] || view.which_content != info_tv_v1_View_status_tag ||
+      view.icon < info_tv_v1_TaskIcon_TASK_ICON_TASK ||
+      view.icon > info_tv_v1_TaskIcon_TASK_ICON_DEPLOY) return false;
   const auto& status = view.content.status;
   return status.text[0] && status.tone >= info_tv_v1_Tone_TONE_NEUTRAL &&
          status.tone <= info_tv_v1_Tone_TONE_NEGATIVE &&
@@ -73,6 +75,7 @@ bool sameCard(const Card& left, const Card& right) {
   const auto& a = left.view.content.status;
   const auto& b = right.view.content.status;
   return left.revision == right.revision && !std::strcmp(left.card_id, right.card_id) &&
+         left.view.icon == right.view.icon &&
          !std::strcmp(left.view.source, right.view.source) &&
          !std::strcmp(left.view.context, right.view.context) &&
          !std::strcmp(left.view.title, right.view.title) && !std::strcmp(a.text, b.text) &&

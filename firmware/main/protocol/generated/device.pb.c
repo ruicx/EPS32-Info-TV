@@ -6,7 +6,7 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
-PB_BIND(info_tv_v1_Envelope, info_tv_v1_Envelope, 2)
+PB_BIND(info_tv_v1_Envelope, info_tv_v1_Envelope, 4)
 
 
 PB_BIND(info_tv_v1_Hello, info_tv_v1_Hello, AUTO)
@@ -27,7 +27,7 @@ PB_BIND(info_tv_v1_View, info_tv_v1_View, 2)
 PB_BIND(info_tv_v1_Card, info_tv_v1_Card, 2)
 
 
-PB_BIND(info_tv_v1_Snapshot, info_tv_v1_Snapshot, 2)
+PB_BIND(info_tv_v1_Snapshot, info_tv_v1_Snapshot, 4)
 
 
 PB_BIND(info_tv_v1_CardUpsert, info_tv_v1_CardUpsert, 2)
@@ -40,6 +40,8 @@ PB_BIND(info_tv_v1_Acknowledgment, info_tv_v1_Acknowledgment, AUTO)
 
 
 PB_BIND(info_tv_v1_Error, info_tv_v1_Error, AUTO)
+
+
 
 
 

@@ -3,7 +3,7 @@
 Notes
 -----
 This demonstrates display behavior; it does not integrate or launch agent clients.
-Two important notices play before the two-page conversation overview.
+Two important notices play before the five-row conversation overview.
 """
 
 import argparse
@@ -24,17 +24,18 @@ def main() -> None:
     parser.add_argument("--url", default="http://127.0.0.1:8765")
     args = parser.parse_args()
     examples = [
-        ("codex", "Message API", "info_tv", "waiting_input", "Confirm notification retention"),
-        ("agy", "Login flow", "webapp", "failed", "Build failed; inspect the computer"),
-        ("codex", "Unit tests", "info_tv", "running", "Checking protocol compatibility"),
-        ("agy", "Documentation", "webapp", "running", "Updating API examples"),
-        ("codex", "UI review", "info_tv", "running", "Checking screen layouts"),
+        ("codex", "Message API", "info_tv", "waiting_input", "Confirm notification retention", "code", None),
+        ("agy", "Login flow", "webapp", "failed", "Build failed; inspect the computer", "build", 35),
+        ("codex", "Unit tests", "info_tv", "running", "Checking protocol compatibility", "test", 42),
+        ("agy", "Documentation", "webapp", "running", "Updating API examples", "task", None),
+        ("codex", "UI review", "info_tv", "running", "Checking screen layouts", "review", 0),
     ]
-    for source, title, context, state, detail in examples:
+    for source, title, context, state, detail, icon, progress in examples:
         body = {"event_id": uuid4().hex, "source": source, "task_id": uuid4().hex,
                 "conversation_id": uuid4().hex, "conversation_title": title,
                 "context": context, "run_sequence": 1, "sequence": 1,
-                "state": state, "title": title, "detail": detail}
+                "state": state, "title": title, "detail": detail,
+                "icon": icon, "progress_percent": progress}
         request = Request(args.url.rstrip("/") + "/v1/task-events",
                           data=json.dumps(body).encode(),
                           headers={"Content-Type": "application/json"}, method="POST")

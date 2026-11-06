@@ -14,6 +14,17 @@ class TaskState(StrEnum):
     FAILED = "failed"
 
 
+class TaskIcon(StrEnum):
+    """Select a built-in task-purpose icon independently of execution state."""
+
+    TASK = "task"
+    CODE = "code"
+    TEST = "test"
+    BUILD = "build"
+    REVIEW = "review"
+    DEPLOY = "deploy"
+
+
 @dataclass(frozen=True)
 class TaskEvent:
     """Describe one ordered task update.
@@ -44,6 +55,8 @@ class TaskEvent:
         Project or workspace label.
     run_sequence : int or None
         Increasing execution ordinal within a conversation, required with its ID.
+    icon : TaskIcon
+        Built-in task-purpose icon; defaults to the generic task symbol.
 
     Notes
     -----
@@ -62,6 +75,7 @@ class TaskEvent:
     conversation_title: str = ""
     context: str = ""
     run_sequence: int | None = None
+    icon: TaskIcon = TaskIcon.TASK
 
 
 @dataclass(frozen=True)

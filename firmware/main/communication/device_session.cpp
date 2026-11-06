@@ -76,6 +76,7 @@ void DeviceSession::dispatch(uint64_t nowMs) {
     reply_.which_body = info_tv_v1_Envelope_hello_tag;
     reply_.body.hello.boot_id = bootId_;
     reply_.body.hello.max_cards = policy::kMaxCards;
+    reply_.body.hello.task_icons = true;
     send();
     return;
   }

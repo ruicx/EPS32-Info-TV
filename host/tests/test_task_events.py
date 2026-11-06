@@ -5,7 +5,9 @@ from uuid import uuid4
 
 import pytest
 
-from info_tv_service.tasks.models import TaskEvent, TaskState
+from info_tv_service.device.generated import device_pb2 as pb
+from info_tv_service.device.views import build_card, build_notification
+from info_tv_service.tasks.models import TaskEvent, TaskIcon, TaskRecord, TaskState
 from info_tv_service.tasks.store import AdmissionError, TaskStore
 from info_tv_service.config import EVENT_CACHE_CAPACITY, MAX_TASKS
 
@@ -130,3 +132,27 @@ def test_execution_identity_cannot_move_to_another_conversation() -> None:
         store.commit(store.prepare(replace(other, event_id=uuid4().hex, sequence=sequence)))
     with pytest.raises(AdmissionError, match="cannot move"):
         store.prepare(replace(first, event_id=uuid4().hex, conversation_id="other"))
+
+
+@pytest.mark.parametrize("icon,expected", [
+    (TaskIcon.TASK, pb.TASK_ICON_TASK), (TaskIcon.CODE, pb.TASK_ICON_CODE),
+    (TaskIcon.TEST, pb.TASK_ICON_TEST), (TaskIcon.BUILD, pb.TASK_ICON_BUILD),
+    (TaskIcon.REVIEW, pb.TASK_ICON_REVIEW), (TaskIcon.DEPLOY, pb.TASK_ICON_DEPLOY),
+])
+def test_icon_and_progress_reach_cards_and_notifications(icon: TaskIcon, expected: int) -> None:
+    """Preserve preset identity and distinguish known zero from absent progress.
+
+    Parameters
+    ----------
+    icon : TaskIcon
+        Producer's task-purpose icon.
+    expected : int
+        Corresponding wire enum value.
+    """
+    record = TaskRecord(replace(event(), icon=icon, progress_percent=0), "card", 1, False)
+    for view in (build_card(record).view, build_notification(record).view):
+        assert view.icon == expected
+        assert view.status.HasField("progress_percent")
+        assert view.status.progress_percent == 0
+    unknown = replace(record, event=replace(record.event, progress_percent=None))
+    assert not build_card(unknown).view.status.HasField("progress_percent")

@@ -265,6 +265,8 @@ class DeviceSession:
             if response is not None and response.WhichOneof("body") == "hello" and response.hello.boot_id:
                 if response.hello.max_cards < MAX_TASKS:
                     raise OSError("Device firmware lacks the eight-card overview; update firmware")
+                if not response.hello.task_icons:
+                    raise OSError("Device firmware lacks task icons; update firmware")
                 break
             if time.monotonic() >= deadline:
                 raise TimeoutError("Device Hello timeout")

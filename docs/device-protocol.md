@@ -4,6 +4,10 @@ Status: Version 1 with eight-card overview extensions tested on desktop, firmwar
 
 Updated: 2026-11-05
 
+Subsequent revision: Task-purpose icons and compact five-row pages are
+desktop-tested and firmware-built, but have not been flashed. The earlier physical
+confirmation applies to the original overview. See [Bubble UI validation](bubble-ui-validation.md).
+
 ## 1. Contract and Generation
 
 The authoritative binary Protobuf contract is [device.proto](../protocol/device.proto).
@@ -33,9 +37,14 @@ and a boot-local sequence. Feedback explicitly refers to the original command.
 | Error | Device to host | Correlated rejection and diagnostic reason |
 | Ping / Pong | Host / device | Current-session liveness |
 
-Version 1 implements only `StatusView`: title, source/context labels, status text,
+Version 1 implements only `StatusView`: title, source/context labels, task-purpose icon, status text,
 semantic tone, detail, and optional integer progress 0..100. Missing progress differs from zero. The
 device chooses fonts, colors, and coordinates without recognizing producer names.
+
+`View.icon` is a `TaskIcon` enum: generic task (0, also the default when omitted),
+code (1), test (2), build (3), review (4), or deploy (5). Unknown values are rejected.
+The producer API accepts the corresponding lowercase strings. Icon selection is
+independent of execution state and participates in same-revision content equality.
 
 Text/list/metric/media views, card removal, assets, Wi-Fi, and BLE remain future
 extensions. Existing field numbers must remain stable; removed fields must be
@@ -60,7 +69,7 @@ Up to eight cards are retained. UTF-8 capacities excluding C terminators are:
 title/source/context/status text 64 bytes, detail 160 bytes, identities 36 bytes, error detail
 96 bytes. Strings containing NUL are rejected by the host API.
 Shared compatibility input is under `protocol/test_vectors/`.
-The generated worst-case envelope size is 4029 bytes, within the existing
+The generated worst-case envelope size is 4045 bytes, within the existing
 4096-byte frame payload limit; the maximum eight-card snapshot is round-trip tested.
 
 ## 4. Sessions, Revisions, and Recovery
@@ -72,6 +81,8 @@ Device Hello now includes `max_cards: 8`; zero identifies older firmware without
 the multi-conversation overview. The host refuses synchronization if capacity is
 less than eight and reports that firmware must be updated. This makes the required
 paired update explicit while keeping field numbers and protocol version stable.
+The icon revision also requires `Hello.task_icons = true`; a missing/false value
+identifies firmware that needs updating before this host synchronizes content.
 
 Each card has an independent identity and increasing nonzero revision. Older
 revisions cannot overwrite current state; equal revisions with conflicting content
@@ -118,7 +129,7 @@ Decode success and unchecked task handoff are insufficient.
 first refresh completed. Card feedback includes card identity/revision, including
 individual cards within a snapshot. Hidden or superseded revisions are not falsely
 reported visible. Feedback does not establish that the user read the content.
-The three-row overview emits a separate Presented acknowledgment for every visible
+The five-row overview emits a separate Presented acknowledgment for every visible
 card after the shared refresh completes. Later pages stay unpresented until shown.
 Feedback has its own identity and is not recursively acknowledged.
 

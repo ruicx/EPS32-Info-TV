@@ -18,6 +18,15 @@ typedef enum _info_tv_v1_Tone {
     info_tv_v1_Tone_TONE_NEGATIVE = 4
 } info_tv_v1_Tone;
 
+typedef enum _info_tv_v1_TaskIcon {
+    info_tv_v1_TaskIcon_TASK_ICON_TASK = 0,
+    info_tv_v1_TaskIcon_TASK_ICON_CODE = 1,
+    info_tv_v1_TaskIcon_TASK_ICON_TEST = 2,
+    info_tv_v1_TaskIcon_TASK_ICON_BUILD = 3,
+    info_tv_v1_TaskIcon_TASK_ICON_REVIEW = 4,
+    info_tv_v1_TaskIcon_TASK_ICON_DEPLOY = 5
+} info_tv_v1_TaskIcon;
+
 typedef enum _info_tv_v1_Priority {
     info_tv_v1_Priority_PRIORITY_UNSPECIFIED = 0,
     info_tv_v1_Priority_PRIORITY_ORDINARY = 1,
@@ -44,6 +53,8 @@ typedef struct _info_tv_v1_Hello {
     uint64_t boot_id;
     /* Zero identifies older firmware without multi-conversation overview support. */
     uint32_t max_cards;
+    /* Required by hosts that send task-purpose icons. */
+    bool task_icons;
 } info_tv_v1_Hello;
 
 typedef struct _info_tv_v1_Ping {
@@ -66,6 +77,7 @@ typedef struct _info_tv_v1_View {
     char title[65];
     char source[65];
     char context[65];
+    info_tv_v1_TaskIcon icon;
     pb_size_t which_content;
     union {
         info_tv_v1_StatusView status;
@@ -144,6 +156,10 @@ extern "C" {
 #define _info_tv_v1_Tone_MAX info_tv_v1_Tone_TONE_NEGATIVE
 #define _info_tv_v1_Tone_ARRAYSIZE ((info_tv_v1_Tone)(info_tv_v1_Tone_TONE_NEGATIVE+1))
 
+#define _info_tv_v1_TaskIcon_MIN info_tv_v1_TaskIcon_TASK_ICON_TASK
+#define _info_tv_v1_TaskIcon_MAX info_tv_v1_TaskIcon_TASK_ICON_DEPLOY
+#define _info_tv_v1_TaskIcon_ARRAYSIZE ((info_tv_v1_TaskIcon)(info_tv_v1_TaskIcon_TASK_ICON_DEPLOY+1))
+
 #define _info_tv_v1_Priority_MIN info_tv_v1_Priority_PRIORITY_UNSPECIFIED
 #define _info_tv_v1_Priority_MAX info_tv_v1_Priority_PRIORITY_IMPORTANT
 #define _info_tv_v1_Priority_ARRAYSIZE ((info_tv_v1_Priority)(info_tv_v1_Priority_PRIORITY_IMPORTANT+1))
@@ -162,6 +178,7 @@ extern "C" {
 
 #define info_tv_v1_StatusView_tone_ENUMTYPE info_tv_v1_Tone
 
+#define info_tv_v1_View_icon_ENUMTYPE info_tv_v1_TaskIcon
 
 
 
@@ -175,11 +192,11 @@ extern "C" {
 
 /* Initializer values for message structs */
 #define info_tv_v1_Envelope_init_default         {0, "", "", 0, {info_tv_v1_Hello_init_default}}
-#define info_tv_v1_Hello_init_default            {0, 0}
+#define info_tv_v1_Hello_init_default            {0, 0, 0}
 #define info_tv_v1_Ping_init_default             {0}
 #define info_tv_v1_Pong_init_default             {0}
 #define info_tv_v1_StatusView_init_default       {"", _info_tv_v1_Tone_MIN, "", false, 0}
-#define info_tv_v1_View_init_default             {"", "", "", 0, {info_tv_v1_StatusView_init_default}}
+#define info_tv_v1_View_init_default             {"", "", "", _info_tv_v1_TaskIcon_MIN, 0, {info_tv_v1_StatusView_init_default}}
 #define info_tv_v1_Card_init_default             {"", 0, false, info_tv_v1_View_init_default}
 #define info_tv_v1_Snapshot_init_default         {0, {info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default}}
 #define info_tv_v1_CardUpsert_init_default       {false, info_tv_v1_Card_init_default}
@@ -187,11 +204,11 @@ extern "C" {
 #define info_tv_v1_Acknowledgment_init_default   {"", _info_tv_v1_AckStage_MIN, "", 0}
 #define info_tv_v1_Error_init_default            {"", _info_tv_v1_ErrorCode_MIN, ""}
 #define info_tv_v1_Envelope_init_zero            {0, "", "", 0, {info_tv_v1_Hello_init_zero}}
-#define info_tv_v1_Hello_init_zero               {0, 0}
+#define info_tv_v1_Hello_init_zero               {0, 0, 0}
 #define info_tv_v1_Ping_init_zero                {0}
 #define info_tv_v1_Pong_init_zero                {0}
 #define info_tv_v1_StatusView_init_zero          {"", _info_tv_v1_Tone_MIN, "", false, 0}
-#define info_tv_v1_View_init_zero                {"", "", "", 0, {info_tv_v1_StatusView_init_zero}}
+#define info_tv_v1_View_init_zero                {"", "", "", _info_tv_v1_TaskIcon_MIN, 0, {info_tv_v1_StatusView_init_zero}}
 #define info_tv_v1_Card_init_zero                {"", 0, false, info_tv_v1_View_init_zero}
 #define info_tv_v1_Snapshot_init_zero            {0, {info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero}}
 #define info_tv_v1_CardUpsert_init_zero          {false, info_tv_v1_Card_init_zero}
@@ -202,6 +219,7 @@ extern "C" {
 /* Field tags (for use in manual encoding/decoding) */
 #define info_tv_v1_Hello_boot_id_tag             1
 #define info_tv_v1_Hello_max_cards_tag           2
+#define info_tv_v1_Hello_task_icons_tag          3
 #define info_tv_v1_StatusView_text_tag           1
 #define info_tv_v1_StatusView_tone_tag           2
 #define info_tv_v1_StatusView_detail_tag         3
@@ -209,6 +227,7 @@ extern "C" {
 #define info_tv_v1_View_title_tag                1
 #define info_tv_v1_View_source_tag               2
 #define info_tv_v1_View_context_tag              3
+#define info_tv_v1_View_icon_tag                 4
 #define info_tv_v1_View_status_tag               10
 #define info_tv_v1_Card_card_id_tag              1
 #define info_tv_v1_Card_revision_tag             2
@@ -266,7 +285,8 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (body,pong,body.pong),  17)
 
 #define info_tv_v1_Hello_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UINT64,   boot_id,           1) \
-X(a, STATIC,   SINGULAR, UINT32,   max_cards,         2)
+X(a, STATIC,   SINGULAR, UINT32,   max_cards,         2) \
+X(a, STATIC,   SINGULAR, BOOL,     task_icons,        3)
 #define info_tv_v1_Hello_CALLBACK NULL
 #define info_tv_v1_Hello_DEFAULT NULL
 
@@ -292,6 +312,7 @@ X(a, STATIC,   OPTIONAL, UINT32,   progress_percent,   4)
 X(a, STATIC,   SINGULAR, STRING,   title,             1) \
 X(a, STATIC,   SINGULAR, STRING,   source,            2) \
 X(a, STATIC,   SINGULAR, STRING,   context,           3) \
+X(a, STATIC,   SINGULAR, UENUM,    icon,              4) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (content,status,content.status),  10)
 #define info_tv_v1_View_CALLBACK NULL
 #define info_tv_v1_View_DEFAULT NULL
@@ -373,17 +394,17 @@ extern const pb_msgdesc_t info_tv_v1_Error_msg;
 /* Maximum encoded size of messages (where known) */
 #define INFO_TV_V1_DEVICE_PB_H_MAX_SIZE          info_tv_v1_Envelope_size
 #define info_tv_v1_Acknowledgment_size           89
-#define info_tv_v1_CardUpsert_size               493
-#define info_tv_v1_Card_size                     490
-#define info_tv_v1_Envelope_size                 4029
+#define info_tv_v1_CardUpsert_size               495
+#define info_tv_v1_Card_size                     492
+#define info_tv_v1_Envelope_size                 4045
 #define info_tv_v1_Error_size                    138
-#define info_tv_v1_Hello_size                    17
-#define info_tv_v1_Notification_size             531
+#define info_tv_v1_Hello_size                    19
+#define info_tv_v1_Notification_size             533
 #define info_tv_v1_Ping_size                     0
 #define info_tv_v1_Pong_size                     0
-#define info_tv_v1_Snapshot_size                 3944
+#define info_tv_v1_Snapshot_size                 3960
 #define info_tv_v1_StatusView_size               237
-#define info_tv_v1_View_size                     438
+#define info_tv_v1_View_size                     440
 
 #ifdef __cplusplus
 } /* extern "C" */

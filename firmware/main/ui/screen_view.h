@@ -5,7 +5,7 @@
 #include "protocol/model.h"
 
 namespace info_tv {
-/** Own a reusable status-card layout; pixel styling stays off the wire. */
+/** Own reusable message bubbles; pixel styling stays off the wire. */
 class ScreenView {
  public:
   /** Create the screen and persistent widgets on the UI task. */
@@ -15,14 +15,28 @@ class ScreenView {
 
  private:
   /** Create a fixed-position, bounded text widget. */
-  lv_obj_t* label(int x, int y, int width, int height);
+  lv_obj_t* label(lv_obj_t* parent, int x, int y, int width, int height);
+  /** Create a rounded rectangular message surface. */
+  lv_obj_t* bubble(int y, int height);
+  /** Create a thin reported-progress track inside a message surface. */
+  lv_obj_t* progressBar(lv_obj_t* parent, int x, int y, int width);
+  lv_font_t smallFont_{};
   lv_obj_t* header_ = nullptr;
+  lv_obj_t* summary_ = nullptr;
+  lv_obj_t* message_ = nullptr;
+  lv_obj_t* icon_ = nullptr;
+  lv_obj_t* sender_ = nullptr;
   lv_obj_t* title_ = nullptr;
   lv_obj_t* status_ = nullptr;
   lv_obj_t* detail_ = nullptr;
   lv_obj_t* progress_ = nullptr;
   lv_obj_t* footer_ = nullptr;
+  lv_obj_t* page_ = nullptr;
+  lv_obj_t* connection_ = nullptr;
+  std::array<lv_obj_t*, policy::kRowsPerPage> rowBubbles_{};
+  std::array<lv_obj_t*, policy::kRowsPerPage> rowIcons_{};
   std::array<lv_obj_t*, policy::kRowsPerPage> rowTitles_{};
   std::array<lv_obj_t*, policy::kRowsPerPage> rowDetails_{};
+  std::array<lv_obj_t*, policy::kRowsPerPage> rowProgress_{};
 };
 }  // namespace info_tv

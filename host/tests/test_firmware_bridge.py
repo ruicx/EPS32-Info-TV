@@ -97,7 +97,7 @@ def test_http_to_cpp_firmware_core() -> None:
             assert time.monotonic() < deadline, "C++ handshake did not finish"
             time.sleep(0.01)
         body = {"event_id": uuid4().hex, "source": "demo", "task_id": "cpp-build", "sequence": 1,
-                "state": "running", "title": "Python to C++", "progress_percent": 42}
+                "state": "running", "title": "Python to C++", "progress_percent": 42, "icon": "test"}
         assert client.post("/v1/task-events", json=body).status_code == 202
         while True:
             tasks = client.get("/v1/tasks").json()

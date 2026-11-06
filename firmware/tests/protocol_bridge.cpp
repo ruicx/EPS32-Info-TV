@@ -73,6 +73,7 @@ int main() {
       response.which_body = info_tv_v1_Envelope_hello_tag;
       response.body.hello.boot_id = 123;
       response.body.hello.max_cards = info_tv::policy::kMaxCards;
+      response.body.hello.task_icons = true;
       send(response, sequence);
     } else if (command.envelope.which_body == info_tv_v1_Envelope_ping_tag) {
       response.which_body = info_tv_v1_Envelope_pong_tag;

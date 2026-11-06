@@ -26,6 +26,7 @@ class PeerTransport:
         self.opens = 0
         self.withhold_cards = False
         self.last_session = ""
+        self.task_icons = True
 
     async def open(self) -> None:
         """Start a fresh connection while preserving captured history."""
@@ -70,6 +71,7 @@ class PeerTransport:
             if kind == "hello":
                 response.hello.boot_id = 123
                 response.hello.max_cards = 8
+                response.hello.task_icons = self.task_icons
             elif kind == "ping":
                 response.pong.SetInParent()
             else:
@@ -138,6 +140,24 @@ def test_coalescing_real_acceptance_and_no_fake_presentation() -> None:
             response.acknowledgment.CopyFrom(pb.Acknowledgment(in_reply_to=updates[0].message_id, stage=pb.ACK_STAGE_PRESENTED, card_id=card.card_id, revision=card.revision))
             peer.incoming.put_nowait(encode_frame(response.SerializeToString()))
             await wait_until(lambda: session.card_status(card.card_id).get("presented") is True)
+        finally:
+            await stop(task)
+    asyncio.run(scenario())
+
+
+def test_firmware_without_icons_is_rejected_before_snapshot() -> None:
+    """An older peer cannot silently accept icon-bearing content."""
+    async def scenario() -> None:
+        """Advertise missing capability and inspect the connection diagnostic."""
+        peer = PeerTransport()
+        peer.task_icons = False
+        store = TaskStore()
+        session = DeviceSession(peer, store.list_tasks)
+        task = asyncio.create_task(session.run())
+        try:
+            await wait_until(lambda: "task icons" in str(session.get_status()))
+            assert not session.online
+            assert not any(message.HasField("snapshot") for message in peer.commands)
         finally:
             await stop(task)
     asyncio.run(scenario())

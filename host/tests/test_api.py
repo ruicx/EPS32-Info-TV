@@ -67,6 +67,7 @@ def test_offline_acceptance_duplicate_and_app_isolation() -> None:
         assert client.post("/v1/task-events", json=submission).json()["outcome"] == "duplicate"
         assert len(client.get("/v1/tasks").json()) == 1
         assert client.get("/v1/tasks").json()[0]["delivery"] == {"state": "pending"}
+        assert client.get("/v1/tasks").json()[0]["icon"] == "task"
     with TestClient(create_app(Settings("unused"), OfflineTransport())) as other:
         assert other.get("/v1/tasks").json() == []
 
@@ -77,6 +78,7 @@ def test_offline_acceptance_duplicate_and_app_isolation() -> None:
     ("screen_x", 20), ("detail", "x" * 161),
     ("conversation_id", "thread"), ("run_sequence", 1),
     ("conversation_title", "Unidentified conversation"), ("context", "界" * 22),
+    ("icon", "unknown"), ("icon", 2), ("icon", None),
 ])
 def test_invalid_requests_do_not_enter_state(field: str, value: object) -> None:
     """Invalid or device-specific input never changes accepted task state.
@@ -99,7 +101,7 @@ def test_conversation_fields_round_trip_and_update_one_card() -> None:
     """Multiple runs retain one card while preserving display labels and ordinals."""
     with TestClient(create_app(Settings("unused"), OfflineTransport())) as client:
         submission = body()
-        submission.update(conversation_id="thread", conversation_title="消息接口",
+        submission.update(conversation_id="thread", conversation_title="消息接口", icon="test",
                           context="info_tv", run_sequence=1)
         first = client.post("/v1/task-events", json=submission)
         assert first.status_code == 202
@@ -112,3 +114,6 @@ def test_conversation_fields_round_trip_and_update_one_card() -> None:
         assert records[0]["conversation_title"] == "消息接口"
         assert records[0]["run_sequence"] == 2
         assert records[0]["context"] == "info_tv"
+        assert records[0]["icon"] == "test"
+        submission["icon"] = "build"
+        assert client.post("/v1/task-events", json=submission).status_code == 409

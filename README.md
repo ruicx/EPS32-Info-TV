@@ -63,12 +63,17 @@ across executions; `run_sequence` increases for each new execution, while
 fields continue to create independent task cards. See the
 [message/UI design and request example](docs/message-ui-design.md).
 
-The new overview shows three rows per page, rotating pages every six seconds.
-Waiting/failed rows sort first; all pages remain reachable. This revision passed
-desktop checks and was flashed on 2026-11-05; five cards and two notifications
+The compact overview shows five rows per page, rotating pages every six seconds.
+Each row shows an icon, title, and state, with a thin progress bar when known.
+Use optional `icon` values `task` (default), `code`, `test`, `build`, `review`, or
+`deploy`; `progress_percent` accepts an integer 0..100 or null.
+Waiting/failed rows sort first; all pages remain reachable. The compact icon
+revision passed desktop checks and a firmware build; it has not been flashed.
+The original three-row overview was flashed on 2026-11-05; five cards and two notifications
 reported actual device Presented feedback. The user confirmed physical text,
 layout, and page rotation on the same date. Update the firmware together with the host: older firmware
-does not advertise the required eight-card overview capability.
+does not advertise the required eight-card overview and task-icon capabilities.
+See [current UI previews](docs/bubble-ui-validation.md).
 
 ## Build the firmware
 
@@ -168,7 +173,7 @@ uv run --project host python scripts/generate_protocol.py
   host restart. A later execution replaces its conversation's current run.
 - Eight queued notices, 30-second start validity, ordinary/important display
   defaults of 5/10 seconds. Important notices interrupt ordinary notices; an
-  interrupted ordinary notice ends. Three-row pages rotate every six seconds.
+  interrupted ordinary notice ends. Five-row pages rotate every six seconds.
 - Offline submissions retain task state without accumulating popup history.
 - State is in memory. A USB power loss is a cold boot, not powered offline caching.
 - English system labels; the bundled LVGL CJK font supports a limited character

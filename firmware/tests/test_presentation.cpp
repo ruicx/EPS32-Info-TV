@@ -21,7 +21,7 @@ void testPagedOverview() {
   snapshot.envelope.body.snapshot.cards[7].view.content.status.tone = info_tv_v1_Tone_TONE_NEGATIVE;
   CHECK(controller.handleCommand(snapshot, 0, feedback));
   auto model = controller.tick(0);
-  CHECK(model.pageCount == 3 && model.pageIndex == 0 && model.rowCount == 3);
+  CHECK(model.pageCount == 2 && model.pageIndex == 0 && model.rowCount == 5);
   CHECK(model.attentionCount == 2 && model.cardCount == 8);
   CHECK(!std::strcmp(model.rows[0].card.card_id, "card-6"));
   CHECK(!std::strcmp(model.rows[1].card.card_id, "card-7"));
@@ -30,12 +30,12 @@ void testPagedOverview() {
     CHECK(!std::strcmp(feedback.cardId, model.rows[row].card.card_id));
   }
   CHECK(!controller.onFramePresented(model.generation, 0, feedback));
-  CHECK(!state.card(1).presented);
+  CHECK(!state.card(3).presented);
 
   auto upsert = makeCommand("hidden-update");
   upsert.envelope.which_body = info_tv_v1_Envelope_card_upsert_tag;
   upsert.envelope.body.card_upsert.has_card = true;
-  upsert.envelope.body.card_upsert.card = makeCard("card-1", 2);
+  upsert.envelope.body.card_upsert.card = makeCard("card-3", 2);
   CHECK(controller.handleCommand(upsert, 5999, feedback));
   CHECK(controller.tick(5999).generation == model.generation);
   model = controller.tick(6000);
@@ -44,8 +44,8 @@ void testPagedOverview() {
   CHECK(!controller.onFramePresented(model.generation - 1, 6000, feedback));
   CHECK(controller.onFramePresented(model.generation, 6000, feedback));
   CHECK(!std::strcmp(feedback.messageId, "hidden-update"));
-  CHECK(controller.tick(12000).pageIndex == 2);
-  CHECK(controller.tick(18000).pageIndex == 0);
+  CHECK(controller.tick(12000).pageIndex == 0);
+  CHECK(controller.tick(18000).pageIndex == 1);
 
   auto note = makeNotification("related", true);
   std::strcpy(note.envelope.body.notification.card_id, "card-5");
@@ -54,8 +54,8 @@ void testPagedOverview() {
   CHECK(controller.onFramePresented(model.generation, 18001, feedback));
   CHECK(controller.tick(28000).kind == info_tv::RenderModel::Kind::kNotification);
   model = controller.tick(28001);
-  CHECK(model.kind == info_tv::RenderModel::Kind::kOverview && model.pageIndex == 2);
-  CHECK(controller.tick(34000).pageIndex == 2);
+  CHECK(model.kind == info_tv::RenderModel::Kind::kOverview && model.pageIndex == 1);
+  CHECK(controller.tick(34000).pageIndex == 1);
   CHECK(controller.tick(34001).pageIndex == 0);
 }
 

@@ -23,6 +23,8 @@ message Hello {
   uint64 boot_id = 1;
   // Zero identifies older firmware without multi-conversation overview support.
   uint32 max_cards = 2;
+  // Required by hosts that send task-purpose icons.
+  bool task_icons = 3;
 }
 message Ping {}
 message Pong {}
@@ -40,10 +42,19 @@ message StatusView {
   string detail = 3;
   optional uint32 progress_percent = 4;
 }
+enum TaskIcon {
+  TASK_ICON_TASK = 0;
+  TASK_ICON_CODE = 1;
+  TASK_ICON_TEST = 2;
+  TASK_ICON_BUILD = 3;
+  TASK_ICON_REVIEW = 4;
+  TASK_ICON_DEPLOY = 5;
+}
 message View {
   string title = 1;
   string source = 2;
   string context = 3;
+  TaskIcon icon = 4;
   oneof content { StatusView status = 10; }
 }
 message Card {

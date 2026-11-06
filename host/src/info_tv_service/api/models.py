@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
-from info_tv_service.tasks.models import TaskEvent, TaskState
+from info_tv_service.tasks.models import TaskEvent, TaskIcon, TaskState
 
 
 class TaskEventRequest(BaseModel):
@@ -25,6 +25,7 @@ class TaskEventRequest(BaseModel):
     conversation_title: str = Field(default="", max_length=64)
     context: str = Field(default="", max_length=64)
     run_sequence: int | None = Field(default=None, gt=0, le=2**63 - 1, strict=True)
+    icon: TaskIcon = TaskIcon.TASK
 
     @field_validator("source", "task_id", "title", "detail", "conversation_id", "conversation_title", "context")
     @classmethod
@@ -88,4 +89,5 @@ class TaskEventRequest(BaseModel):
         """
         return TaskEvent(self.event_id.hex, self.source, self.task_id, self.sequence,
                          self.state, self.title, self.detail, self.progress_percent,
-                         self.conversation_id, self.conversation_title, self.context, self.run_sequence)
+                         self.conversation_id, self.conversation_title, self.context, self.run_sequence,
+                         self.icon)

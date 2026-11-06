@@ -15,6 +15,15 @@ class Tone(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     TONE_POSITIVE: _ClassVar[Tone]
     TONE_NEGATIVE: _ClassVar[Tone]
 
+class TaskIcon(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    TASK_ICON_TASK: _ClassVar[TaskIcon]
+    TASK_ICON_CODE: _ClassVar[TaskIcon]
+    TASK_ICON_TEST: _ClassVar[TaskIcon]
+    TASK_ICON_BUILD: _ClassVar[TaskIcon]
+    TASK_ICON_REVIEW: _ClassVar[TaskIcon]
+    TASK_ICON_DEPLOY: _ClassVar[TaskIcon]
+
 class Priority(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     PRIORITY_UNSPECIFIED: _ClassVar[Priority]
@@ -39,6 +48,12 @@ TONE_NEUTRAL: Tone
 TONE_ATTENTION: Tone
 TONE_POSITIVE: Tone
 TONE_NEGATIVE: Tone
+TASK_ICON_TASK: TaskIcon
+TASK_ICON_CODE: TaskIcon
+TASK_ICON_TEST: TaskIcon
+TASK_ICON_BUILD: TaskIcon
+TASK_ICON_REVIEW: TaskIcon
+TASK_ICON_DEPLOY: TaskIcon
 PRIORITY_UNSPECIFIED: Priority
 PRIORITY_ORDINARY: Priority
 PRIORITY_IMPORTANT: Priority
@@ -78,12 +93,14 @@ class Envelope(_message.Message):
     def __init__(self, protocol_version: _Optional[int] = ..., session_id: _Optional[str] = ..., message_id: _Optional[str] = ..., hello: _Optional[_Union[Hello, _Mapping]] = ..., snapshot: _Optional[_Union[Snapshot, _Mapping]] = ..., card_upsert: _Optional[_Union[CardUpsert, _Mapping]] = ..., notification: _Optional[_Union[Notification, _Mapping]] = ..., acknowledgment: _Optional[_Union[Acknowledgment, _Mapping]] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., ping: _Optional[_Union[Ping, _Mapping]] = ..., pong: _Optional[_Union[Pong, _Mapping]] = ...) -> None: ...
 
 class Hello(_message.Message):
-    __slots__ = ("boot_id", "max_cards")
+    __slots__ = ("boot_id", "max_cards", "task_icons")
     BOOT_ID_FIELD_NUMBER: _ClassVar[int]
     MAX_CARDS_FIELD_NUMBER: _ClassVar[int]
+    TASK_ICONS_FIELD_NUMBER: _ClassVar[int]
     boot_id: int
     max_cards: int
-    def __init__(self, boot_id: _Optional[int] = ..., max_cards: _Optional[int] = ...) -> None: ...
+    task_icons: bool
+    def __init__(self, boot_id: _Optional[int] = ..., max_cards: _Optional[int] = ..., task_icons: bool = ...) -> None: ...
 
 class Ping(_message.Message):
     __slots__ = ()
@@ -106,16 +123,18 @@ class StatusView(_message.Message):
     def __init__(self, text: _Optional[str] = ..., tone: _Optional[_Union[Tone, str]] = ..., detail: _Optional[str] = ..., progress_percent: _Optional[int] = ...) -> None: ...
 
 class View(_message.Message):
-    __slots__ = ("title", "source", "context", "status")
+    __slots__ = ("title", "source", "context", "icon", "status")
     TITLE_FIELD_NUMBER: _ClassVar[int]
     SOURCE_FIELD_NUMBER: _ClassVar[int]
     CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    ICON_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
     title: str
     source: str
     context: str
+    icon: TaskIcon
     status: StatusView
-    def __init__(self, title: _Optional[str] = ..., source: _Optional[str] = ..., context: _Optional[str] = ..., status: _Optional[_Union[StatusView, _Mapping]] = ...) -> None: ...
+    def __init__(self, title: _Optional[str] = ..., source: _Optional[str] = ..., context: _Optional[str] = ..., icon: _Optional[_Union[TaskIcon, str]] = ..., status: _Optional[_Union[StatusView, _Mapping]] = ...) -> None: ...
 
 class Card(_message.Message):
     __slots__ = ("card_id", "revision", "view")

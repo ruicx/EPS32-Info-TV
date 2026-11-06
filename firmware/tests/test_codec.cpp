@@ -27,6 +27,8 @@ int main(int argc, char** argv) {
   CHECK(!info_tv::validateCommand(envelope));
   CHECK(envelope.which_body == info_tv_v1_Envelope_card_upsert_tag);
   CHECK(envelope.body.card_upsert.card.view.content.status.progress_percent == 42);
+  CHECK(envelope.body.card_upsert.card.view.icon == info_tv_v1_TaskIcon_TASK_ICON_TASK);
+  envelope.body.card_upsert.card.view.icon = info_tv_v1_TaskIcon_TASK_ICON_TEST;
   std::array<uint8_t, 4096> encoded{};
   const auto size = info_tv::encodeEnvelope(envelope, encoded.data(), encoded.size());
   info_tv::Envelope roundtrip{};
@@ -53,6 +55,7 @@ int main(int argc, char** argv) {
     std::memset(card.card_id, 'a' + index, sizeof(card.card_id) - 1);
     card.revision = UINT64_MAX;
     auto& view = card.view;
+    view.icon = info_tv_v1_TaskIcon_TASK_ICON_DEPLOY;
     std::memset(view.title, 't', sizeof(view.title) - 1);
     std::memset(view.source, 's', sizeof(view.source) - 1);
     std::memset(view.context, 'c', sizeof(view.context) - 1);
@@ -69,4 +72,10 @@ int main(int argc, char** argv) {
   auto changed = metadata;
   std::strcpy(changed.view.context, "different-project");
   CHECK(!info_tv::sameCard(metadata, changed));
+  changed = metadata;
+  changed.view.icon = info_tv_v1_TaskIcon_TASK_ICON_CODE;
+  CHECK(!info_tv::sameCard(metadata, changed));
+  auto unknown = makeSnapshot();
+  unknown.envelope.body.snapshot.cards[0].view.icon = static_cast<info_tv_v1_TaskIcon>(6);
+  CHECK(info_tv::validateCommand(unknown.envelope));
 }
