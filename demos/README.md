@@ -40,8 +40,9 @@ uv run --project host python demos/demo_task.py --url http://127.0.0.1:8766
 
 Each run creates a new task identity. Existing tasks remain visible and rotate
 in the five-row, six-second paged overview. The current demo retains up to eight
-conversation/task cards until host restart;
-restart the host to clear them before another set of demonstrations.
+conversation/task cards. Completed cards retire after five minutes by default;
+close other cards with `DELETE /v1/tasks/{card_id}` before repeating a full demo.
+See [task lifecycle](../docs/host-lifecycle-weather.md) for late-event protection.
 
 Keep additional manual display scenarios here. Protocol generation and other
 development operations remain under `scripts/`.
@@ -60,4 +61,4 @@ Two important notices show first, followed by five compact rows on one page.
 The examples select preset task icons and include unknown, zero, and nonzero
 progress. Waiting/failed conversations sort first. Ordinary progress does not restart
 the six-second page timer. Repeat runs create new conversation identities, so
-restart the host to clear the current demo before repeating it.
+close the current demo cards (or restart the host) before repeating it.

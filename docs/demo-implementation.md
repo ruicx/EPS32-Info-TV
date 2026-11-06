@@ -4,6 +4,10 @@ Status: Implemented, build-tested, flashed, and validated on the physical board.
 
 Updated: 2026-11-03
 
+For the later task-retirement, manual-closure, YAML configuration, and automatic
+weather implementation, see [Host lifecycle and weather](host-lifecycle-weather.md).
+The original demo defaults and physical validation below describe the baseline.
+
 ## 1. Scope and Ownership
 
 The production host framework accepts task events and maintains business state.

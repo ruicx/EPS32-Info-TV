@@ -1,6 +1,7 @@
 """Exercise session ordering, recovery, and presentation feedback over a fake peer."""
 
 import asyncio
+import time
 from collections.abc import Callable
 from dataclasses import replace
 from typing import cast
@@ -161,6 +162,57 @@ def test_coalescing_real_acceptance_and_no_fake_presentation() -> None:
             response.acknowledgment.CopyFrom(pb.Acknowledgment(in_reply_to=updates[0].message_id, stage=pb.ACK_STAGE_PRESENTED, card_id=card.card_id, revision=card.revision))
             peer.incoming.put_nowait(encode_frame(response.SerializeToString()))
             await wait_until(lambda: session.card_status(card.card_id).get("presented") is True)
+        finally:
+            await stop(task)
+    asyncio.run(scenario())
+
+
+def test_completion_expiry_preserves_attention_and_does_not_slide_on_updates() -> None:
+    """Only completed cards retire; later completion updates keep the deadline."""
+    peer = PeerTransport()
+    store = TaskStore()
+    service = TaskService(store, DeviceSession(peer, store.list_tasks))
+    complete = TaskEvent(uuid4().hex, "test", "done", 1, TaskState.COMPLETED, "Done")
+    update = store.prepare(complete)
+    completed_at = time.monotonic() - 301
+    store.commit(replace(update, record=replace(update.record, completed_at=completed_at)))
+    repeated = store.prepare(replace(complete, event_id=uuid4().hex, sequence=2))
+    assert repeated.record.completed_at == completed_at
+    store.commit(repeated)
+    for state in (TaskState.RUNNING, TaskState.FAILED, TaskState.WAITING_INPUT):
+        submission = TaskEvent(uuid4().hex, "test", state, 1, state, "Keep")
+        store.commit(store.prepare(submission))
+    service.expire_completed()
+    assert {record.event.state for record in store.list_tasks()} == {
+        TaskState.RUNNING, TaskState.FAILED, TaskState.WAITING_INPUT,
+    }
+    assert service.submit_event(complete)["outcome"] == "duplicate"
+    assert service.submit_event(replace(complete, event_id=uuid4().hex, sequence=3))["outcome"] == "closed"
+
+
+def test_closing_card_synchronizes_remaining_cards_without_related_notice() -> None:
+    """Removal coalesces to a snapshot and drops unsent closed-task notifications."""
+    async def scenario() -> None:
+        """Exercise real session scheduling and reconnect after removal."""
+        peer = PeerTransport()
+        store = TaskStore()
+        session = DeviceSession(peer, store.list_tasks)
+        service = TaskService(store, session)
+        task = asyncio.create_task(session.run())
+        try:
+            await wait_until(lambda: session.online)
+            service.submit_event(TaskEvent(uuid4().hex, "test", "keep", 1, TaskState.RUNNING, "Keep"))
+            closed = service.submit_event(TaskEvent(uuid4().hex, "test", "close", 1, TaskState.COMPLETED, "Close"))
+            assert service.close_task(str(closed["card_id"]))
+            await wait_until(lambda: len([message for message in peer.commands if message.HasField("snapshot")]) == 2)
+            snapshot = [message.snapshot for message in peer.commands if message.HasField("snapshot")][-1]
+            assert [card.view.title for card in snapshot.cards] == ["Keep"]
+            assert not any(message.HasField("notification") for message in peer.commands)
+            await wait_until(lambda: session.online)
+            peer.fail = True
+            await wait_until(lambda: peer.opens == 2 and session.online)
+            snapshot = [message.snapshot for message in peer.commands if message.HasField("snapshot")][-1]
+            assert [card.view.title for card in snapshot.cards] == ["Keep"]
         finally:
             await stop(task)
     asyncio.run(scenario())

@@ -1,17 +1,23 @@
 """One device session with bounded delivery, synchronization, and feedback."""
 
 import asyncio
+import logging
+import time
 from collections import OrderedDict, deque
 from collections.abc import Callable
 from dataclasses import dataclass
-import logging
-import time
 from uuid import uuid4
 
 from info_tv_service.config import (
-    ACK_TIMEOUT_SECONDS, EVENT_CACHE_CAPACITY, HEARTBEAT_INTERVAL_SECONDS,
-    HEARTBEAT_TIMEOUT_SECONDS, MAX_SEND_ATTEMPTS, MAX_TASKS, NOTIFICATION_QUEUE_CAPACITY,
-    NOTIFICATION_VALIDITY_MS, RECONNECT_SECONDS,
+    ACK_TIMEOUT_SECONDS,
+    EVENT_CACHE_CAPACITY,
+    HEARTBEAT_INTERVAL_SECONDS,
+    HEARTBEAT_TIMEOUT_SECONDS,
+    MAX_SEND_ATTEMPTS,
+    MAX_TASKS,
+    NOTIFICATION_QUEUE_CAPACITY,
+    NOTIFICATION_VALIDITY_MS,
+    RECONNECT_SECONDS,
 )
 from info_tv_service.device.codec import decode_feedback, make_envelope
 from info_tv_service.device.framing import FrameDecoder, encode_frame
@@ -87,6 +93,7 @@ class DeviceSession:
         self._decoder = FrameDecoder()
         self._received: deque[pb.Envelope] = deque()
         self._dirty: dict[str, pb.Card] = {}
+        self._snapshot_dirty = False
         self._notifications: deque[tuple[pb.Notification, float]] = deque()
         self._deliveries: OrderedDict[str, Delivery] = OrderedDict()
         self._card_delivery: dict[str, tuple[int, str]] = {}
@@ -154,6 +161,20 @@ class DeviceSession:
             One event whose original validity must not be renewed.
         """
         self._notifications.append((notification, time.monotonic() + NOTIFICATION_VALIDITY_MS / 1000))
+
+    def remove_card(self, card_id: str) -> None:
+        """Queue an authoritative overview and discard unsent related notices.
+
+        Parameters
+        ----------
+        card_id : str
+            Card already removed from business state.
+        """
+        self._dirty.pop(card_id, None)
+        self._card_delivery.pop(card_id, None)
+        self._notifications = deque((note, deadline) for note, deadline in self._notifications
+                                    if note.card_id != card_id)
+        self._snapshot_dirty = True
 
     def set_brightness(self, percent: int) -> None:
         """Coalesce an already-validated absolute brightness request.
@@ -477,6 +498,7 @@ class DeviceSession:
         snapshot.snapshot.weather.CopyFrom(self._current_weather())
         self._weather_dirty = False
         self._dirty.clear()
+        self._snapshot_dirty = False
         await self._start_command(snapshot, self._weather_expires_at)
         while True:
             now = time.monotonic()
@@ -502,7 +524,15 @@ class DeviceSession:
                 await self._start_command(command)
             elif self.online:
                 self._expire_notifications()
-                if self._alert_dirty:
+                if self._snapshot_dirty:
+                    command = make_envelope(self.session_id)
+                    command.snapshot.cards.extend(build_card(record) for record in self._tasks())
+                    command.snapshot.weather.CopyFrom(self._current_weather())
+                    self._dirty.clear()
+                    self._snapshot_dirty = False
+                    self._weather_dirty = False
+                    await self._start_command(command, self._weather_expires_at)
+                elif self._alert_dirty:
                     command = make_envelope(self.session_id)
                     command.weather_alert.CopyFrom(self._current_weather_alert())
                     self._alert_dirty = False
@@ -626,7 +656,7 @@ class DeviceSession:
                 if key == ack.in_reply_to or key.startswith(ack.in_reply_to + ":"):
                     delivery.accepted = True
             if self._pending and self._pending.envelope.message_id == ack.in_reply_to:
-                if self._pending.envelope.HasField("snapshot"):
+                if self._pending.envelope.HasField("snapshot") and self._state == "synchronizing":
                     self._state = "configuring"
                 self._pending = None
         else:

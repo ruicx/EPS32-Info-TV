@@ -30,6 +30,8 @@ class DisplayState {
  public:
   /** Atomically replace an already-validated overview, resetting a new session. */
   void applySnapshot(const Envelope& envelope);
+  /** Return whether a related task card remains in the current overview. */
+  bool hasCard(const char* cardId) const;
   /** Apply a newer card; return false for conflicts, stale data, or capacity. */
   bool upsertCard(const Card& card, const char* messageId);
   /** Admit a notification or recognize its original event as already known. */

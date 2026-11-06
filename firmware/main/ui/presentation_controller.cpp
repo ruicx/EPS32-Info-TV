@@ -52,6 +52,10 @@ bool PresentationController::handleCommand(const DisplayCommand& command, uint64
         alertExpiresAtMs_ = 0;
       }
       state_.applySnapshot(envelope);
+      if (hasActive_ && !active_.weatherAlert && active_.notification.card_id[0] &&
+          !state_.hasCard(active_.notification.card_id)) {
+        hasActive_ = false;
+      }
       weather_ = envelope.body.snapshot.has_weather ? envelope.body.snapshot.weather : info_tv_v1_Weather{};
       weatherExpiresAtMs_ = command.receivedAtMs + weather_.valid_for_ms;
       connected_ = true;

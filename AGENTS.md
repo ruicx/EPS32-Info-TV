@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-- `host/src/info_tv_service/`: Python 3.12 FastAPI service, task state, and USB device communication; tests live in `host/tests/`.
+- `host/src/info_tv_service/`: Python 3.12+ FastAPI service, task state, and USB device communication; tests live in `host/tests/`.
 - `firmware/main/`: ESP32-S3 application, board drivers, communication, protocol, and LVGL UI; desktop C++ tests live in `firmware/tests/`.
 - `protocol/`: shared Protobuf schema, Nanopb bounds, and compatibility vectors. Generated bindings are checked into both implementations.
 - `scripts/`: protocol generation; `demos/`: physical-display demonstrations; `docs/`: architecture, hardware references, and validation evidence.
@@ -27,6 +27,7 @@ From `host/`:
 
 ```powershell
 uv run pytest
+uv run ruff check --config pyproject.toml . ../scripts ../demos
 uv run ty check . ../scripts ../demos
 uv run python ../scripts/generate_protocol.py --check
 ```
@@ -35,7 +36,9 @@ After schema changes, regenerate bindings from the root with `uv run --project h
 
 ## Coding Style & Naming Conventions
 
-Use four-space Python indentation, `snake_case` functions, `PascalCase` classes, complete type annotations, and NumPy-style docstrings. Prefer small, pure helpers and explicit dataclasses; avoid global mutable state. Static checking uses `ty`; no formatter is configured.
+Use four-space Python indentation, `snake_case` functions, `PascalCase` classes, complete type annotations, and NumPy-style docstrings. Prefer small, pure helpers and explicit dataclasses; avoid global mutable state. Use Ruff for linting and ty for type checking; Ruff formatting is available but keep formatting changes scoped. Generated protocol bindings and the VCS version file are excluded from checks.
+
+Build host distributions with `uv build host --out-dir build/host-dist`. Hatch-vcs derives the package version from repository Git tags; do not edit or commit the generated `_version.py`.
 
 For C++, use two-space indentation, Google-style conventions, `camelCase` functions/variables, `PascalCase` classes, and Doxygen comments. Prefer `nullptr`, `override`, and short functions with early returns. Keep changes focused and match surrounding code.
 

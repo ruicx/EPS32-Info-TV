@@ -54,7 +54,7 @@ code (1), test (2), build (3), review (4), or deploy (5). Unknown values are rej
 The producer API accepts the corresponding lowercase strings. Icon selection is
 independent of execution state and participates in same-revision content equality.
 
-Text/list/metric/media views, card removal, assets, Wi-Fi, and BLE remain future
+Text/list/metric/media views, dedicated card-removal commands, assets, Wi-Fi, and BLE remain future
 extensions. Existing field numbers must remain stable; removed fields must be
 reserved. Unknown operations, unsupported versions, invalid enums, and out-of-range
 values are not admitted as valid display content.
@@ -121,8 +121,14 @@ Identity and semantic content, rather than byte-equal Protobuf, govern deduplica
 
 Snapshots validate all cards and unique identities before mutation. New sessions
 clear old-session ordering and pending-event identities. Same-session snapshots
-replace only the overview; already-admitted notices keep their local lifetime.
-Card removal/tombstone semantics will be designed when removal is implemented.
+replace the overview; unrelated already-admitted notices keep their local lifetime.
+The host removes cards by sending a complete current `Snapshot` in the same
+session. This is authoritative replacement, not an incremental merge. The
+lifecycle firmware revision also discards pending and active task notifications
+whose related card is absent, preserving unrelated notices and weather alerts.
+No schema change is required. Online replacement does not restart brightness
+synchronization. See [host lifecycle and weather](host-lifecycle-weather.md)
+for bounded host retirement records and paired firmware validation.
 
 ## 5. Notifications and Timing
 

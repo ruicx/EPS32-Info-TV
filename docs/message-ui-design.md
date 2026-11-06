@@ -1,5 +1,10 @@
 # Message Interface and Screen UI Design Draft
 
+Subsequent implementation: [Host task lifecycle and automatic weather](host-lifecycle-weather.md)
+supersedes this draft's deferred task-retirement and external-weather-retrieval
+statements. Completed cards now retire after five minutes; explicit closure and
+optional YAML-configured Shanghai weather retrieval are implemented.
+
 Status: The multi-conversation overview direction has been accepted. Tasks and producer-supplied weather are implemented and desktop-tested; calendar, external weather retrieval, and general notifications remain proposals. The original firmware was flashed on 2026-11-05. Five cards and two notifications received actual device Presented feedback, and the user confirmed that physical text, layout, and page rotation were normal.
 
 Weather icons, optional daily temperature range, and producer-supplied hazard

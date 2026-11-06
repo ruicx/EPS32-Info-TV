@@ -5,11 +5,11 @@ from uuid import uuid4
 
 import pytest
 
+from info_tv_service.config import EVENT_CACHE_CAPACITY, MAX_TASKS
 from info_tv_service.device.generated import device_pb2 as pb
 from info_tv_service.device.views import build_card, build_notification
 from info_tv_service.tasks.models import TaskEvent, TaskIcon, TaskRecord, TaskState
 from info_tv_service.tasks.store import AdmissionError, TaskStore
-from info_tv_service.config import EVENT_CACHE_CAPACITY, MAX_TASKS
 
 
 def event(sequence: int = 1, state: TaskState = TaskState.RUNNING, task_id: str = "task") -> TaskEvent:
@@ -71,6 +71,38 @@ def test_capacity_rejects_without_mutation() -> None:
     with pytest.raises(AdmissionError, match="capacity"):
         store.prepare(event(task_id="overflow"))
     assert store.list_tasks() == before
+
+
+def test_closed_runs_stay_closed_but_new_conversation_executions_return() -> None:
+    """Closed identities reject late updates while admitting a newer execution."""
+    store = TaskStore()
+    first = replace(event(), conversation_id="thread", run_sequence=1)
+    update = store.prepare(first)
+    record = update.record
+    store.commit(update)
+    assert store.close(record.card_id) == record
+    assert store.close(record.card_id) is None
+    assert store.prepare(first).outcome == "duplicate"
+    assert store.prepare(replace(first, event_id=uuid4().hex, sequence=2)).outcome == "closed"
+    assert store.list_tasks() == []
+    next_run = replace(first, event_id=uuid4().hex, task_id="next-run", run_sequence=2)
+    store.commit(store.prepare(next_run))
+    assert len(store.list_tasks()) == 1
+    assert store.list_tasks()[0].card_id != record.card_id
+    assert store.prepare(first).outcome == "duplicate"
+    assert store.prepare(replace(first, event_id=uuid4().hex)).outcome == "stale"
+
+
+def test_closing_cards_releases_capacity_across_many_independent_runs() -> None:
+    """More than eight distinct runs can be used without restarting the host."""
+    store = TaskStore()
+    for index in range(MAX_TASKS * 3):
+        submission = event(task_id=str(index))
+        update = store.prepare(submission)
+        store.commit(update)
+        store.close(update.record.card_id)
+        assert store.prepare(replace(submission, event_id=uuid4().hex, sequence=2)).outcome == "closed"
+    assert store.list_tasks() == []
 
 
 def test_conversation_reuses_card_across_runs_and_completes_each_run_once() -> None:

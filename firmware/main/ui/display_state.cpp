@@ -20,6 +20,20 @@ void DisplayState::applySnapshot(const Envelope& envelope) {
     cards_[index].card = envelope.body.snapshot.cards[index];
     std::strcpy(cards_[index].messageId, envelope.message_id);
   }
+  size_t retained = 0;
+  for (size_t index = 0; index < notificationCount_; ++index) {
+    const auto& note = notifications_[index];
+    if (note.weatherAlert || !note.notification.card_id[0] || hasCard(note.notification.card_id))
+      notifications_[retained++] = note;
+  }
+  notificationCount_ = retained;
+}
+
+bool DisplayState::hasCard(const char* cardId) const {
+  for (size_t index = 0; index < cardCount_; ++index) {
+    if (!std::strcmp(cards_[index].card.card_id, cardId)) return true;
+  }
+  return false;
 }
 
 bool DisplayState::upsertCard(const Card& card, const char* messageId) {

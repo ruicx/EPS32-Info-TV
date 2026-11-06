@@ -234,8 +234,42 @@ void testDeviceSettings() {
   CHECK(feedback.error == info_tv_v1_ErrorCode_ERROR_CODE_INVALID);
 }
 
+/** Remove orphaned task notices while preserving unrelated task notifications. */
+void testSnapshotRemovesTaskNotifications() {
+  info_tv::DisplayState state;
+  info_tv::PresentationController controller(state);
+  info_tv::Feedback feedback{};
+  auto snapshot = makeSnapshot();
+  snapshot.envelope.body.snapshot.cards_count = 2;
+  snapshot.envelope.body.snapshot.cards[1] = makeCard("keep");
+  CHECK(controller.handleCommand(snapshot, 0, feedback));
+  auto active = makeNotification("active");
+  std::strcpy(active.envelope.body.notification.card_id, "card");
+  CHECK(controller.handleCommand(active, 1, feedback));
+  CHECK(controller.tick(1).kind == info_tv::RenderModel::Kind::kNotification);
+  auto queued = makeNotification("queued");
+  std::strcpy(queued.envelope.body.notification.card_id, "card");
+  CHECK(controller.handleCommand(queued, 2, feedback));
+  auto keep = makeNotification("keep-note");
+  std::strcpy(keep.envelope.body.notification.card_id, "keep");
+  CHECK(controller.handleCommand(keep, 2, feedback));
+  auto removal = makeSnapshot("removal");
+  removal.envelope.body.snapshot.cards[0] = makeCard("keep");
+  CHECK(controller.handleCommand(removal, 3, feedback));
+  CHECK(state.cardCount() == 1 && !state.hasCard("card"));
+  auto model = controller.tick(3);
+  CHECK(!std::strcmp(model.messageId, "keep-note"));
+  CHECK(controller.onFramePresented(model.generation, 3, feedback));
+  model = controller.tick(5003);
+  CHECK(model.kind == info_tv::RenderModel::Kind::kOverview);
+  CHECK(!std::strcmp(model.rows[0].card.card_id, "keep"));
+  CHECK(controller.handleCommand(removal, 5004, feedback));
+  CHECK(controller.tick(5004).kind == info_tv::RenderModel::Kind::kOverview);
+}
+
 /** Verify UI admission, actual visibility, interruption, restoration, and expiry. */
 int main() {
+  testSnapshotRemovesTaskNotifications();
   testPagedOverview();
   testDeviceSettings();
   testWeather();

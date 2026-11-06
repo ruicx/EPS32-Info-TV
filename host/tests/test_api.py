@@ -1,9 +1,10 @@
 """Exercise production request validation and independent application lifetimes."""
 
+import time
 from uuid import uuid4
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from info_tv_service.app import create_app
 from info_tv_service.config import Settings
@@ -70,6 +71,30 @@ def test_offline_acceptance_duplicate_and_app_isolation() -> None:
         assert client.get("/v1/tasks").json()[0]["icon"] == "task"
     with TestClient(create_app(Settings("unused"), OfflineTransport())) as other:
         assert other.get("/v1/tasks").json() == []
+
+
+def test_close_is_idempotent_offline_and_blocks_late_run_updates() -> None:
+    """Manual removal releases capacity without relying on an online device."""
+    with TestClient(create_app(Settings("unused"), OfflineTransport())) as client:
+        submission = body()
+        response = client.post("/v1/task-events", json=submission)
+        card_id = response.json()["card_id"]
+        assert client.delete(f"/v1/tasks/{card_id}").json()["removed"]
+        assert not client.delete(f"/v1/tasks/{card_id}").json()["removed"]
+        assert client.get("/v1/tasks").json() == []
+        submission.update(event_id=uuid4().hex, sequence=2)
+        assert client.post("/v1/task-events", json=submission).json()["outcome"] == "closed"
+        assert client.get("/v1/weather/updater").json() == {"enabled": False}
+
+
+def test_completed_tasks_expire_without_another_submission() -> None:
+    """The lifespan maintenance loop cleans completed tasks autonomously."""
+    with TestClient(create_app(Settings("unused", completed_retention_seconds=1), OfflineTransport())) as client:
+        assert client.post("/v1/task-events", json=body()).status_code == 202
+        deadline = time.monotonic() + 4
+        while client.get("/v1/tasks").json():
+            assert time.monotonic() < deadline
+            time.sleep(0.02)
 
 
 @pytest.mark.parametrize("field,value", [

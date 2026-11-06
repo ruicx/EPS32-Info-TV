@@ -2,12 +2,12 @@
 
 import asyncio
 import os
-from pathlib import Path
 import time
+from pathlib import Path
 from uuid import uuid4
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from info_tv_service.app import create_app
 from info_tv_service.config import Settings
@@ -151,6 +151,16 @@ def test_http_to_cpp_firmware_core() -> None:
             assert time.monotonic() < deadline, "C++ alert withdrawal was not admitted"
             time.sleep(0.01)
         assert client.get("/v1/weather").json()["daily_low_c"] == -10
+        card_id = client.get("/v1/tasks").json()[0]["card_id"]
+        prior = {item["message_id"] for item in client.get("/v1/device").json()["deliveries"]}
+        assert client.delete(f"/v1/tasks/{card_id}").json()["removed"]
+        deadline = time.monotonic() + 5
+        while not any(item["accepted"] and item["message_id"] not in prior
+                      for item in client.get("/v1/device").json()["deliveries"]):
+            assert time.monotonic() < deadline, "C++ removal snapshot was not admitted"
+            time.sleep(0.01)
+        assert client.get("/v1/tasks").json() == []
+        assert client.get("/v1/device").json()["state"] == "online"
 
 
 @pytest.mark.integration

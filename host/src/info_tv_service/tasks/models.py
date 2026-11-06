@@ -92,12 +92,15 @@ class TaskRecord:
         Device content revision within this session.
     completion_notified : bool
         Whether this run already generated its completion transition.
+    completed_at : float or None
+        Monotonic time of the current completed transition, for retirement.
     """
 
     event: TaskEvent
     card_id: str
     revision: int
     completion_notified: bool
+    completed_at: float | None = None
 
 
 @dataclass(frozen=True)
@@ -107,13 +110,13 @@ class TaskUpdate:
     Parameters
     ----------
     outcome : str
-        Accepted, duplicate, or stale admission outcome.
+        Accepted, duplicate, stale, or closed admission outcome.
     record : TaskRecord
         Proposed state, or current state for a duplicate/stale update.
     notify : bool
         Whether commitment requires notification admission.
     """
 
-    outcome: Literal["accepted", "duplicate", "stale"]
+    outcome: Literal["accepted", "duplicate", "stale", "closed"]
     record: TaskRecord
     notify: bool = False

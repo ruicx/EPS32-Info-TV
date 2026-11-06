@@ -1,10 +1,16 @@
 """Local HTTP route handlers using explicit lifecycle-owned dependencies."""
 
 from typing import cast
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
 
-from info_tv_service.api.models import DeviceSettingsRequest, TaskEventRequest, WeatherAlertRequest, WeatherRequest
+from info_tv_service.api.models import (
+    DeviceSettingsRequest,
+    TaskEventRequest,
+    WeatherAlertRequest,
+    WeatherRequest,
+)
 from info_tv_service.device.generated import device_pb2 as pb
 from info_tv_service.runtime import ServiceRuntime
 from info_tv_service.tasks.store import AdmissionError
@@ -94,6 +100,33 @@ def create_router() -> APIRouter:
              "card_id": record.card_id, "delivery": runtime.device.card_status(record.card_id)}
             for record in runtime.store.list_tasks()
         ]
+
+    @router.delete("/tasks/{card_id}", status_code=202)
+    async def close_task(card_id: UUID, request: Request) -> dict[str, object]:
+        """Close the current card, releasing capacity even while offline.
+
+        Parameters
+        ----------
+        card_id : UUID
+            Card identity returned by GET /v1/tasks.
+        request : Request
+            Application context.
+
+        Returns
+        -------
+        dict[str, object]
+            Removal admission; acceptance does not imply device presentation.
+
+        Raises
+        ------
+        HTTPException
+            If the device coordinator failed.
+        """
+        runtime = runtime_from_request(request)
+        if runtime.failure:
+            raise HTTPException(503, runtime.failure)
+        return {"card_id": card_id.hex, "removed": runtime.tasks.close_task(card_id.hex),
+                "device_state": runtime.device.get_status()["state"]}
 
     @router.put("/device/settings", status_code=202)
     async def set_device_settings(body: DeviceSettingsRequest, request: Request) -> dict[str, object]:
@@ -188,6 +221,23 @@ def create_router() -> APIRouter:
             Unavailable, fresh, or stale weather and delivery status.
         """
         return runtime_from_request(request).device.weather_status()
+
+    @router.get("/weather/updater")
+    async def weather_updater_status(request: Request) -> dict[str, object]:
+        """Query automatic retrieval health without claiming device display.
+
+        Parameters
+        ----------
+        request : Request
+            Application context.
+
+        Returns
+        -------
+        dict[str, object]
+            Disabled state or the configured provider's latest attempt.
+        """
+        updater = runtime_from_request(request).weather
+        return updater.status() if updater is not None else {"enabled": False}
 
     @router.delete("/weather", status_code=202)
     async def clear_weather(request: Request) -> dict[str, object]:

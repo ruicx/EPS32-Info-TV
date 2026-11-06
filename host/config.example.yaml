@@ -1,0 +1,15 @@
+# Copy to a local file and select the currently enumerated serial port.
+serial_port: COM6
+http_port: 8765
+completed_retention_seconds: 300
+
+# Omit weather (or set it to null) to disable automatic network requests.
+# Shanghai city center; English label fits the current device font.
+# Weather data: Open-Meteo (https://open-meteo.com/), CC BY 4.0.
+weather:
+  location: Shanghai
+  latitude: 31.2304
+  longitude: 121.4737
+  refresh_seconds: 900
+  retry_seconds: 60
+  valid_for_seconds: 1800
