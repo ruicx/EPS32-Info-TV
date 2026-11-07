@@ -13,7 +13,7 @@ Extract the Rust host archive to a stable path such as `C:\info-tv` and start it
 C:\info-tv\info-tv.exe serve
 ```
 
-For source builds, see the [host guide](../host-rust/README.md).
+For source builds, see the [host guide](../host/README.md).
 
 Merge this named entry into the trusted workspace's `.agents/hooks.json`:
 

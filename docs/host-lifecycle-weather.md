@@ -11,14 +11,14 @@ The service accepts an explicit UTF-8 YAML path or discovers `info-tv.yaml` in
 the working directory. Run from the root:
 
 ```powershell
-cargo run --manifest-path host-rust/Cargo.toml --locked -- serve --config info-tv.yaml
+cargo run --manifest-path host/Cargo.toml --locked -- serve --config info-tv.yaml
 ```
 
-Copy and edit [the example](../host-rust/info-tv.example.yaml) as `info-tv.yaml`
+Copy and edit [the example](../host/info-tv.example.yaml) as `info-tv.yaml`
 for local use; uncomment its weather mapping to enable retrieval. The
 default `serial_port: auto` selects a single USB candidate using `usb_vid` and
 `usb_pid` (defaults `303A:1001`); omitting these keys retains those defaults.
-Use `info-tv ports --config host-rust/info-tv.example.yaml` to inspect candidates or set
+Use `info-tv ports --config host/info-tv.example.yaml` to inspect candidates or set
 an explicit port such as COM6. See [serial discovery](host-cli.md#start-and-connect)
 for ambiguity handling, shared USB IDs, and reconnect behavior.
 `--serial-port` and `--http-port` override their YAML values. The original

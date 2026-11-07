@@ -15,7 +15,7 @@ if ($Target -notin @('x86_64-pc-windows-msvc', 'aarch64-pc-windows-msvc')) {
     throw 'This packaging script supports Windows MSVC targets only.'
 }
 $repository = Split-Path -Parent $PSScriptRoot
-$manifest = Join-Path $repository 'host-rust/Cargo.toml'
+$manifest = Join-Path $repository 'host/Cargo.toml'
 $previousFlags = $env:RUSTFLAGS
 try {
     $env:RUSTFLAGS = (($previousFlags, '-C target-feature=+crt-static') | Where-Object { $_ }) -join ' '
@@ -31,8 +31,8 @@ try {
     $binaryDirectory = Join-Path $metadata.target_directory "$Target/release"
     Copy-Item -LiteralPath (Join-Path $binaryDirectory 'info-tv.exe') -Destination $stage
     Copy-Item -LiteralPath (Join-Path $binaryDirectory 'info-tv-hook.exe') -Destination $stage
-    Copy-Item -LiteralPath (Join-Path $repository 'host-rust/info-tv.example.yaml') -Destination (Join-Path $stage 'info-tv.yaml')
-    Copy-Item -LiteralPath (Join-Path $repository 'host-rust/README.md') -Destination $stage
+    Copy-Item -LiteralPath (Join-Path $repository 'host/info-tv.example.yaml') -Destination (Join-Path $stage 'info-tv.yaml')
+    Copy-Item -LiteralPath (Join-Path $repository 'host/README.md') -Destination $stage
     $archive = Join-Path $output "info-tv-$version-$Target.zip"
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $archive -Force
     Get-FileHash -LiteralPath $archive -Algorithm SHA256 | Format-List

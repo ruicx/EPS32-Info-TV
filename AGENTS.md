@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-- `host-rust/`: Rust service, durable task state, USB device communication, CLI, and hooks; integration tests live in `host-rust/tests/`.
+- `host/`: Rust service, durable task state, USB device communication, CLI, and hooks; integration tests live in `host/tests/`.
 - `firmware/main/`: ESP32-S3 application, board drivers, communication, protocol, and LVGL UI; desktop C++ tests live in `firmware/tests/`.
 - `protocol/`: shared Protobuf schema, Nanopb bounds, and compatibility vectors. Firmware bindings are checked in; Cargo generates Rust bindings during builds.
 - `scripts/`: protocol generation, locked Python development tools, and release packaging; `demos/`: standard-library Python HTTP demonstrations; `docs/`: architecture, hardware references, and validation evidence.
@@ -12,7 +12,7 @@
 Run from the repository root unless stated otherwise:
 
 ```powershell
-cargo run --manifest-path host-rust/Cargo.toml --locked -- serve --serial-port COM6
+cargo run --manifest-path host/Cargo.toml --locked -- serve --serial-port COM6
 python demos/demo_task.py
 idf.py -C firmware build
 cmake -S firmware/tests -B build/native-tests
@@ -25,9 +25,9 @@ These launch the host, demonstrate task progress, build firmware, and build/run 
 Additional checks from the repository root:
 
 ```powershell
-cargo fmt --manifest-path host-rust/Cargo.toml -- --check
-cargo clippy --manifest-path host-rust/Cargo.toml --all-targets --locked -- -D warnings
-cargo test --manifest-path host-rust/Cargo.toml --locked
+cargo fmt --manifest-path host/Cargo.toml -- --check
+cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnings
+cargo test --manifest-path host/Cargo.toml --locked
 uv sync --project scripts --locked
 uv run --project scripts --locked ruff check --config scripts/pyproject.toml scripts demos
 uv run --project scripts --locked ty check --project scripts scripts demos
@@ -40,7 +40,7 @@ After schema changes, regenerate firmware bindings with `uv run --project script
 
 Use four-space Python indentation, `snake_case` functions, `PascalCase` classes, complete type annotations, and NumPy-style docstrings. Prefer small, pure helpers and explicit dataclasses; avoid global mutable state. Use Ruff for linting and ty for type checking; their settings live in `scripts/pyproject.toml`. Keep formatting changes scoped.
 
-Use rustfmt and Clippy for Rust, keeping changes consistent with surrounding code. Build Windows host archives with `scripts/build_rust_release.ps1`; the package version comes from `host-rust/Cargo.toml`. No Python host package is built.
+Use rustfmt and Clippy for Rust, keeping changes consistent with surrounding code. Build Windows host archives with `scripts/build_rust_release.ps1`; the package version comes from `host/Cargo.toml`. No Python host package is built.
 
 For C++, use two-space indentation, Google-style conventions, `camelCase` functions/variables, `PascalCase` classes, and Doxygen comments. Prefer `nullptr`, `override`, and short functions with early returns. Keep changes focused and match surrounding code.
 
@@ -50,7 +50,7 @@ Write all documentation in English. Bilingual README files are the only exceptio
 
 ## Testing Guidelines
 
-Use Rust integration tests under `host-rust/tests/` and native C++ files named `test_*.cpp`, registered through CMake/CTest. Mark physical-device checks explicitly; native C++ hardware cases use the `hardware` label. Build `protocol_bridge` before Rust bridge integration tests. Retain language-independent compatibility fixtures when removing legacy implementations. No coverage threshold is configured; add regression coverage for changed behavior.
+Use Rust integration tests under `host/tests/` and native C++ files named `test_*.cpp`, registered through CMake/CTest. Mark physical-device checks explicitly; native C++ hardware cases use the `hardware` label. Build `protocol_bridge` before Rust bridge integration tests. Retain language-independent compatibility fixtures when removing legacy implementations. No coverage threshold is configured; add regression coverage for changed behavior.
 
 ## Commit & Pull Request Guidelines
 

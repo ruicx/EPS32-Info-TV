@@ -2,14 +2,14 @@
 
 The `info-tv` command starts the service or calls the same HTTP API as producers.
 Use the extracted Rust executable. From this repository, prefix each command
-with `cargo run --manifest-path host-rust/Cargo.toml --locked --` and omit the
+with `cargo run --manifest-path host/Cargo.toml --locked --` and omit the
 `info-tv` command name. No Python environment is required.
 
 ## Start and connect
 
 ```powershell
 info-tv serve
-info-tv serve --config host-rust/info-tv.example.yaml
+info-tv serve --config host/info-tv.example.yaml
 info-tv serve --serial-port COM6 --http-port 8765
 ```
 
@@ -24,7 +24,7 @@ opening any serial handle:
 
 ```powershell
 info-tv ports
-info-tv ports --config host-rust/info-tv.example.yaml
+info-tv ports --config host/info-tv.example.yaml
 info-tv serve --serial-port auto
 ```
 

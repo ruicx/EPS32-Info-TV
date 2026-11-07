@@ -4,7 +4,7 @@ Status: Minimal host/firmware USB implementation built, tested, and validated on
 
 Updated: 2026-11-03
 
-The production host is implemented in Rust under `host-rust/`. The accepted direction and implementation
+The production host is implemented in Rust under `host/`. The accepted direction and implementation
 boundaries are in [Rust host design](rust-host-design.md), including restart
 recovery and per-user login startup. Python/FastAPI choices below describe the
 original implementation, removed from the working tree and retained in Git

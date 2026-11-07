@@ -1,6 +1,6 @@
 # Development tools
 
-The host is built and tested with Cargo under `host-rust/`. The Python project
+The host is built and tested with Cargo under `host/`. The Python project
 here only supplies firmware protocol generation and Ruff/ty checks. It does not
 install a host service, CLI, or hooks. Python 3.12+ and uv are needed for these
 development operations; released host executables need neither.
@@ -18,7 +18,7 @@ Omit `--check` to update the committed `firmware/main/protocol/generated/device.
 and `device.pb.h` after editing `protocol/device.proto` or `device.options`.
 Nanopb is pinned to the vendored firmware runtime version. `grpcio-tools`
 provides the schema compiler used by Nanopb; no standalone protoc is needed.
-Rust bindings are generated independently by `host-rust/build.rs` using its
+Rust bindings are generated independently by `host/build.rs` using its
 Cargo-locked, build-only protoc. No Python bindings are maintained.
 
 The HTTP demos use only Python's standard library and can run directly:

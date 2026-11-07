@@ -10,7 +10,7 @@ These scripts are not pytest/CTest cases and are not run by automated test disco
 2. Start the host service if it is not already running:
 
    ```powershell
-   cargo run --manifest-path host-rust/Cargo.toml --locked -- serve --serial-port COM6
+   cargo run --manifest-path host/Cargo.toml --locked -- serve --serial-port COM6
    ```
 
    Replace COM6 with the current device port. Use one host instance per device.

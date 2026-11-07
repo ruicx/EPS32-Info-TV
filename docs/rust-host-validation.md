@@ -3,7 +3,7 @@
 Updated: 2026-11-07
 
 This record covers the first Rust host implementation in the working tree. The
-[architecture](rust-host-design.md) and [user/build guide](../host-rust/README.md)
+[architecture](rust-host-design.md) and [user/build guide](../host/README.md)
 describe behavior and commands. Desktop checks below do not establish physical
 display behavior or successful login startup.
 
@@ -12,9 +12,9 @@ display behavior or successful login startup.
 Validated on Windows x86-64 with Rust/Cargo 1.97.1:
 
 ```powershell
-cargo test --manifest-path host-rust/Cargo.toml --locked
-cargo clippy --manifest-path host-rust/Cargo.toml --all-targets --locked -- -D warnings
-cargo fmt --manifest-path host-rust/Cargo.toml -- --check
+cargo test --manifest-path host/Cargo.toml --locked
+cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnings
+cargo fmt --manifest-path host/Cargo.toml -- --check
 ctest --test-dir build/native-tests -C Debug -LE hardware --output-on-failure
 ```
 
@@ -41,9 +41,10 @@ ESP-IDF CMake tools because it was not on the shell PATH.
 ## Python Host Removal
 
 With user approval, the `host/` service, Python tests/bindings, wheel packaging,
-and its dependency project were removed. Historical implementations remain in
-Git history; the 39 hook transition fixtures and embedded API contract remain
-in `host-rust/`. This does not imply completion of the release checks below.
+and its dependency project were removed. The `host/` directory now contains the
+Rust crate. Historical implementations remain in Git history; the 39 hook
+transition fixtures and embedded API contract remain in the Rust crate. This
+does not imply completion of the release checks below.
 
 Python development dependencies now live in `scripts/pyproject.toml` and
 `scripts/uv.lock`. A fresh `uv sync --project scripts --locked` installed the

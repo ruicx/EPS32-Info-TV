@@ -97,9 +97,9 @@ Rust, protoc, SQLite, nor Python installed.
 From the repository root:
 
 ```powershell
-cargo test --manifest-path host-rust/Cargo.toml --locked
-cargo clippy --manifest-path host-rust/Cargo.toml --all-targets --locked -- -D warnings
-cargo fmt --manifest-path host-rust/Cargo.toml -- --check
+cargo test --manifest-path host/Cargo.toml --locked
+cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnings
+cargo fmt --manifest-path host/Cargo.toml -- --check
 powershell -NoProfile -File scripts/build_rust_release.ps1
 ```
 

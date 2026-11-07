@@ -11,9 +11,9 @@ overview restoration, and powered serial reconnection passed. See the
 
 ## Rust host
 
-The host is implemented in Rust under `host-rust/`, with durable
+The host is implemented in Rust under `host/`, with durable
 task/brightness recovery and optional per-user login startup. See the
-[Rust host guide](host-rust/README.md) and
+[Rust host guide](host/README.md) and
 [architecture and migration design](docs/rust-host-design.md).
 [Validation results](docs/rust-host-validation.md) distinguish completed desktop
 checks from pending physical-device and login qualification.
@@ -21,12 +21,12 @@ checks from pending physical-device and login qualification.
 Build and run from the repository root:
 
 ```powershell
-cargo run --manifest-path host-rust/Cargo.toml --locked -- serve
+cargo run --manifest-path host/Cargo.toml --locked -- serve
 ```
 
 Use `--config <path>` to select YAML. Without it, `serve` and `ports` read
 `info-tv.yaml` from the current working directory if present, otherwise defaults.
-Copy `host-rust/info-tv.example.yaml` for a starting configuration.
+Copy `host/info-tv.example.yaml` for a starting configuration.
 
 Build the Windows binary archive with `scripts/build_rust_release.ps1`; output is
 under `build/rust-host-dist`. Extracted executables need no Python installation.
@@ -187,7 +187,7 @@ C:\info-tv\info-tv.exe task list
 The screen should show the card and a completion notice. In `task list`,
 `delivery.accepted: true` means the firmware accepted the card;
 `delivery.presented: true` confirms presentation feedback. For optional startup
-after login, run the following command; see the [host guide](host-rust/README.md#login-startup).
+after login, run the following command; see the [host guide](host/README.md#login-startup).
 
 ```powershell
 C:\info-tv\info-tv.exe autostart install --config C:\info-tv\info-tv.yaml
@@ -361,7 +361,7 @@ and follow the matching firmware instructions. Keep your YAML and state files.
 
 | Directory | Responsibility |
 | --- | --- |
-| `host-rust/` | Rust host, SQLite recovery, CLI/hooks, and login startup |
+| `host/` | Rust host, SQLite recovery, CLI/hooks, and login startup |
 | `firmware/` | ESP-IDF 6.1, FreeRTOS, C++, LVGL 9.3, ST7789 |
 | `protocol/` | Shared schema, Nanopb bounds, and compatibility vector |
 | `scripts/` | Firmware protocol generation, locked Python development tools, and release packaging |
@@ -378,16 +378,16 @@ Requires Rust 1.89+ and platform C/C++ build tools for bundled SQLite. From the
 repository root:
 
 ```powershell
-cargo run --manifest-path host-rust/Cargo.toml --locked -- serve
+cargo run --manifest-path host/Cargo.toml --locked -- serve
 ```
 
 Copy the example and uncomment its `weather` mapping to enable Shanghai weather
 (or edit the coordinates for your location), then start with that file:
 
 ```powershell
-Copy-Item host-rust/info-tv.example.yaml info-tv.yaml
+Copy-Item host/info-tv.example.yaml info-tv.yaml
 # Edit info-tv.yaml to enable and configure weather.
-cargo run --manifest-path host-rust/Cargo.toml --locked -- serve --config info-tv.yaml
+cargo run --manifest-path host/Cargo.toml --locked -- serve --config info-tv.yaml
 ```
 
 See the [YAML field reference](docs/host-configuration.md) for field meanings,
@@ -395,7 +395,7 @@ types, defaults, limits, and configuration precedence.
 
 Serial discovery defaults to `auto`: the host selects a single USB `303A:1001`
 candidate and rescans after disconnects. YAML keys `usb_vid` and `usb_pid` can
-override that USB filter. Use `info-tv ports --config host-rust/info-tv.example.yaml`
+override that USB filter. Use `info-tv ports --config host/info-tv.example.yaml`
 to list candidates using the same configuration;
 with multiple matching devices, select one explicitly with `--serial-port COM6`.
 Other ESP32 devices share this USB ID; the protocol handshake checks compatibility.
@@ -410,11 +410,11 @@ retries an unavailable device while continuing to accept task state.
 The CLI also calls the running host directly:
 
 ```powershell
-cargo run --manifest-path host-rust/Cargo.toml --locked -- status
-cargo run --manifest-path host-rust/Cargo.toml --locked -- task submit --task-id build-1 --sequence 1 --state running --title "Build firmware" --progress-percent 20
-cargo run --manifest-path host-rust/Cargo.toml --locked -- task list
-cargo run --manifest-path host-rust/Cargo.toml --locked -- weather updater
-cargo run --manifest-path host-rust/Cargo.toml --locked -- brightness 30
+cargo run --manifest-path host/Cargo.toml --locked -- status
+cargo run --manifest-path host/Cargo.toml --locked -- task submit --task-id build-1 --sequence 1 --state running --title "Build firmware" --progress-percent 20
+cargo run --manifest-path host/Cargo.toml --locked -- task list
+cargo run --manifest-path host/Cargo.toml --locked -- weather updater
+cargo run --manifest-path host/Cargo.toml --locked -- brightness 30
 ```
 
 Use `info-tv serve --config ...` for explicit startup; existing startup commands
@@ -527,9 +527,9 @@ in the hardware validation document.
 Run host checks from the repository root:
 
 ```powershell
-cargo fmt --manifest-path host-rust/Cargo.toml -- --check
-cargo clippy --manifest-path host-rust/Cargo.toml --all-targets --locked -- -D warnings
-cargo test --manifest-path host-rust/Cargo.toml --locked
+cargo fmt --manifest-path host/Cargo.toml -- --check
+cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnings
+cargo test --manifest-path host/Cargo.toml --locked
 ```
 
 Native firmware-core tests require CMake and a desktop C/C++ compiler:
@@ -559,7 +559,7 @@ uv run --project scripts --locked ty check --project scripts scripts demos
 
 Omit `--check` to regenerate after schema changes. Cargo generates Rust bindings
 from the same schema during builds. See [development tools](scripts/README.md).
-The language-independent compatibility fixtures in `host-rust/tests/fixtures`
+The language-independent compatibility fixtures in `host/tests/fixtures`
 remain usable without the removed Python service.
 
 ## Package the host
@@ -569,7 +569,7 @@ powershell -NoProfile -File scripts/build_rust_release.ps1
 ```
 
 The Windows archive is written under `build/rust-host-dist`; its version comes
-from `host-rust/Cargo.toml`. See the [host guide](host-rust/README.md). The script
+from `host/Cargo.toml`. See the [host guide](host/README.md). The script
 builds both executables with the static MSVC runtime and does not publish them.
 
 For a user-facing Release, attach the host archive and complete firmware from

@@ -4,10 +4,10 @@ The host reads one UTF-8 YAML file, selected explicitly or discovered in the
 current working directory. From the repository root:
 
 ```powershell
-cargo run --manifest-path host-rust/Cargo.toml --locked -- serve --config host-rust/info-tv.example.yaml
+cargo run --manifest-path host/Cargo.toml --locked -- serve --config host/info-tv.example.yaml
 ```
 
-Copy [the example configuration](../host-rust/info-tv.example.yaml) for local use.
+Copy [the example configuration](../host/info-tv.example.yaml) for local use.
 Its weather mapping is commented out; uncomment and edit it to enable retrieval.
 Settings are read once at startup; restart the service after editing the file.
 Without `--config`, `serve` and `ports` look for `info-tv.yaml` in the current
@@ -63,7 +63,7 @@ an explicit `serial_port` if several devices match.
 Inspect candidates using the same file, without opening a serial connection:
 
 ```powershell
-cargo run --manifest-path host-rust/Cargo.toml --locked -- ports --config host-rust/info-tv.example.yaml
+cargo run --manifest-path host/Cargo.toml --locked -- ports --config host/info-tv.example.yaml
 ```
 
 ### Completed-task retention
@@ -122,7 +122,7 @@ Precedence is: explicit server CLI options, then YAML, then built-in defaults.
 The server exposes `--serial-port` and `--http-port` overrides:
 
 ```powershell
-cargo run --manifest-path host-rust/Cargo.toml --locked -- serve --config host-rust/info-tv.example.yaml --serial-port COM9 --http-port 9876
+cargo run --manifest-path host/Cargo.toml --locked -- serve --config host/info-tv.example.yaml --serial-port COM9 --http-port 9876
 ```
 
 This keeps the file's weather and USB settings but uses COM9 and HTTP port 9876.

@@ -8,7 +8,7 @@ callback; the normal `info-tv` service owns USB and device delivery.
 
 The repository's [project hooks](../.codex/hooks.json) forward six Codex events
 through `.local/bin/info-tv.exe hook codex`. The executable is a local copy of the
-optimized Rust build, so rebuilding under `host-rust/target` does not replace a
+optimized Rust build, so rebuilding under `host/target` does not replace a
 running service binary. Commands in this configuration use absolute paths for
 this checkout; update them if the repository moves.
 
@@ -36,7 +36,7 @@ Extract the host archive to a stable path such as `C:\info-tv`, then start it:
 C:\info-tv\info-tv.exe serve
 ```
 
-For source builds, see the [host guide](../host-rust/README.md).
+For source builds, see the [host guide](../host/README.md).
 
 `info-tv-hook codex` reads a single UTF-8 JSON callback from stdin. The equivalent
 consolidated entry point is `info-tv hook codex`.

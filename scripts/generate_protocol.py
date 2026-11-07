@@ -3,7 +3,7 @@
 Notes
 -----
 Run with ``uv run --project scripts --locked python scripts/generate_protocol.py``.
-Rust bindings are generated independently by ``host-rust/build.rs``.
+Rust bindings are generated independently by ``host/build.rs``.
 The generator never downloads or modifies third-party runtime sources.
 """
 

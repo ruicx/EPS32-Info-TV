@@ -416,7 +416,7 @@ state. Existing hook ledgers require their own compatibility checks.
 
 ## 12. Implementation Decisions
 
-- The package lives in `host-rust/`. Python service sources, tests, packaging,
+- The package lives in `host/`. Python service sources, tests, packaging,
   and bindings have been removed. `scripts/` owns the locked Python development
   tools for Nanopb generation; Cargo generates Rust bindings independently.
 - Schema version 1 stores the bounded business snapshot as JSON in one SQLite
@@ -447,6 +447,6 @@ state. Existing hook ledgers require their own compatibility checks.
   Publishing, clean-machine qualification, physical USB/display checks, and actual
   logout/login validation must be recorded separately.
 
-See the [Rust host guide](../host-rust/README.md) for commands and the
+See the [Rust host guide](../host/README.md) for commands and the
 [validation record](rust-host-validation.md) for completed checks and remaining
 qualification. Do not treat desktop bridge feedback as physical display validation.

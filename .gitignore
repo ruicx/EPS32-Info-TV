@@ -42,7 +42,7 @@
 build/
 Build/
 build-*/
-host-rust/target/
+host/target/
 
 # CMake generated files
 CMakeFiles/
