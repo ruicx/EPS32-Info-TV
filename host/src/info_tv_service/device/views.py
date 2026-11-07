@@ -23,6 +23,7 @@ def build_card(record: TaskRecord) -> pb.Card:
         TaskState.WAITING_INPUT: pb.TONE_ATTENTION,
         TaskState.COMPLETED: pb.TONE_POSITIVE,
         TaskState.FAILED: pb.TONE_NEGATIVE,
+        TaskState.INTERRUPTED: pb.TONE_NEUTRAL,
     }
     event = record.event
     icons = {
@@ -57,7 +58,9 @@ def build_notification(record: TaskRecord) -> pb.Notification:
     """
     return pb.Notification(
         notification_id=record.event.event_id,
-        priority=pb.PRIORITY_ORDINARY if record.event.state == TaskState.COMPLETED else pb.PRIORITY_IMPORTANT,
+        priority=pb.PRIORITY_ORDINARY if record.event.state in (
+            TaskState.COMPLETED, TaskState.INTERRUPTED,
+        ) else pb.PRIORITY_IMPORTANT,
         valid_for_ms=NOTIFICATION_VALIDITY_MS,
         view=build_card(record).view,
         card_id=record.card_id,

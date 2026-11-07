@@ -60,7 +60,7 @@ class Settings:
     http_port : int
         Loopback HTTP port.
     completed_retention_seconds : int
-        Time to retain a completed execution from its first completed update.
+        Time to retain a completed/interrupted execution from its first terminal update.
     weather : WeatherSettings or None
         Automatic retrieval configuration; absent disables network requests.
     usb_vid : int

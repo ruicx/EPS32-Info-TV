@@ -1,0 +1,55 @@
+{
+  "device": "desktop C++ bridge; no physical ESP32",
+  "tasks": [
+    {
+      "source": "codex",
+      "task_id": "01a1b4cc-5320-7b43-adab-e71908a88ae5",
+      "state": "interrupted",
+      "title": "This turn will be interrupted. Do not use tools or spawn agents.",
+      "detail": "Turn interrupted",
+      "progress_percent": null,
+      "icon": "code",
+      "conversation_id": "01a1b4cb-ee1b-75c0-a9e7-7ee2badc7cbb",
+      "conversation_title": "This is a hook integration smoke test. Do not use tools, edit fi",
+      "context": "workspace",
+      "run_sequence": 2,
+      "sequence": 2,
+      "revision": 4,
+      "card_id": "85dd473f887b433f9983b4de37d48b9c",
+      "delivery": {
+        "revision": 4,
+        "message_id": "fa0ef32c34fe49929ff759d8a10f2bd1",
+        "accepted": true,
+        "presented": true,
+        "error": null
+      }
+    },
+    {
+      "source": "codex",
+      "task_id": "01a1b4cc-8006-7f42-bfa0-25839195513e",
+      "state": "completed",
+      "title": "This is an independent conversation probe. Do not use tools, edi",
+      "detail": "ADAPTER_SECOND_OK",
+      "progress_percent": null,
+      "icon": "code",
+      "conversation_id": "01a1b4cc-6eae-7721-9348-8a179b2740e3",
+      "conversation_title": "This is an independent conversation probe. Do not use tools, edi",
+      "context": "workspace",
+      "run_sequence": 1,
+      "sequence": 2,
+      "revision": 2,
+      "card_id": "2684953b85cd4160b1699ad5605421b3",
+      "delivery": {
+        "revision": 2,
+        "message_id": "314a4067182e4a2584b8811e6b32550e",
+        "accepted": true,
+        "presented": true,
+        "error": null
+      }
+    }
+  ],
+  "date": "2026-11-07",
+  "codex_version": "0.166.0",
+  "pending_events": 0,
+  "scope": "Real Codex to installed console sender to loopback HTTP to desktop C++ bridge; not a physical ESP32 test."
+}

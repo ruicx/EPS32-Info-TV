@@ -107,7 +107,8 @@ void PresentationController::orderCards() {
   const auto priority = [this](size_t index) {
     const auto tone = state_.card(index).card.view.content.status.tone;
     if (tone == info_tv_v1_Tone_TONE_ATTENTION || tone == info_tv_v1_Tone_TONE_NEGATIVE) return 0;
-    return tone == info_tv_v1_Tone_TONE_POSITIVE ? 2 : 1;
+    return tone == info_tv_v1_Tone_TONE_POSITIVE ||
+        !std::strcmp(state_.card(index).card.view.content.status.text, "interrupted") ? 2 : 1;
   };
   std::sort(order_.begin(), order_.begin() + state_.cardCount(), [&](size_t left, size_t right) {
     const int a = priority(left);

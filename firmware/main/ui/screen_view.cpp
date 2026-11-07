@@ -52,6 +52,7 @@ const char* compactState(const char* text) {
   if (!std::strcmp(text, "waiting input")) return "WAIT";
   if (!std::strcmp(text, "completed")) return "DONE";
   if (!std::strcmp(text, "failed")) return "FAIL";
+  if (!std::strcmp(text, "interrupted")) return "STOP";
   return text;
 }
 

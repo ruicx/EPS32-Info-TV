@@ -87,10 +87,17 @@ def test_close_is_idempotent_offline_and_blocks_late_run_updates() -> None:
         assert client.get("/v1/weather/updater").json() == {"enabled": False}
 
 
-def test_completed_tasks_expire_without_another_submission() -> None:
-    """The lifespan maintenance loop cleans completed tasks autonomously."""
+@pytest.mark.parametrize("state", ["completed", "interrupted"])
+def test_completed_tasks_expire_without_another_submission(state: str) -> None:
+    """The lifespan maintenance loop cleans finished tasks autonomously.
+
+    Parameters
+    ----------
+    state : str
+        Finished execution state subject to retention.
+    """
     with TestClient(create_app(Settings("unused", completed_retention_seconds=1), OfflineTransport())) as client:
-        assert client.post("/v1/task-events", json=body()).status_code == 202
+        assert client.post("/v1/task-events", json=body() | {"state": state}).status_code == 202
         deadline = time.monotonic() + 4
         while client.get("/v1/tasks").json():
             assert time.monotonic() < deadline

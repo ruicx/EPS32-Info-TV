@@ -267,8 +267,34 @@ void testSnapshotRemovesTaskNotifications() {
   CHECK(controller.tick(5004).kind == info_tv::RenderModel::Kind::kOverview);
 }
 
+/** Keep interrupted cards neutral and sort them after actively running cards. */
+void testInterruptedOverview() {
+  info_tv::DisplayState state;
+  info_tv::PresentationController controller(state);
+  info_tv::Feedback feedback{};
+  auto snapshot = makeSnapshot();
+  snapshot.envelope.body.snapshot.cards_count = 3;
+  const char* identities[] = {"stopped", "done", "active"};
+  const char* statuses[] = {"interrupted", "completed", "running"};
+  for (size_t index = 0; index < 3; ++index) {
+    auto& card = snapshot.envelope.body.snapshot.cards[index];
+    card = makeCard(identities[index]);
+    std::strcpy(card.view.content.status.text, statuses[index]);
+    card.view.content.status.tone = index == 1 ?
+        info_tv_v1_Tone_TONE_POSITIVE : info_tv_v1_Tone_TONE_NEUTRAL;
+  }
+  CHECK(controller.handleCommand(snapshot, 0, feedback));
+  const auto& model = controller.tick(0);
+  CHECK(model.attentionCount == 0 && model.rowCount == 3);
+  CHECK(!std::strcmp(model.rows[0].card.card_id, "active"));
+  CHECK(!std::strcmp(model.rows[1].card.card_id, "stopped"));
+  CHECK(!std::strcmp(model.rows[2].card.card_id, "done"));
+  CHECK(model.rows[1].card.view.content.status.tone == info_tv_v1_Tone_TONE_NEUTRAL);
+}
+
 /** Verify UI admission, actual visibility, interruption, restoration, and expiry. */
 int main() {
+  testInterruptedOverview();
   testSnapshotRemovesTaskNotifications();
   testPagedOverview();
   testDeviceSettings();

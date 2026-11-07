@@ -78,11 +78,11 @@ info-tv task close <card_id>
 
 Replace `<card_id>` with the identity returned by submission or listing. Closure
 is idempotent and uses the card identity, rather than the producer's task ID.
-Completed cards also expire according to the configured retention policy.
+Completed and interrupted cards also expire according to the configured retention policy.
 
 `--source` defaults to `cli`. Use a unique `--task-id` for each execution and
 increasing positive `--sequence` values for its updates. States are `running`,
-`waiting_input`, `completed`, and `failed`. Optional display arguments include
+`waiting_input`, `completed`, `failed`, and `interrupted`. Optional display arguments include
 `--detail`, `--progress-percent`, `--icon`, and `--context`.
 
 For a conversation, supply `--conversation-id` and `--run-sequence` together,

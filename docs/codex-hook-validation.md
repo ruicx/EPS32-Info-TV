@@ -2,6 +2,9 @@
 
 Date: 2026-11-07, Asia/Shanghai.
 
+This is the pre-implementation event record. See the subsequent
+[Codex adapter guide](codex-hooks.md) for implemented behavior and later checks.
+
 Result: real Codex events provide usable conversation and turn identities and
 signals for starting work, requesting approval, and stopping. They do not yet
 justify a complete mapping to all four host task states. In particular, a

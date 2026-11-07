@@ -21,7 +21,7 @@ class TaskService:
         device : DeviceSession
             Application-owned downstream session.
         completed_retention_seconds : int
-            Delay before removing completed cards.
+            Delay before removing completed or interrupted cards.
         """
         self.store = store
         self.device = device
@@ -80,7 +80,7 @@ class TaskService:
         return True
 
     def expire_completed(self) -> None:
-        """Retire completed cards without extending retention on retries."""
+        """Retire completed/interrupted cards without extending retention on retries."""
         now = time.monotonic()
         for record in self.store.list_tasks():
             if record.completed_at is not None and now - record.completed_at >= self.completed_retention_seconds:

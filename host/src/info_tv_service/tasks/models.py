@@ -12,6 +12,7 @@ class TaskState(StrEnum):
     WAITING_INPUT = "waiting_input"
     COMPLETED = "completed"
     FAILED = "failed"
+    INTERRUPTED = "interrupted"
 
 
 class TaskIcon(StrEnum):
@@ -91,9 +92,9 @@ class TaskRecord:
     revision : int
         Device content revision within this session.
     completion_notified : bool
-        Whether this run already generated its completion transition.
+        Whether this run already generated its completed/interrupted notification.
     completed_at : float or None
-        Monotonic time of the current completed transition, for retirement.
+        Monotonic time of its first completed/interrupted transition, for retirement.
     """
 
     event: TaskEvent

@@ -83,8 +83,9 @@ class TaskStore:
         if active is None and len(self._tasks) >= MAX_TASKS:
             raise AdmissionError("Task capacity reached", 503)
         completed = previous.completion_notified if previous and same_run else False
+        terminal = event.state in (TaskState.COMPLETED, TaskState.INTERRUPTED)
         notify = (
-            event.state == TaskState.COMPLETED and not completed
+            terminal and not completed
         ) or (
             event.state in (TaskState.WAITING_INPUT, TaskState.FAILED)
             and (not same_run or previous is None or previous.event.state != event.state)
@@ -92,9 +93,9 @@ class TaskStore:
         record = TaskRecord(
             event, active.card_id if active else uuid4().hex,
             active.revision + 1 if active else 1,
-            completed or event.state == TaskState.COMPLETED,
+            completed or terminal,
             (previous.completed_at if previous and same_run and previous.completed_at is not None else time.monotonic())
-            if event.state == TaskState.COMPLETED else None,
+            if terminal else None,
         )
         return TaskUpdate("accepted", record, notify)
 

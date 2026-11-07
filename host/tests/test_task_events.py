@@ -62,6 +62,23 @@ def test_duplicate_conflict_stale_and_completion_once() -> None:
     assert store.list_tasks()[0].event == complete
 
 
+def test_interrupted_transition_is_neutral_and_notified_once() -> None:
+    """Keep interruption distinct from success/failure with finite retention."""
+    store = TaskStore()
+    stopped = event(2, TaskState.INTERRUPTED)
+    update = store.prepare(stopped)
+    assert update.notify and update.record.completed_at is not None
+    store.commit(update)
+    assert store.prepare(stopped).outcome == "duplicate"
+    repeat = store.prepare(event(3, TaskState.INTERRUPTED))
+    assert not repeat.notify
+    assert repeat.record.completed_at == update.record.completed_at
+    card = build_card(update.record)
+    assert card.view.status.text == "interrupted"
+    assert card.view.status.tone == pb.TONE_NEUTRAL
+    assert build_notification(update.record).priority == pb.PRIORITY_ORDINARY
+
+
 def test_capacity_rejects_without_mutation() -> None:
     """An unadmitted extra task cannot alter accepted cards at capacity."""
     store = TaskStore()

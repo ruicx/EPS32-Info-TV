@@ -85,10 +85,11 @@ See [physical display demos](demos/README.md) for setup, expected behavior, and
 the current task-retention limit.
 
 Real Codex hook events have been [captured and validated](docs/codex-hook-validation.md).
-This establishes event fields and integration limits; a production agent
-adapter is not implemented yet.
+The [Codex hook adapter](docs/codex-hooks.md) now forwards running, approval,
+end-of-turn, and interrupted states through this same API.
 
-The API supports `running`, `waiting_input`, `completed`, and `failed`. Retries
+The API supports `running`, `waiting_input`, `completed`, `failed`, and
+`interrupted`. Retries
 retain their UUID `event_id` and content. Updates for one `(source, task_id)`
 use increasing positive `sequence` values. A new execution uses a new task ID.
 

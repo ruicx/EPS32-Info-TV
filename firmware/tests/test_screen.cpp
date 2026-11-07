@@ -369,6 +369,16 @@ int main(int argc, char** argv) {
   CHECK(visibleBars(0) == 1 && visibleBars(100) == 1);
   CHECK(hasLabel("DONE") && hasLabel(LV_SYMBOL_UPLOAD) && hasLabel(LV_SYMBOL_EYE_OPEN));
   CHECK(!hasLabel("No tasks yet") && !hasLabel("2 " LV_SYMBOL_BELL) && !hasLabel("#edf2f7 1#/1"));
+  model.rows[1].card.view.content.status.tone = info_tv_v1_Tone_TONE_POSITIVE;
+  std::strcpy(model.rows[2].card.view.content.status.text, "interrupted");
+  model.rows[2].card.view.content.status.tone = info_tv_v1_Tone_TONE_NEUTRAL;
+  model.rows[2].card.view.content.status.has_progress_percent = false;
+  screen.render(model);
+  checkBounds();
+  CHECK(hasLabel("STOP") && hasLabel("DONE"));
+  CHECK(visibleBars() == 2);
+  lv_refr_now(display);
+  save(capture, std::string(argv[1]) + "-interrupted.ppm");
   model = overviewModel;
   model.weather.has_daily_low_c = model.weather.has_daily_high_c = true;
   model.weather.daily_low_c = 18;
