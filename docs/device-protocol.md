@@ -19,7 +19,7 @@ The authoritative binary Protobuf contract is [device.proto](../protocol/device.
 Embedded capacities are in [device.options](../protocol/device.options). Producer
 HTTP JSON is a separate contract, without device connection or layout fields.
 
-Run `scripts/generate_protocol.py` to generate both bindings; `--check` verifies
+Run `scripts/protocol/generate_protocol.py` to generate both bindings; `--check` verifies
 the checked-in files. Python uses the official Protobuf runtime. Firmware uses
 Nanopb 0.4.9.1, with bounded static strings/arrays and unmodified vendored runtime
 sources plus license. Host dependencies and firmware components are locked.

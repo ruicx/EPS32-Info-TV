@@ -28,7 +28,7 @@ The firmware uses discrete poses without the upstream WebGL motion interpolation
 To reproduce all frames on Windows after downloading both pinned sheets:
 
 ```powershell
-./scripts/prepare_character.ps1 `
+./scripts/firmware/prepare_character.ps1 `
     -SourcePath .local/design/whale-source/idle-front.png `
     -MotionSourcePath .local/design/whale-source/dense-idle.png
 ```

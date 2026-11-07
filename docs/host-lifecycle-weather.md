@@ -124,7 +124,7 @@ Verification completed on 2026-11-07:
 - Host: 128 pytest cases passed on both Python 3.12 and 3.14, including the native bridge integration.
 - `uv run ruff check --config pyproject.toml . ../scripts ../demos`: passed.
 - `uv run ty check . ../scripts ../demos`: passed.
-- `scripts/generate_protocol.py --check`: passed; wire schema unchanged.
+- `scripts/protocol/generate_protocol.py --check`: passed; wire schema unchanged.
 - Native firmware: four CTest cases passed, including presentation and screen.
 - ESP-IDF 6.1 build: passed; `info_tv.bin` is 872576 bytes, with 17% app-partition headroom.
 - `git diff --check`: passed.

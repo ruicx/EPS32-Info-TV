@@ -28,7 +28,7 @@ Use `--config <path>` to select YAML. Without it, `serve` and `ports` read
 `info-tv.yaml` from the current working directory if present, otherwise defaults.
 Copy `host/info-tv.example.yaml` for a starting configuration.
 
-Build the Windows binary archive with `scripts/build_rust_release.ps1`; output is
+Build the Windows binary archive with `scripts/host/build_rust_release.ps1`; output is
 under `build/rust-host-dist`. Extracted executables need no Python installation.
 The script does not publish a GitHub release. The Python host has been removed;
 its implementation remains in Git history. Python is only needed for development
@@ -552,7 +552,7 @@ installed with the host. To generate/check the committed Nanopb firmware binding
 
 ```powershell
 uv sync --project scripts --locked
-uv run --project scripts --locked python scripts/generate_protocol.py --check
+uv run --project scripts --locked python scripts/protocol/generate_protocol.py --check
 uv run --project scripts --locked ruff check --config scripts/pyproject.toml scripts demos
 uv run --project scripts --locked ty check --project scripts scripts demos
 ```
@@ -565,7 +565,7 @@ remain usable without the removed Python service.
 ## Package the host
 
 ```powershell
-powershell -NoProfile -File scripts/build_rust_release.ps1
+powershell -NoProfile -File scripts/host/build_rust_release.ps1
 ```
 
 The Windows archive is written under `build/rust-host-dist`; its version comes

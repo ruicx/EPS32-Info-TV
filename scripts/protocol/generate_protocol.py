@@ -2,7 +2,7 @@
 
 Notes
 -----
-Run with ``uv run --project scripts --locked python scripts/generate_protocol.py``.
+Run with ``uv run --project scripts --locked python scripts/protocol/generate_protocol.py``.
 Rust bindings are generated independently by ``host/build.rs``.
 The generator never downloads or modifies third-party runtime sources.
 """
@@ -30,7 +30,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     spec = importlib.util.find_spec("nanopb")
     if spec is None or spec.submodule_search_locations is None:
         raise RuntimeError("Install the scripts development dependencies first")

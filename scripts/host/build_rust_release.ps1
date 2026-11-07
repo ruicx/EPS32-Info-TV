@@ -14,13 +14,12 @@ $ErrorActionPreference = 'Stop'
 if ($Target -notin @('x86_64-pc-windows-msvc', 'aarch64-pc-windows-msvc')) {
     throw 'This packaging script supports Windows MSVC targets only.'
 }
-$repository = Split-Path -Parent $PSScriptRoot
+$repository = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $manifest = Join-Path $repository 'host/Cargo.toml'
 $previousFlags = $env:RUSTFLAGS
 try {
     $env:RUSTFLAGS = (($previousFlags, '-C target-feature=+crt-static') | Where-Object { $_ }) -join ' '
-    & cargo build --manifest-path $manifest --locked --release --bins --target $Target
-    if ($LASTEXITCODE -ne 0) { throw 'Rust release build failed.' }
+    & (Join-Path $PSScriptRoot 'build_host.ps1') -Target $Target
     $metadataText = & cargo metadata --manifest-path $manifest --locked --no-deps --format-version 1
     if ($LASTEXITCODE -ne 0) { throw 'Cannot read Rust package metadata.' }
     $metadata = $metadataText | ConvertFrom-Json

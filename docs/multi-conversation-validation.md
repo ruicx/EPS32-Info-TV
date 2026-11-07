@@ -33,7 +33,7 @@ ctest --test-dir build/native-tests -C Debug -LE hardware --output-on-failure
 cd host
 uv run pytest
 uv run ty check . ../scripts ../demos
-uv run python ../scripts/generate_protocol.py --check
+uv run python ../scripts/protocol/generate_protocol.py --check
 ```
 
 The optional screen test uses the LVGL dependency downloaded by the firmware

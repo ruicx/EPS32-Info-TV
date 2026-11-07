@@ -100,7 +100,7 @@ From the repository root:
 cargo test --manifest-path host/Cargo.toml --locked
 cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnings
 cargo fmt --manifest-path host/Cargo.toml -- --check
-powershell -NoProfile -File scripts/build_rust_release.ps1
+powershell -NoProfile -File scripts/host/build_rust_release.ps1
 ```
 
 The archive is written under `build/rust-host-dist`. The packaging script builds

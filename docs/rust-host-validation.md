@@ -52,8 +52,8 @@ Nanopb/compiler and Ruff/ty tools without the removed host or its HTTP/serial
 dependencies. From the repository root, these commands passed:
 
 ```powershell
-uv run --project scripts --locked python scripts/generate_protocol.py --check
-uv run --project scripts --locked python scripts/generate_protocol.py
+uv run --project scripts --locked python scripts/protocol/generate_protocol.py --check
+uv run --project scripts --locked python scripts/protocol/generate_protocol.py
 uv run --project scripts --locked ruff check --config scripts/pyproject.toml scripts demos
 uv run --project scripts --locked ty check --project scripts scripts demos
 ```
@@ -68,7 +68,7 @@ with fresh weather accepted by the physical device.
 
 ## Windows Distribution
 
-`scripts/build_rust_release.ps1` successfully built both optimized executables
+`scripts/host/build_rust_release.ps1` successfully built both optimized executables
 with `-C target-feature=+crt-static` for `x86_64-pc-windows-msvc` and produced:
 
 ```text
