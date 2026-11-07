@@ -56,8 +56,9 @@ between one and 3600 seconds. The service still binds exclusively to loopback.
 
 The accepted default policy is:
 
-- `completed`: remove after five minutes from the current completed transition.
-  Repeated completed updates and duplicate requests do not reset the timer.
+- `completed` and `interrupted`: remove after five minutes from the transition
+  into either state. Updates that remain in these states and duplicate requests
+  do not reset the timer.
 - `running`, `waiting_input`, and `failed`: retain until explicitly closed or
   replaced by a source update. Silence does not establish failure or completion.
 - All current cards can be closed manually with `DELETE /v1/tasks/{card_id}`.

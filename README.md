@@ -582,8 +582,8 @@ These assets must be assembled and attached when publishing.
 The host persists task/replay state, brightness, and weather validity. Windows
 login startup is available through its `autostart` commands.
 
-- One device, USB only; eight current conversation/task cards. Completed cards
-  retire after five minutes by default; other states remain until manually closed.
+- One device, USB only; eight current conversation/task cards. Completed and
+  interrupted cards retire after five minutes by default; other states remain until manually closed.
   A later execution replaces its conversation's current run or reopens a retired one.
 - Eight queued notices, 30-second start validity, ordinary/important display
   defaults of 5/10 seconds. Important notices interrupt ordinary notices; an

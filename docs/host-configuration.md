@@ -45,7 +45,7 @@ All top-level fields are optional. Omitting a field uses the default below.
 | `usb_vid` | Integer | `0x303A` | USB vendor ID for automatic discovery, from 0 to 65535 inclusive. Accepts an unquoted hexadecimal or decimal integer. Ignored when `serial_port` is an explicit path. |
 | `usb_pid` | Integer | `0x1001` | USB product ID for automatic discovery, with the same range and notation as `usb_vid`. Ignored when `serial_port` is an explicit path. |
 | `http_port` | Integer | `8765` | HTTP listening port, from 1 to 65535 inclusive. The bind address remains `127.0.0.1`. |
-| `completed_retention_seconds` | Integer | `300` | Seconds to retain a completed task before removing its card. Must be at least 1; no configured upper limit. Zero does not disable cleanup. |
+| `completed_retention_seconds` | Integer | `300` | Seconds to retain a completed or interrupted task before removing its card. Must be at least 1; no configured upper limit. Zero does not disable cleanup. |
 | `weather` | Mapping or `null` | `null` | Enables automatic Open-Meteo retrieval when a valid mapping is supplied. Omit it or use `null` to disable automatic retrieval; manual weather API/CLI commands remain available. |
 
 ### Serial selection
@@ -66,10 +66,10 @@ Inspect candidates using the same file, without opening a serial connection:
 cargo run --manifest-path host/Cargo.toml --locked -- ports --config host/info-tv.example.yaml
 ```
 
-### Completed-task retention
+### Completed and interrupted task retention
 
-Retention starts at the first completed update for the current execution.
-Repeated completed updates do not extend the timer. Cleanup runs once per
+Retention starts when the current execution enters completed or interrupted state.
+Updates that remain in either state do not extend the timer. Cleanup runs once per
 second, so removal can occur shortly after the configured interval.
 `running`, `waiting_input`, and `failed` tasks remain until manually closed or
 replaced by a later execution. Accepted task state and original expiry times
