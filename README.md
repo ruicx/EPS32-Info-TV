@@ -9,7 +9,36 @@ has been flashed and tested on the physical board: USB, progress, notifications,
 overview restoration, and powered serial reconnection passed. See the
 [hardware validation record](docs/hardware-validation.md) for evidence and limits.
 
+## Rust host
+
+The replacement host is implemented in Rust under `host-rust/`, with durable
+task/brightness recovery and optional per-user login startup. See the
+[Rust host guide](host-rust/README.md) and
+[architecture and migration design](docs/rust-host-design.md).
+[Validation results](docs/rust-host-validation.md) distinguish completed desktop
+checks from pending physical-device and login qualification.
+
+Build and run from the repository root:
+
+```powershell
+cargo run --manifest-path host-rust/Cargo.toml --locked -- serve
+```
+
+Use `--config <path>` to select YAML. Without it, `serve` and `ports` read
+`info-tv.yaml` from the current working directory if present, otherwise defaults.
+Copy `host-rust/info-tv.example.yaml` for a starting configuration.
+
+Build the Windows binary archive with `scripts/build_rust_release.ps1`; output is
+under `build/rust-host-dist`. Extracted executables need no Python installation.
+The script does not publish a GitHub release. Existing firmware flashing tools
+and the Python reference implementation remain available below. Stop a running
+Python host before using the same HTTP port or serial device with Rust.
+
 ## User guide: install from a Release on Windows
+
+This section describes the legacy Python host assets and firmware flashing.
+For the Rust host, use the guide above; existing published assets are not
+automatically replaced by a source change.
 
 Follow this section if you want to use the display without building the project.
 You need the supported **ESP32-S3 board with 16 MB Flash and a 240 × 240 ST7789
@@ -342,7 +371,8 @@ path.
 
 | Directory | Responsibility |
 | --- | --- |
-| `host/` | Python 3.12+, FastAPI, uv; portable core, initially tested on Windows |
+| `host-rust/` | Rust replacement host, SQLite recovery, CLI/hooks, and login startup |
+| `host/` | Python 3.12+, FastAPI reference retained for migration checks and tooling |
 | `firmware/` | ESP-IDF 6.1, FreeRTOS, C++, LVGL 9.3, ST7789 |
 | `protocol/` | Shared schema, Nanopb bounds, and compatibility vector |
 | `scripts/` | Protocol generation and development operations |
@@ -355,7 +385,8 @@ See [implementation and class design](docs/demo-implementation.md),
 
 ## Run the host from source
 
-From the repository root:
+The following commands run the Python reference. Rust commands are in the
+[Rust host guide](host-rust/README.md). From the repository root:
 
 ```powershell
 uv sync --project host --locked
@@ -568,7 +599,11 @@ uv run --project host python scripts/generate_protocol.py
 
 ## Package the host
 
-For a user-facing Release, attach the host wheel and a complete firmware archive
+For the Rust binary archive, run `scripts/build_rust_release.ps1`; see the
+[Rust host guide](host-rust/README.md). The following instructions retain the
+Python distribution path.
+
+For a Python user-facing Release, attach the host wheel and a complete firmware archive
 from the same revision. The firmware archive must preserve the build directory's
 `flash_args`, `bootloader/bootloader.bin`, `partition_table/partition-table.bin`,
 and `info_tv.bin` layout used by the [Release user guide](#user-guide-install-from-a-release-on-windows).
@@ -598,6 +633,10 @@ constraints remain narrower to match the checked-in bindings and vendored Nanopb
 runtime; update and verify those together when upgrading protocol tooling.
 
 ## Demo limits
+
+This list describes the Python reference and firmware baseline. Rust persists
+host task/replay state, brightness, and weather validity; Windows login startup
+is available through its `autostart` commands.
 
 - One device, USB only; eight current conversation/task cards. Completed cards
   retire after five minutes by default; other states remain until manually closed.

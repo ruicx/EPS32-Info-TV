@@ -1,0 +1,728 @@
+[
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "unknown",
+      "hook_event_name": "Stop",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "unknown",
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PreToolUse",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": {
+      "source": "codex",
+      "task_id": "turn-1",
+      "sequence": 1,
+      "state": "running",
+      "title": "Fix API with Unicode 界",
+      "detail": "Working",
+      "conversation_id": "session-1",
+      "conversation_title": "Fix API with Unicode 界",
+      "context": "info_tv",
+      "run_sequence": 1,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PreToolUse",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PermissionRequest",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": {
+      "source": "codex",
+      "task_id": "turn-1",
+      "sequence": 2,
+      "state": "waiting_input",
+      "title": "Fix API with Unicode 界",
+      "detail": "Approval requested: shell",
+      "conversation_id": "session-1",
+      "conversation_title": "Fix API with Unicode 界",
+      "context": "info_tv",
+      "run_sequence": 1,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PermissionRequest",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PostToolUse",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": {
+      "source": "codex",
+      "task_id": "turn-1",
+      "sequence": 3,
+      "state": "running",
+      "title": "Fix API with Unicode 界",
+      "detail": "Working",
+      "conversation_id": "session-1",
+      "conversation_title": "Fix API with Unicode 界",
+      "context": "info_tv",
+      "run_sequence": 1,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PostToolUseFailure",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "Stop",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": {
+      "source": "codex",
+      "task_id": "turn-1",
+      "sequence": 4,
+      "state": "completed",
+      "title": "Fix API with Unicode 界",
+      "detail": "Done",
+      "conversation_id": "session-1",
+      "conversation_title": "Fix API with Unicode 界",
+      "context": "info_tv",
+      "run_sequence": 1,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "Stop",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PreToolUse",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-2",
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": {
+      "source": "codex",
+      "task_id": "turn-2",
+      "sequence": 1,
+      "state": "running",
+      "title": "Fix API with Unicode 界",
+      "detail": "Working",
+      "conversation_id": "session-1",
+      "conversation_title": "Fix API with Unicode 界",
+      "context": "info_tv",
+      "run_sequence": 2,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-2",
+      "hook_event_name": "Interrupt",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": {
+      "source": "codex",
+      "task_id": "turn-2",
+      "sequence": 2,
+      "state": "interrupted",
+      "title": "Fix API with Unicode 界",
+      "detail": "Turn interrupted",
+      "conversation_id": "session-1",
+      "conversation_title": "Fix API with Unicode 界",
+      "context": "info_tv",
+      "run_sequence": 2,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "codex",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-2",
+      "hook_event_name": "PostToolUse",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "unknown",
+      "hook_event_name": "Stop",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "unknown",
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PreToolUse",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": {
+      "source": "zcode",
+      "task_id": "1919bf5c7ad65c4b886d36e9adcdfd7e",
+      "sequence": 1,
+      "state": "running",
+      "title": "Fix API with Unicode 界",
+      "detail": "Working",
+      "conversation_id": "session-1",
+      "conversation_title": "Fix API with Unicode 界",
+      "context": "info_tv",
+      "run_sequence": 1,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PreToolUse",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PermissionRequest",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": {
+      "source": "zcode",
+      "task_id": "1919bf5c7ad65c4b886d36e9adcdfd7e",
+      "sequence": 2,
+      "state": "waiting_input",
+      "title": "Fix API with Unicode 界",
+      "detail": "Approval requested: shell",
+      "conversation_id": "session-1",
+      "conversation_title": "Fix API with Unicode 界",
+      "context": "info_tv",
+      "run_sequence": 1,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PermissionRequest",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PostToolUse",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": {
+      "source": "zcode",
+      "task_id": "1919bf5c7ad65c4b886d36e9adcdfd7e",
+      "sequence": 3,
+      "state": "running",
+      "title": "Fix API with Unicode 界",
+      "detail": "Working",
+      "conversation_id": "session-1",
+      "conversation_title": "Fix API with Unicode 界",
+      "context": "info_tv",
+      "run_sequence": 1,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PostToolUseFailure",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "Stop",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": {
+      "source": "zcode",
+      "task_id": "1919bf5c7ad65c4b886d36e9adcdfd7e",
+      "sequence": 4,
+      "state": "completed",
+      "title": "Fix API with Unicode 界",
+      "detail": "Done",
+      "conversation_id": "session-1",
+      "conversation_title": "Fix API with Unicode 界",
+      "context": "info_tv",
+      "run_sequence": 1,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "Stop",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-1",
+      "hook_event_name": "PreToolUse",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-2",
+      "hook_event_name": "UserPromptSubmit",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": {
+      "source": "zcode",
+      "task_id": "a39ca314f23c560da528f79c1d617a11",
+      "sequence": 1,
+      "state": "running",
+      "title": "Fix API with Unicode 界",
+      "detail": "Working",
+      "conversation_id": "session-1",
+      "conversation_title": "Fix API with Unicode 界",
+      "context": "info_tv",
+      "run_sequence": 2,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-2",
+      "hook_event_name": "Interrupt",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "zcode",
+    "event": null,
+    "payload": {
+      "session_id": "session-1",
+      "turn_id": "turn-2",
+      "hook_event_name": "PostToolUse",
+      "prompt": "Fix API\nwith Unicode 界",
+      "cwd": "D:\\project\\info_tv",
+      "tool_name": "shell",
+      "last_assistant_message": "Done"
+    },
+    "expected": null
+  },
+  {
+    "source": "agy",
+    "event": "Stop",
+    "payload": {
+      "conversationId": "conversation-1",
+      "lastUserInput": "Build 界\nfirmware",
+      "workspacePaths": [
+        "D:\\project\\info_tv"
+      ],
+      "fullyIdle": true,
+      "terminationReason": "NO_TOOL_CALL"
+    },
+    "expected": null
+  },
+  {
+    "source": "agy",
+    "event": "PreInvocation",
+    "payload": {
+      "conversationId": "conversation-1",
+      "lastUserInput": "Build 界\nfirmware",
+      "workspacePaths": [
+        "D:\\project\\info_tv"
+      ],
+      "invocationNum": 0,
+      "initialNumSteps": 1
+    },
+    "expected": {
+      "source": "agy",
+      "task_id": "d75f88e48644515c9c7520ebcf49fd8e",
+      "sequence": 1,
+      "state": "running",
+      "title": "Build 界 firmware",
+      "detail": "Working",
+      "conversation_id": "conversation-1",
+      "conversation_title": "Build 界 firmware",
+      "context": "info_tv",
+      "run_sequence": 1,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "agy",
+    "event": "PreInvocation",
+    "payload": {
+      "conversationId": "conversation-1",
+      "lastUserInput": "Build 界\nfirmware",
+      "workspacePaths": [
+        "D:\\project\\info_tv"
+      ],
+      "invocationNum": 0,
+      "initialNumSteps": 1
+    },
+    "expected": null
+  },
+  {
+    "source": "agy",
+    "event": "PreInvocation",
+    "payload": {
+      "conversationId": "conversation-1",
+      "lastUserInput": "Build 界\nfirmware",
+      "workspacePaths": [
+        "D:\\project\\info_tv"
+      ],
+      "invocationNum": 1,
+      "initialNumSteps": 2
+    },
+    "expected": null
+  },
+  {
+    "source": "agy",
+    "event": "Stop",
+    "payload": {
+      "conversationId": "conversation-1",
+      "lastUserInput": "Build 界\nfirmware",
+      "workspacePaths": [
+        "D:\\project\\info_tv"
+      ],
+      "fullyIdle": false,
+      "terminationReason": "NO_TOOL_CALL"
+    },
+    "expected": null
+  },
+  {
+    "source": "agy",
+    "event": "Stop",
+    "payload": {
+      "conversationId": "conversation-1",
+      "lastUserInput": "Build 界\nfirmware",
+      "workspacePaths": [
+        "D:\\project\\info_tv"
+      ],
+      "fullyIdle": true,
+      "terminationReason": "ERROR"
+    },
+    "expected": {
+      "source": "agy",
+      "task_id": "d75f88e48644515c9c7520ebcf49fd8e",
+      "sequence": 2,
+      "state": "failed",
+      "title": "Build 界 firmware",
+      "detail": "Execution error",
+      "conversation_id": "conversation-1",
+      "conversation_title": "Build 界 firmware",
+      "context": "info_tv",
+      "run_sequence": 1,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "agy",
+    "event": "Stop",
+    "payload": {
+      "conversationId": "conversation-1",
+      "lastUserInput": "Build 界\nfirmware",
+      "workspacePaths": [
+        "D:\\project\\info_tv"
+      ],
+      "fullyIdle": true,
+      "terminationReason": "ERROR"
+    },
+    "expected": null
+  },
+  {
+    "source": "agy",
+    "event": "PreInvocation",
+    "payload": {
+      "conversationId": "conversation-1",
+      "lastUserInput": "Build 界\nfirmware",
+      "workspacePaths": [
+        "D:\\project\\info_tv"
+      ],
+      "invocationNum": 0,
+      "initialNumSteps": 5
+    },
+    "expected": {
+      "source": "agy",
+      "task_id": "759810559aac55448b483788e1be7780",
+      "sequence": 1,
+      "state": "running",
+      "title": "Build 界 firmware",
+      "detail": "Working",
+      "conversation_id": "conversation-1",
+      "conversation_title": "Build 界 firmware",
+      "context": "info_tv",
+      "run_sequence": 2,
+      "icon": "code"
+    }
+  },
+  {
+    "source": "agy",
+    "event": "Stop",
+    "payload": {
+      "conversationId": "conversation-1",
+      "lastUserInput": "Build 界\nfirmware",
+      "workspacePaths": [
+        "D:\\project\\info_tv"
+      ],
+      "fullyIdle": true,
+      "terminationReason": "USER_CANCELED"
+    },
+    "expected": {
+      "source": "agy",
+      "task_id": "759810559aac55448b483788e1be7780",
+      "sequence": 2,
+      "state": "interrupted",
+      "title": "Build 界 firmware",
+      "detail": "Turn interrupted",
+      "conversation_id": "conversation-1",
+      "conversation_title": "Build 界 firmware",
+      "context": "info_tv",
+      "run_sequence": 2,
+      "icon": "code"
+    }
+  }
+]

@@ -1,0 +1,15 @@
+# Rust host configuration. Copy to info-tv.yaml for working-directory discovery.
+serial_port: auto
+usb_vid: 0x303A
+usb_pid: 0x1001
+http_port: 8765
+completed_retention_seconds: 300
+
+# Uncomment to enable automatic weather. The location is an explicit example.
+# weather:
+#   location: Shanghai
+#   latitude: 31.2304
+#   longitude: 121.4737
+#   refresh_seconds: 900
+#   retry_seconds: 60
+#   valid_for_seconds: 1800

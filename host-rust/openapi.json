@@ -1,0 +1,724 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "info_tv",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/v1/task-events": {
+      "post": {
+        "summary": "Submit Event",
+        "description": "Admit a producer update without awaiting device presentation.\n\nParameters\n----------\nbody : TaskEventRequest\n    Validated JSON body.\nrequest : Request\n    Request carrying the application context.\n\nReturns\n-------\ndict[str, object]\n    Admission and notification disposition.\n\nRaises\n------\nHTTPException\n    For invalid encoded text, conflicts, or exhausted capacity.",
+        "operationId": "submit_event_v1_task_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Submit Event V1 Task Events Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks": {
+      "get": {
+        "summary": "List Tasks",
+        "description": "List accepted business state and actual device milestones.\n\nParameters\n----------\nrequest : Request\n    Request carrying the application context.\n\nReturns\n-------\nlist[dict[str, object]]\n    Independent task records and latest sent revisions.",
+        "operationId": "list_tasks_v1_tasks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response List Tasks V1 Tasks Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{card_id}": {
+      "delete": {
+        "summary": "Close Task",
+        "description": "Close the current card, releasing capacity even while offline.\n\nParameters\n----------\ncard_id : UUID\n    Card identity returned by GET /v1/tasks.\nrequest : Request\n    Application context.\n\nReturns\n-------\ndict[str, object]\n    Removal admission; acceptance does not imply device presentation.\n\nRaises\n------\nHTTPException\n    If the device coordinator failed.",
+        "operationId": "close_task_v1_tasks__card_id__delete",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Close Task V1 Tasks  Card Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/device/settings": {
+      "get": {
+        "summary": "Device Settings",
+        "description": "Query desired brightness and actual device application feedback.\n\nParameters\n----------\nrequest : Request\n    Request carrying the application context.\n\nReturns\n-------\ndict[str, object]\n    Target, last reported value, and delivery status.",
+        "operationId": "device_settings_v1_device_settings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Device Settings V1 Device Settings Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Set Device Settings",
+        "description": "Retain the target brightness until the device reports application.\n\nParameters\n----------\nbody : DeviceSettingsRequest\n    Validated absolute brightness level.\nrequest : Request\n    Request carrying the application context.\n\nReturns\n-------\ndict[str, object]\n    Target, last reported value, and delivery status.\n\nRaises\n------\nHTTPException\n    If the device coordinator stopped unexpectedly.",
+        "operationId": "set_device_settings_v1_device_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Set Device Settings V1 Device Settings Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weather": {
+      "get": {
+        "summary": "Weather Status",
+        "description": "Query retained weather without claiming it is still fresh.\n\nParameters\n----------\nrequest : Request\n    Application context.\n\nReturns\n-------\ndict[str, object]\n    Unavailable, fresh, or stale weather and delivery status.",
+        "operationId": "weather_status_v1_weather_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Weather Status V1 Weather Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Set Weather",
+        "description": "Retain weather independently of the conversation card limit.\n\nParameters\n----------\nbody : WeatherRequest\n    Validated current conditions with remaining freshness.\nrequest : Request\n    Application context.\n\nReturns\n-------\ndict[str, object]\n    Weather freshness and delivery admission.\n\nRaises\n------\nHTTPException\n    If the device coordinator failed.",
+        "operationId": "set_weather_v1_weather_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeatherRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Set Weather V1 Weather Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Clear Weather",
+        "description": "Clear the retained weather and queue its removal on the device.\n\nParameters\n----------\nrequest : Request\n    Application context.\n\nReturns\n-------\ndict[str, object]\n    Unavailable weather with pending delivery.\n\nRaises\n------\nHTTPException\n    If the device coordinator failed.",
+        "operationId": "clear_weather_v1_weather_delete",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Clear Weather V1 Weather Delete"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weather/updater": {
+      "get": {
+        "summary": "Weather Updater Status",
+        "description": "Query automatic retrieval health without claiming device display.\n\nParameters\n----------\nrequest : Request\n    Application context.\n\nReturns\n-------\ndict[str, object]\n    Disabled state or the configured provider's latest attempt.",
+        "operationId": "weather_updater_status_v1_weather_updater_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Weather Updater Status V1 Weather Updater Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/weather/alert": {
+      "get": {
+        "summary": "Weather Alert Status",
+        "description": "Query alert validity independently of notification dismissal.\n\nParameters\n----------\nrequest : Request\n    Application context.\n\nReturns\n-------\ndict[str, object]\n    Retained alert and latest device feedback.",
+        "operationId": "weather_alert_status_v1_weather_alert_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Weather Alert Status V1 Weather Alert Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Set Weather Alert",
+        "description": "Admit one ordered alert independently of ordinary weather freshness.\n\nParameters\n----------\nbody : WeatherAlertRequest\n    Source-selected alert and remaining validity.\nrequest : Request\n    Application context.\n\nReturns\n-------\ndict[str, object]\n    Retained alert, notification disposition, and device admission.\n\nRaises\n------\nHTTPException\n    For conflicting updates or a failed coordinator.",
+        "operationId": "set_weather_alert_v1_weather_alert_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeatherAlertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Set Weather Alert V1 Weather Alert Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Clear Weather Alert",
+        "description": "Withdraw the current alert and its pending or active notification.\n\nParameters\n----------\nrequest : Request\n    Application context.\n\nReturns\n-------\ndict[str, object]\n    Empty alert state with pending removal delivery.\n\nRaises\n------\nHTTPException\n    If the coordinator failed.",
+        "operationId": "clear_weather_alert_v1_weather_alert_delete",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Clear Weather Alert V1 Weather Alert Delete"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/device": {
+      "get": {
+        "summary": "Device Status",
+        "description": "Report connection, feedback, and coordinator health.\n\nParameters\n----------\nrequest : Request\n    Request carrying the application context.\n\nReturns\n-------\ndict[str, object]\n    Device diagnostics.\n\nRaises\n------\nHTTPException\n    If an unexpected background task failure stopped delivery.",
+        "operationId": "device_status_v1_device_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Device Status V1 Device Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DeviceSettingsRequest": {
+        "properties": {
+          "brightness_percent": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Brightness Percent"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "brightness_percent"
+        ],
+        "title": "DeviceSettingsRequest",
+        "description": "Set an absolute backlight level without changing displayed messages."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "TaskEventRequest": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Event Id"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Source"
+          },
+          "task_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Task Id"
+          },
+          "sequence": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "exclusiveMinimum": 0.0,
+            "title": "Sequence"
+          },
+          "state": {
+            "$ref": "#/components/schemas/TaskState"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 160,
+            "title": "Detail",
+            "default": ""
+          },
+          "progress_percent": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress Percent"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "conversation_title": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Conversation Title",
+            "default": ""
+          },
+          "context": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Context",
+            "default": ""
+          },
+          "run_sequence": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9.223372036854776e+18,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Sequence"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/TaskIcon",
+            "default": "task"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_id",
+          "source",
+          "task_id",
+          "sequence",
+          "state",
+          "title"
+        ],
+        "title": "TaskEventRequest",
+        "description": "Accept a task run update without device addresses or layout fields."
+      },
+      "TaskIcon": {
+        "type": "string",
+        "enum": [
+          "task",
+          "code",
+          "test",
+          "build",
+          "review",
+          "deploy"
+        ],
+        "title": "TaskIcon",
+        "description": "Select a built-in task-purpose icon independently of execution state."
+      },
+      "TaskState": {
+        "type": "string",
+        "enum": [
+          "running",
+          "waiting_input",
+          "completed",
+          "failed",
+          "interrupted"
+        ],
+        "title": "TaskState",
+        "description": "Supported source-independent execution states."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WeatherAlertRequest": {
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Alert Id"
+          },
+          "sequence": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "exclusiveMinimum": 0.0,
+            "title": "Sequence"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Source"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 24,
+            "minLength": 1,
+            "title": "Location"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "blue",
+              "yellow",
+              "orange",
+              "red"
+            ],
+            "title": "Severity"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 160,
+            "title": "Detail",
+            "default": ""
+          },
+          "valid_for_seconds": {
+            "type": "integer",
+            "maximum": 86400.0,
+            "minimum": 1.0,
+            "title": "Valid For Seconds"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "alert_id",
+          "sequence",
+          "title",
+          "source",
+          "location",
+          "severity",
+          "valid_for_seconds"
+        ],
+        "title": "WeatherAlertRequest",
+        "description": "Replace one source-selected alert with ordered updates and remaining validity."
+      },
+      "WeatherRequest": {
+        "properties": {
+          "location": {
+            "type": "string",
+            "maxLength": 24,
+            "minLength": 1,
+            "title": "Location"
+          },
+          "temperature_c": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": -100.0,
+            "title": "Temperature C"
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "clear",
+              "cloudy",
+              "rain",
+              "snow",
+              "storm",
+              "fog"
+            ],
+            "title": "Condition"
+          },
+          "valid_for_seconds": {
+            "type": "integer",
+            "maximum": 3600.0,
+            "minimum": 1.0,
+            "title": "Valid For Seconds",
+            "default": 1800
+          },
+          "daily_low_c": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Low C"
+          },
+          "daily_high_c": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily High C"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "location",
+          "temperature_c",
+          "condition"
+        ],
+        "title": "WeatherRequest",
+        "description": "Replace weather with producer-supplied values and bounded freshness."
+      }
+    }
+  }
+}

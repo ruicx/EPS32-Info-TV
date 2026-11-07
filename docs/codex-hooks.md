@@ -4,6 +4,30 @@ The Windows hook command translates native Codex callbacks and submits task
 updates to the existing `POST /v1/task-events` endpoint. It runs once per
 callback; the normal `info-tv` service owns USB and device delivery.
 
+## Rust setup for this checkout
+
+The repository's [project hooks](../.codex/hooks.json) forward six Codex events
+through `.local/bin/info-tv.exe hook codex`. The executable is a local copy of the
+optimized Rust build, so rebuilding under `host-rust/target` does not replace a
+running service binary. Commands in this configuration use absolute paths for
+this checkout; update them if the repository moves.
+
+All six handlers share `.local/run/codex-hooks.sqlite3`. The Rust service uses
+`.local/run/rust-host` for its durable state and listens on `127.0.0.1:8765`.
+Its process details are saved in `.local/run/rust-host-process.json`. These local
+artifacts are ignored by Git; the hook definitions are project configuration.
+
+Codex discovers the project hooks, but new definitions initially have
+`trustStatus: untrusted`. In the desktop app, use **Review hooks** or
+**Settings > Hooks** to review and trust the six entries from this repository;
+in the CLI, use `/hooks`. The [official hook reference](https://learn.chatgpt.com/docs/hooks)
+requires trust before non-managed hooks run. Trust state is not changed by this
+repository setup. After review, send another prompt to test native callbacks.
+
+See [Rust host validation](rust-host-validation.md#physical-device-and-project-hook-follow-up)
+for the physical callback-adapter smoke test and its limits. The Python setup
+below is retained as a reference; it is not needed to run the Rust hooks.
+
 ## Install and configure
 
 From the repository root:

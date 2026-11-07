@@ -1,0 +1,71 @@
+{
+  "description": "Forward Codex task state for this repository to the local info_tv display.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "D:/work/ESP32/info_tv/.local/bin/info-tv.exe hook codex --state-file D:/work/ESP32/info_tv/.local/run/codex-hooks.sqlite3",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "D:/work/ESP32/info_tv/.local/bin/info-tv.exe hook codex --state-file D:/work/ESP32/info_tv/.local/run/codex-hooks.sqlite3",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "D:/work/ESP32/info_tv/.local/bin/info-tv.exe hook codex --state-file D:/work/ESP32/info_tv/.local/run/codex-hooks.sqlite3",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "D:/work/ESP32/info_tv/.local/bin/info-tv.exe hook codex --state-file D:/work/ESP32/info_tv/.local/run/codex-hooks.sqlite3",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "D:/work/ESP32/info_tv/.local/bin/info-tv.exe hook codex --state-file D:/work/ESP32/info_tv/.local/run/codex-hooks.sqlite3",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "D:/work/ESP32/info_tv/.local/bin/info-tv.exe hook codex --state-file D:/work/ESP32/info_tv/.local/run/codex-hooks.sqlite3",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}
