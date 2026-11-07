@@ -81,3 +81,6 @@ sdkconfig.old
 
 # Local device backups and hardware-validation evidence
 .local/
+
+# vscode
+.vscode/
