@@ -1,0 +1,581 @@
+{
+  "date": "2026-11-07",
+  "timezone": "Asia/Shanghai",
+  "codex_version": "0.166.0",
+  "model": "gpt-6.1-sol",
+  "python_version": "3.12.13",
+  "scope": "Real Codex command-hook capture only; no host HTTP submission or ESP32 validation.",
+  "sanitization": "cwd and transcript_path replaced by placeholders. Samples retain captured fields, IDs and JSON types. Account data, credentials and unrelated API notifications excluded.",
+  "recorded_hook_count": 37,
+  "hook_counts": {
+    "SessionStart": 5,
+    "UserPromptSubmit": 8,
+    "SessionEnd": 5,
+    "Stop": 6,
+    "PreToolUse": 5,
+    "PermissionRequest": 4,
+    "Interrupt": 2,
+    "PostToolUse": 2
+  },
+  "scenarios": [
+    {
+      "name": "cli_network_failure",
+      "client": "cli",
+      "session_id": "01a1b40d-dc91-71b1-9768-3813f9631b3f",
+      "turn_id": "01a1b40e-0461-72d1-b77f-c3d1ea925264",
+      "terminal_status": "failed",
+      "turn_hook_events": [
+        "UserPromptSubmit"
+      ]
+    },
+    {
+      "name": "cli_normal_completion",
+      "client": "cli",
+      "session_id": "01a1b40f-1bc3-76c3-a9d7-c69d0b4a2ff4",
+      "turn_id": "01a1b40f-2b73-7563-8d58-f1a6114ffc77",
+      "terminal_status": "completed",
+      "turn_hook_events": [
+        "UserPromptSubmit",
+        "Stop"
+      ]
+    },
+    {
+      "name": "cli_resume_policy_rejection",
+      "client": "cli",
+      "session_id": "01a1b40f-1bc3-76c3-a9d7-c69d0b4a2ff4",
+      "turn_id": "01a1b40f-ed7b-7f01-8cbe-9ddf4e064e04",
+      "terminal_status": "completed",
+      "turn_hook_events": [
+        "UserPromptSubmit",
+        "PreToolUse",
+        "Stop"
+      ]
+    },
+    {
+      "name": "app_approval_denied_initial",
+      "client": "app-server",
+      "session_id": "01a1b413-6314-7ad3-9603-75e293f77907",
+      "turn_id": "01a1b413-6363-7a82-81bd-a8f2a9eea524",
+      "terminal_status": "completed",
+      "turn_hook_events": [
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PermissionRequest",
+        "Stop"
+      ]
+    },
+    {
+      "name": "app_early_interrupt",
+      "client": "app-server",
+      "session_id": "01a1b413-6314-7ad3-9603-75e293f77907",
+      "turn_id": "01a1b413-9280-7200-8581-5c0c66478639",
+      "terminal_status": "interrupted",
+      "turn_hook_events": [
+        "Interrupt"
+      ]
+    },
+    {
+      "name": "app_approval_denied_final",
+      "client": "app-server",
+      "session_id": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+      "turn_id": "01a1b414-4dc6-71a2-8e37-2236e28e8dfe",
+      "terminal_status": "completed",
+      "turn_hook_events": [
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PermissionRequest",
+        "Stop"
+      ]
+    },
+    {
+      "name": "app_command_exit_7",
+      "client": "app-server",
+      "session_id": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+      "turn_id": "01a1b414-7cb1-7a21-a754-e0eca52a1f57",
+      "terminal_status": "completed",
+      "turn_hook_events": [
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PermissionRequest",
+        "PostToolUse",
+        "Stop"
+      ]
+    },
+    {
+      "name": "app_command_exit_0",
+      "client": "app-server",
+      "session_id": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+      "turn_id": "01a1b414-9d05-7510-91de-4d86faf30cae",
+      "terminal_status": "completed",
+      "turn_hook_events": [
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PermissionRequest",
+        "PostToolUse",
+        "Stop"
+      ]
+    },
+    {
+      "name": "app_interrupt_after_submit",
+      "client": "app-server",
+      "session_id": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+      "turn_id": "01a1b414-bb2f-7c80-9822-be20ef93a160",
+      "terminal_status": "interrupted",
+      "turn_hook_events": [
+        "UserPromptSubmit",
+        "Interrupt"
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "session_id": "01a1b40d-dc91-71b1-9768-3813f9631b3f",
+      "session_hook_events": [
+        {
+          "captured_ns": 1794022186685701800,
+          "payload": {
+            "session_id": "01a1b40d-dc91-71b1-9768-3813f9631b3f",
+            "transcript_path": "<probe-transcript>",
+            "cwd": "<probe-workspace>",
+            "hook_event_name": "SessionStart",
+            "model": "gpt-6.1-sol",
+            "permission_mode": "bypassPermissions",
+            "source": "startup"
+          }
+        },
+        {
+          "captured_ns": 1794022224445855000,
+          "payload": {
+            "session_id": "01a1b40d-dc91-71b1-9768-3813f9631b3f",
+            "transcript_path": "<probe-transcript>",
+            "cwd": "<probe-workspace>",
+            "hook_event_name": "SessionEnd",
+            "reason": "other"
+          }
+        }
+      ]
+    },
+    {
+      "session_id": "01a1b40f-1bc3-76c3-a9d7-c69d0b4a2ff4",
+      "session_hook_events": [
+        {
+          "captured_ns": 1794022260396113800,
+          "payload": {
+            "session_id": "01a1b40f-1bc3-76c3-a9d7-c69d0b4a2ff4",
+            "transcript_path": "<probe-transcript>",
+            "cwd": "<probe-workspace>",
+            "hook_event_name": "SessionStart",
+            "model": "gpt-6.1-sol",
+            "permission_mode": "bypassPermissions",
+            "source": "startup"
+          }
+        },
+        {
+          "captured_ns": 1794022263022027400,
+          "payload": {
+            "session_id": "01a1b40f-1bc3-76c3-a9d7-c69d0b4a2ff4",
+            "transcript_path": "<probe-transcript>",
+            "cwd": "<probe-workspace>",
+            "hook_event_name": "SessionEnd",
+            "reason": "other"
+          }
+        },
+        {
+          "captured_ns": 1794022308566342800,
+          "payload": {
+            "session_id": "01a1b40f-1bc3-76c3-a9d7-c69d0b4a2ff4",
+            "transcript_path": "<probe-transcript>",
+            "cwd": "<probe-workspace>",
+            "hook_event_name": "SessionStart",
+            "model": "gpt-6.1-sol",
+            "permission_mode": "bypassPermissions",
+            "source": "resume"
+          }
+        },
+        {
+          "captured_ns": 1794022314698155300,
+          "payload": {
+            "session_id": "01a1b40f-1bc3-76c3-a9d7-c69d0b4a2ff4",
+            "transcript_path": "<probe-transcript>",
+            "cwd": "<probe-workspace>",
+            "hook_event_name": "SessionEnd",
+            "reason": "other"
+          }
+        }
+      ]
+    },
+    {
+      "session_id": "01a1b413-6314-7ad3-9603-75e293f77907",
+      "session_hook_events": [
+        {
+          "captured_ns": 1794022536061941900,
+          "payload": {
+            "session_id": "01a1b413-6314-7ad3-9603-75e293f77907",
+            "transcript_path": "<probe-transcript>",
+            "cwd": "<probe-workspace>",
+            "hook_event_name": "SessionStart",
+            "model": "gpt-6.1-sol",
+            "permission_mode": "default",
+            "source": "startup"
+          }
+        },
+        {
+          "captured_ns": 1794022544623910900,
+          "payload": {
+            "session_id": "01a1b413-6314-7ad3-9603-75e293f77907",
+            "transcript_path": "<probe-transcript>",
+            "cwd": "<probe-workspace>",
+            "hook_event_name": "SessionEnd",
+            "reason": "other"
+          }
+        }
+      ]
+    },
+    {
+      "session_id": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+      "session_hook_events": [
+        {
+          "captured_ns": 1794022597035971300,
+          "payload": {
+            "session_id": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+            "transcript_path": "<probe-transcript>",
+            "cwd": "<probe-workspace>",
+            "hook_event_name": "SessionStart",
+            "model": "gpt-6.1-sol",
+            "permission_mode": "default",
+            "source": "startup"
+          }
+        },
+        {
+          "captured_ns": 1794022620676462800,
+          "payload": {
+            "session_id": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+            "transcript_path": "<probe-transcript>",
+            "cwd": "<probe-workspace>",
+            "hook_event_name": "SessionEnd",
+            "reason": "other"
+          }
+        }
+      ]
+    }
+  ],
+  "representative_captures": {
+    "SessionStart": {
+      "captured_ns": 1794022186685701800,
+      "payload": {
+        "session_id": "01a1b40d-dc91-71b1-9768-3813f9631b3f",
+        "transcript_path": "<probe-transcript>",
+        "cwd": "<probe-workspace>",
+        "hook_event_name": "SessionStart",
+        "model": "gpt-6.1-sol",
+        "permission_mode": "bypassPermissions",
+        "source": "startup"
+      }
+    },
+    "UserPromptSubmit": {
+      "captured_ns": 1794022186926729300,
+      "payload": {
+        "session_id": "01a1b40d-dc91-71b1-9768-3813f9631b3f",
+        "turn_id": "01a1b40e-0461-72d1-b77f-c3d1ea925264",
+        "transcript_path": "<probe-transcript>",
+        "cwd": "<probe-workspace>",
+        "hook_event_name": "UserPromptSubmit",
+        "model": "gpt-6.1-sol",
+        "permission_mode": "bypassPermissions",
+        "prompt": "This is a lifecycle hook validation. Do not call any tools or change any files. Reply exactly HOOK_PROBE_OK."
+      }
+    },
+    "SessionEnd": {
+      "captured_ns": 1794022224445855000,
+      "payload": {
+        "session_id": "01a1b40d-dc91-71b1-9768-3813f9631b3f",
+        "transcript_path": "<probe-transcript>",
+        "cwd": "<probe-workspace>",
+        "hook_event_name": "SessionEnd",
+        "reason": "other"
+      }
+    },
+    "Stop": {
+      "captured_ns": 1794022262753532500,
+      "payload": {
+        "session_id": "01a1b40f-1bc3-76c3-a9d7-c69d0b4a2ff4",
+        "turn_id": "01a1b40f-2b73-7563-8d58-f1a6114ffc77",
+        "transcript_path": "<probe-transcript>",
+        "cwd": "<probe-workspace>",
+        "hook_event_name": "Stop",
+        "model": "gpt-6.1-sol",
+        "permission_mode": "bypassPermissions",
+        "stop_hook_active": false,
+        "last_assistant_message": "HOOK_PROBE_OK"
+      }
+    },
+    "SessionStart_resume": {
+      "captured_ns": 1794022308566342800,
+      "payload": {
+        "session_id": "01a1b40f-1bc3-76c3-a9d7-c69d0b4a2ff4",
+        "transcript_path": "<probe-transcript>",
+        "cwd": "<probe-workspace>",
+        "hook_event_name": "SessionStart",
+        "model": "gpt-6.1-sol",
+        "permission_mode": "bypassPermissions",
+        "source": "resume"
+      }
+    },
+    "PreToolUse": {
+      "captured_ns": 1794022312119161800,
+      "payload": {
+        "session_id": "01a1b40f-1bc3-76c3-a9d7-c69d0b4a2ff4",
+        "turn_id": "01a1b40f-ed7b-7f01-8cbe-9ddf4e064e04",
+        "transcript_path": "<probe-transcript>",
+        "cwd": "<probe-workspace>",
+        "hook_event_name": "PreToolUse",
+        "model": "gpt-6.1-sol",
+        "permission_mode": "bypassPermissions",
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "pwsh -NoLogo -NoProfile -Command \"Write-Output HOOK_EXPECTED_FAILURE; exit 7\""
+        },
+        "tool_use_id": "exec-5f842d9b-f6b1-4591-ba12-8fbb05f658bd"
+      }
+    },
+    "PermissionRequest": {
+      "captured_ns": 1794022540468673500,
+      "payload": {
+        "session_id": "01a1b413-6314-7ad3-9603-75e293f77907",
+        "turn_id": "01a1b413-6363-7a82-81bd-a8f2a9eea524",
+        "transcript_path": "<probe-transcript>",
+        "cwd": "<probe-workspace>",
+        "hook_event_name": "PermissionRequest",
+        "model": "gpt-6.1-sol",
+        "permission_mode": "default",
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "Write-Output HOOK_APPROVAL_PROBE",
+          "description": "May I run this harmless marker to validate the PermissionRequest hook?"
+        }
+      }
+    },
+    "Interrupt": {
+      "captured_ns": 1794022544364131400,
+      "payload": {
+        "session_id": "01a1b413-6314-7ad3-9603-75e293f77907",
+        "turn_id": "01a1b413-9280-7200-8581-5c0c66478639",
+        "transcript_path": "<probe-transcript>",
+        "cwd": "<probe-workspace>",
+        "hook_event_name": "Interrupt",
+        "model": "gpt-6.1-sol",
+        "permission_mode": "default"
+      }
+    },
+    "PostToolUse": {
+      "captured_ns": 1794022610006575500,
+      "payload": {
+        "session_id": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+        "turn_id": "01a1b414-7cb1-7a21-a754-e0eca52a1f57",
+        "transcript_path": "<probe-transcript>",
+        "cwd": "<probe-workspace>",
+        "hook_event_name": "PostToolUse",
+        "model": "gpt-6.1-sol",
+        "permission_mode": "default",
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "Write-Output HOOK_EXIT_SEVEN; exit 7"
+        },
+        "tool_response": "[ERROR] - (starship::print): Under a 'dumb' terminal (TERM=dumb).\n\r\nHOOK_EXIT_SEVEN\r\n",
+        "tool_use_id": "exec-833f004d-adfc-425e-aa1f-b0a1624a1e1f"
+      }
+    },
+    "PostToolUse_exit_0": {
+      "captured_ns": 1794022618033486500,
+      "payload": {
+        "session_id": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+        "turn_id": "01a1b414-9d05-7510-91de-4d86faf30cae",
+        "transcript_path": "<probe-transcript>",
+        "cwd": "<probe-workspace>",
+        "hook_event_name": "PostToolUse",
+        "model": "gpt-6.1-sol",
+        "permission_mode": "default",
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "Write-Output HOOK_SUCCESS"
+        },
+        "tool_response": "[ERROR] - (starship::print): Under a 'dumb' terminal (TERM=dumb).\n\r\nHOOK_SUCCESS\r\n",
+        "tool_use_id": "exec-2c6cee66-2e08-4364-8c00-a0c432c97654"
+      }
+    }
+  },
+  "app_server_observations": [
+    {
+      "method": "item/completed",
+      "params": {
+        "item": {
+          "type": "commandExecution",
+          "id": "exec-e72cf537-0c06-45b2-8ab2-84484edfc06e",
+          "pluginId": null,
+          "scriptPath": null,
+          "command": "\"C:\\\\Program Files\\\\PowerShell\\\\7\\\\pwsh.exe\" -Command 'Write-Output HOOK_APPROVAL_PROBE'",
+          "cwd": "<probe-workspace>",
+          "processId": null,
+          "source": "agent",
+          "status": "declined",
+          "commandActions": [
+            {
+              "type": "unknown",
+              "command": "Write-Output HOOK_APPROVAL_PROBE"
+            }
+          ],
+          "aggregatedOutput": null,
+          "exitCode": null,
+          "durationMs": null,
+          "startedAtMs": 1794022540502,
+          "completedAtMs": 1794022541504
+        },
+        "threadId": "01a1b413-6314-7ad3-9603-75e293f77907",
+        "turnId": "01a1b413-6363-7a82-81bd-a8f2a9eea524",
+        "completedAtMs": 1794022541504
+      },
+      "emittedAtMs": 1794022541504
+    },
+    {
+      "method": "turn/completed",
+      "thread_id": "01a1b413-6314-7ad3-9603-75e293f77907",
+      "turn_id": "01a1b413-6363-7a82-81bd-a8f2a9eea524",
+      "status": "completed",
+      "error": null
+    },
+    {
+      "method": "turn/completed",
+      "thread_id": "01a1b413-6314-7ad3-9603-75e293f77907",
+      "turn_id": "01a1b413-9280-7200-8581-5c0c66478639",
+      "status": "interrupted",
+      "error": null
+    },
+    {
+      "method": "item/completed",
+      "params": {
+        "item": {
+          "type": "commandExecution",
+          "id": "exec-de2fa79a-dc04-4a2a-8e3b-cc5a6f7cd78a",
+          "pluginId": null,
+          "scriptPath": null,
+          "command": "\"C:\\\\Program Files\\\\PowerShell\\\\7\\\\pwsh.exe\" -Command 'Write-Output HOOK_APPROVAL_PROBE'",
+          "cwd": "<probe-workspace>",
+          "processId": null,
+          "source": "agent",
+          "status": "declined",
+          "commandActions": [
+            {
+              "type": "unknown",
+              "command": "Write-Output HOOK_APPROVAL_PROBE"
+            }
+          ],
+          "aggregatedOutput": null,
+          "exitCode": null,
+          "durationMs": null,
+          "startedAtMs": 1794022600798,
+          "completedAtMs": 1794022601800
+        },
+        "threadId": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+        "turnId": "01a1b414-4dc6-71a2-8e37-2236e28e8dfe",
+        "completedAtMs": 1794022601800
+      },
+      "emittedAtMs": 1794022601800
+    },
+    {
+      "method": "turn/completed",
+      "thread_id": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+      "turn_id": "01a1b414-4dc6-71a2-8e37-2236e28e8dfe",
+      "status": "completed",
+      "error": null
+    },
+    {
+      "method": "item/completed",
+      "params": {
+        "item": {
+          "type": "commandExecution",
+          "id": "exec-833f004d-adfc-425e-aa1f-b0a1624a1e1f",
+          "pluginId": null,
+          "scriptPath": null,
+          "command": "\"C:\\\\Program Files\\\\PowerShell\\\\7\\\\pwsh.exe\" -Command 'Write-Output HOOK_EXIT_SEVEN; exit 7'",
+          "cwd": "<probe-workspace>",
+          "processId": "41085",
+          "source": "unifiedExecStartup",
+          "status": "failed",
+          "commandActions": [
+            {
+              "type": "unknown",
+              "command": "Write-Output HOOK_EXIT_SEVEN; exit 7"
+            }
+          ],
+          "aggregatedOutput": "[ERROR] - (starship::print): Under a 'dumb' terminal (TERM=dumb).\n\r\nHOOK_EXIT_SEVEN\r\n",
+          "exitCode": 7,
+          "durationMs": 728,
+          "startedAtMs": 1794022607892,
+          "completedAtMs": 1794022609778
+        },
+        "threadId": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+        "turnId": "01a1b414-7cb1-7a21-a754-e0eca52a1f57",
+        "completedAtMs": 1794022609778
+      },
+      "emittedAtMs": 1794022609786
+    },
+    {
+      "method": "turn/completed",
+      "thread_id": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+      "turn_id": "01a1b414-7cb1-7a21-a754-e0eca52a1f57",
+      "status": "completed",
+      "error": null
+    },
+    {
+      "method": "item/completed",
+      "params": {
+        "item": {
+          "type": "commandExecution",
+          "id": "exec-2c6cee66-2e08-4364-8c00-a0c432c97654",
+          "pluginId": null,
+          "scriptPath": null,
+          "command": "\"C:\\\\Program Files\\\\PowerShell\\\\7\\\\pwsh.exe\" -Command 'Write-Output HOOK_SUCCESS'",
+          "cwd": "<probe-workspace>",
+          "processId": "75874",
+          "source": "unifiedExecStartup",
+          "status": "completed",
+          "commandActions": [
+            {
+              "type": "unknown",
+              "command": "Write-Output HOOK_SUCCESS"
+            }
+          ],
+          "aggregatedOutput": "[ERROR] - (starship::print): Under a 'dumb' terminal (TERM=dumb).\n\r\nHOOK_SUCCESS\r\n",
+          "exitCode": 0,
+          "durationMs": 731,
+          "startedAtMs": 1794022615925,
+          "completedAtMs": 1794022617815
+        },
+        "threadId": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+        "turnId": "01a1b414-9d05-7510-91de-4d86faf30cae",
+        "completedAtMs": 1794022617815
+      },
+      "emittedAtMs": 1794022617821
+    },
+    {
+      "method": "turn/completed",
+      "thread_id": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+      "turn_id": "01a1b414-9d05-7510-91de-4d86faf30cae",
+      "status": "completed",
+      "error": null
+    },
+    {
+      "method": "turn/completed",
+      "thread_id": "01a1b414-4d7b-7152-b7e2-95b5a5567b68",
+      "turn_id": "01a1b414-bb2f-7c80-9822-be20ef93a160",
+      "status": "interrupted",
+      "error": null
+    }
+  ],
+  "cli_network_failure": {
+    "type": "turn.failed",
+    "error": {
+      "message": "workspace routing discovery failed"
+    }
+  }
+}

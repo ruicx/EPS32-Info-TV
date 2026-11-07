@@ -84,6 +84,10 @@ acceptance does not mean the screen has shown the content. Inspect
 See [physical display demos](demos/README.md) for setup, expected behavior, and
 the current task-retention limit.
 
+Real Codex hook events have been [captured and validated](docs/codex-hook-validation.md).
+This establishes event fields and integration limits; a production agent
+adapter is not implemented yet.
+
 The API supports `running`, `waiting_input`, `completed`, and `failed`. Retries
 retain their UUID `event_id` and content. Updates for one `(source, task_id)`
 use increasing positive `sequence` values. A new execution uses a new task ID.
