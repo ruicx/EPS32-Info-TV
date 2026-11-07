@@ -18,6 +18,8 @@ from info_tv_service.hooks.agy_store import AgyStore
 from info_tv_service.hooks.codex import CodexHook
 from info_tv_service.hooks.outbox import HookOutbox
 from info_tv_service.hooks.store import CodexStore
+from info_tv_service.hooks.zcode import ZcodeHook
+from info_tv_service.hooks.zcode_store import ZcodeStore
 
 
 def default_state_path(source: str = "codex") -> Path:
@@ -93,7 +95,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     requests remain pending for the next callback or an explicit flush.
     """
     parser = argparse.ArgumentParser(description="Forward agent hooks to the local info_tv service")
-    parser.add_argument("source", choices=["codex", "agy"])
+    parser.add_argument("source", choices=["codex", "agy", "zcode"])
     parser.add_argument("event", nargs="?", choices=["PreInvocation", "Stop"],
                         help="Required native event name for agy callbacks")
     parser.add_argument("--url", default="http://127.0.0.1:8765")
@@ -112,6 +114,13 @@ def main(argv: Sequence[str] | None = None) -> None:
             with closing(CodexStore(path)) as codex_store:
                 if codex_hook is not None:
                     codex_store.capture(codex_hook)
+        elif args.source == "zcode":
+            if args.event is not None:
+                raise ValueError("ZCode reads its event name from stdin")
+            zcode_hook = None if args.flush else ZcodeHook.model_validate_json(sys.stdin.buffer.read())
+            with closing(ZcodeStore(path)) as zcode_store:
+                if zcode_hook is not None:
+                    zcode_store.capture(zcode_hook)
         else:
             if not args.flush and args.event is None:
                 raise ValueError("agy requires PreInvocation or Stop as its event argument")

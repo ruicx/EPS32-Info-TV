@@ -1,0 +1,574 @@
+{
+  "date": "2026-11-07",
+  "desktop_version": "3.14.3.7762",
+  "runtime_version": "0.16.9",
+  "official_reference": "https://zcode.z.ai/en/docs/hooks",
+  "scope": "Native command hooks driven by the bundled app-server in a disposable home; no host or physical device in this capture.",
+  "recorded_hook_count": 20,
+  "hook_counts": {
+    "SessionStart": 1,
+    "UserPromptSubmit": 6,
+    "Stop": 5,
+    "PreToolUse": 3,
+    "PermissionRequest": 2,
+    "PostToolUse": 2,
+    "PostToolUseFailure": 1
+  },
+  "scenarios": [
+    {
+      "name": "plain",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "status": "idle",
+      "events": [
+        "SessionStart",
+        "UserPromptSubmit",
+        "Stop"
+      ],
+      "turnIds": [
+        "turn_0c37dc94-bafa-4beb-9184-be8b6590803b"
+      ]
+    },
+    {
+      "name": "tools",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "status": "idle",
+      "events": [
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PermissionRequest",
+        "PostToolUse",
+        "PreToolUse",
+        "PermissionRequest",
+        "PostToolUse",
+        "Stop"
+      ],
+      "turnIds": [
+        "turn_81b9a6db-5800-4305-9a7b-8db3d01cf360"
+      ]
+    },
+    {
+      "name": "read-failure",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "status": "idle",
+      "events": [
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PostToolUseFailure",
+        "Stop"
+      ],
+      "turnIds": [
+        "turn_c333ee39-96c4-45b3-bd44-1a4738dcd107"
+      ]
+    },
+    {
+      "name": "cancel-model",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "status": "idle",
+      "events": [
+        "UserPromptSubmit"
+      ]
+    },
+    {
+      "name": "recovery",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "status": "idle",
+      "events": [
+        "UserPromptSubmit",
+        "Stop"
+      ],
+      "turnIds": [
+        "turn_233c13f1-41ea-4928-a6ae-fcc683e63401"
+      ]
+    },
+    {
+      "name": "identical-prompt",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "status": "idle",
+      "events": [
+        "UserPromptSubmit",
+        "Stop"
+      ],
+      "turnIds": [
+        "turn_621b0aeb-7f50-4c3e-8667-8feeeaac2699"
+      ]
+    }
+  ],
+  "representative_captures": {
+    "Stop": {
+      "payload": {
+        "cwd": "D:/validation/zcode/workspace",
+        "hookEventName": "Stop",
+        "mode": "build",
+        "responseText": "ZCODE_HOOK_OK",
+        "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+        "stopHookActive": false,
+        "timestamp": "2026-11-07T09:25:46.407Z",
+        "turnId": "turn_0c37dc94-bafa-4beb-9184-be8b6590803b",
+        "hook_event_name": "Stop",
+        "permission_mode": "build",
+        "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+        "last_assistant_message": "ZCODE_HOOK_OK",
+        "stop_hook_active": false
+      }
+    },
+    "UserPromptSubmit": {
+      "payload": {
+        "cwd": "D:/validation/zcode/workspace",
+        "hookEventName": "UserPromptSubmit",
+        "mode": "build",
+        "prompt": "Reply exactly ZCODE_HOOK_OK. Do not use tools.",
+        "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+        "timestamp": "2026-11-07T09:25:43.831Z",
+        "turnId": "turn_0c37dc94-bafa-4beb-9184-be8b6590803b",
+        "hook_event_name": "UserPromptSubmit",
+        "permission_mode": "build",
+        "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811"
+      }
+    },
+    "PostToolUseFailure": {
+      "payload": {
+        "cwd": "D:/validation/zcode/workspace",
+        "error": "File does not exist. Note: your current working directory is D:/validation/zcode/workspace.",
+        "hookEventName": "PostToolUseFailure",
+        "isInterrupt": false,
+        "mode": "build",
+        "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+        "timestamp": "2026-11-07T09:26:00.486Z",
+        "toolCallId": "call_4f342dcbaeff420e94ae6270",
+        "toolName": "Read",
+        "turnId": "turn_c333ee39-96c4-45b3-bd44-1a4738dcd107",
+        "hook_event_name": "PostToolUseFailure",
+        "permission_mode": "build",
+        "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+        "tool_name": "Read",
+        "tool_use_id": "call_4f342dcbaeff420e94ae6270",
+        "is_interrupt": false
+      }
+    },
+    "PreToolUse": {
+      "payload": {
+        "cwd": "D:/validation/zcode/workspace",
+        "hookEventName": "PreToolUse",
+        "mode": "build",
+        "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+        "timestamp": "2026-11-07T09:25:49.390Z",
+        "toolCallId": "call_d824ac8911334143802de86c",
+        "toolName": "Bash",
+        "turnId": "turn_81b9a6db-5800-4305-9a7b-8db3d01cf360",
+        "hook_event_name": "PreToolUse",
+        "permission_mode": "build",
+        "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+        "tool_name": "Bash",
+        "tool_use_id": "call_d824ac8911334143802de86c",
+        "tool_input": {
+          "command": "exit 0",
+          "description": "Run command exiting with code 0"
+        }
+      }
+    },
+    "PostToolUse": {
+      "payload": {
+        "cwd": "D:/validation/zcode/workspace",
+        "hookEventName": "PostToolUse",
+        "mode": "build",
+        "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+        "timestamp": "2026-11-07T09:25:50.624Z",
+        "toolCallId": "call_d824ac8911334143802de86c",
+        "toolName": "Bash",
+        "turnId": "turn_81b9a6db-5800-4305-9a7b-8db3d01cf360",
+        "hook_event_name": "PostToolUse",
+        "permission_mode": "build",
+        "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+        "tool_name": "Bash",
+        "tool_use_id": "call_d824ac8911334143802de86c",
+        "tool_input": {
+          "command": "exit 0",
+          "description": "Run command exiting with code 0"
+        },
+        "tool_response": {
+          "interrupted": false,
+          "status": "completed",
+          "exitCode": 0,
+          "timedOut": false,
+          "cancelled": false
+        }
+      }
+    },
+    "PermissionRequest": {
+      "payload": {
+        "cwd": "D:/validation/zcode/workspace",
+        "hookEventName": "PermissionRequest",
+        "mode": "build",
+        "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+        "timestamp": "2026-11-07T09:25:49.496Z",
+        "toolCallId": "call_d824ac8911334143802de86c",
+        "toolName": "Bash",
+        "turnId": "turn_81b9a6db-5800-4305-9a7b-8db3d01cf360",
+        "hook_event_name": "PermissionRequest",
+        "permission_mode": "build",
+        "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+        "tool_name": "Bash",
+        "tool_use_id": "call_d824ac8911334143802de86c",
+        "tool_input": {
+          "command": "exit 0",
+          "description": "Run command exiting with code 0"
+        }
+      }
+    },
+    "SessionStart": {
+      "payload": {
+        "cwd": "D:/validation/zcode/workspace",
+        "hookEventName": "SessionStart",
+        "mode": "build",
+        "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+        "timestamp": "2026-11-07T09:25:43.709Z",
+        "turnId": "turn_0c37dc94-bafa-4beb-9184-be8b6590803b",
+        "hook_event_name": "SessionStart",
+        "permission_mode": "build",
+        "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811"
+      }
+    }
+  },
+  "timeline": [
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "SessionStart",
+      "mode": "build",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:25:43.709Z",
+      "turnId": "turn_0c37dc94-bafa-4beb-9184-be8b6590803b",
+      "hook_event_name": "SessionStart",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811"
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "UserPromptSubmit",
+      "mode": "build",
+      "prompt": "Reply exactly ZCODE_HOOK_OK. Do not use tools.",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:25:43.831Z",
+      "turnId": "turn_0c37dc94-bafa-4beb-9184-be8b6590803b",
+      "hook_event_name": "UserPromptSubmit",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811"
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "Stop",
+      "mode": "build",
+      "responseText": "ZCODE_HOOK_OK",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "stopHookActive": false,
+      "timestamp": "2026-11-07T09:25:46.407Z",
+      "turnId": "turn_0c37dc94-bafa-4beb-9184-be8b6590803b",
+      "hook_event_name": "Stop",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "last_assistant_message": "ZCODE_HOOK_OK",
+      "stop_hook_active": false
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "UserPromptSubmit",
+      "mode": "build",
+      "prompt": "Native hook validation. Do not modify files or spawn agents. Run exactly exit 0 using Bash, then run exactly exit 7 using Bash. Report their exit codes and finish.",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:25:46.948Z",
+      "turnId": "turn_81b9a6db-5800-4305-9a7b-8db3d01cf360",
+      "hook_event_name": "UserPromptSubmit",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811"
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "PreToolUse",
+      "mode": "build",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:25:49.390Z",
+      "toolCallId": "call_d824ac8911334143802de86c",
+      "toolName": "Bash",
+      "turnId": "turn_81b9a6db-5800-4305-9a7b-8db3d01cf360",
+      "hook_event_name": "PreToolUse",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "tool_name": "Bash",
+      "tool_use_id": "call_d824ac8911334143802de86c",
+      "tool_input": {
+        "command": "exit 0",
+        "description": "Run command exiting with code 0"
+      }
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "PermissionRequest",
+      "mode": "build",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:25:49.496Z",
+      "toolCallId": "call_d824ac8911334143802de86c",
+      "toolName": "Bash",
+      "turnId": "turn_81b9a6db-5800-4305-9a7b-8db3d01cf360",
+      "hook_event_name": "PermissionRequest",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "tool_name": "Bash",
+      "tool_use_id": "call_d824ac8911334143802de86c",
+      "tool_input": {
+        "command": "exit 0",
+        "description": "Run command exiting with code 0"
+      }
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "PostToolUse",
+      "mode": "build",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:25:50.624Z",
+      "toolCallId": "call_d824ac8911334143802de86c",
+      "toolName": "Bash",
+      "turnId": "turn_81b9a6db-5800-4305-9a7b-8db3d01cf360",
+      "hook_event_name": "PostToolUse",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "tool_name": "Bash",
+      "tool_use_id": "call_d824ac8911334143802de86c",
+      "tool_input": {
+        "command": "exit 0",
+        "description": "Run command exiting with code 0"
+      },
+      "tool_response": {
+        "interrupted": false,
+        "status": "completed",
+        "exitCode": 0,
+        "timedOut": false,
+        "cancelled": false
+      }
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "PreToolUse",
+      "mode": "build",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:25:53.735Z",
+      "toolCallId": "call_7634ba96fe4d4dd9b11c2c3c",
+      "toolName": "Bash",
+      "turnId": "turn_81b9a6db-5800-4305-9a7b-8db3d01cf360",
+      "hook_event_name": "PreToolUse",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "tool_name": "Bash",
+      "tool_use_id": "call_7634ba96fe4d4dd9b11c2c3c",
+      "tool_input": {
+        "command": "exit 7",
+        "description": "Run command exiting with code 7"
+      }
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "PermissionRequest",
+      "mode": "build",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:25:53.848Z",
+      "toolCallId": "call_7634ba96fe4d4dd9b11c2c3c",
+      "toolName": "Bash",
+      "turnId": "turn_81b9a6db-5800-4305-9a7b-8db3d01cf360",
+      "hook_event_name": "PermissionRequest",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "tool_name": "Bash",
+      "tool_use_id": "call_7634ba96fe4d4dd9b11c2c3c",
+      "tool_input": {
+        "command": "exit 7",
+        "description": "Run command exiting with code 7"
+      }
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "PostToolUse",
+      "mode": "build",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:25:54.682Z",
+      "toolCallId": "call_7634ba96fe4d4dd9b11c2c3c",
+      "toolName": "Bash",
+      "turnId": "turn_81b9a6db-5800-4305-9a7b-8db3d01cf360",
+      "hook_event_name": "PostToolUse",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "tool_name": "Bash",
+      "tool_use_id": "call_7634ba96fe4d4dd9b11c2c3c",
+      "tool_input": {
+        "command": "exit 7",
+        "description": "Run command exiting with code 7"
+      },
+      "tool_response": {
+        "interrupted": false,
+        "status": "failed",
+        "exitCode": 7,
+        "timedOut": false,
+        "cancelled": false
+      }
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "Stop",
+      "mode": "build",
+      "responseText": "Both commands ran as requested: the first exited with code 0, and the second exited with code 7. No files were modified and no agents were spawned.",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "stopHookActive": false,
+      "timestamp": "2026-11-07T09:25:57.292Z",
+      "turnId": "turn_81b9a6db-5800-4305-9a7b-8db3d01cf360",
+      "hook_event_name": "Stop",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "last_assistant_message": "Both commands ran as requested: the first exited with code 0, and the second exited with code 7. No files were modified and no agents were spawned.",
+      "stop_hook_active": false
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "UserPromptSubmit",
+      "mode": "build",
+      "prompt": "Call Read on the file nonexistent-hook-probe.txt in this workspace exactly once. It does not exist; report the error and finish without creating files or using other tools.",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:25:57.582Z",
+      "turnId": "turn_c333ee39-96c4-45b3-bd44-1a4738dcd107",
+      "hook_event_name": "UserPromptSubmit",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811"
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "PreToolUse",
+      "mode": "build",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:26:00.337Z",
+      "toolCallId": "call_4f342dcbaeff420e94ae6270",
+      "toolName": "Read",
+      "turnId": "turn_c333ee39-96c4-45b3-bd44-1a4738dcd107",
+      "hook_event_name": "PreToolUse",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "tool_name": "Read",
+      "tool_use_id": "call_4f342dcbaeff420e94ae6270"
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "error": "File does not exist. Note: your current working directory is D:/validation/zcode/workspace.",
+      "hookEventName": "PostToolUseFailure",
+      "isInterrupt": false,
+      "mode": "build",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:26:00.486Z",
+      "toolCallId": "call_4f342dcbaeff420e94ae6270",
+      "toolName": "Read",
+      "turnId": "turn_c333ee39-96c4-45b3-bd44-1a4738dcd107",
+      "hook_event_name": "PostToolUseFailure",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "tool_name": "Read",
+      "tool_use_id": "call_4f342dcbaeff420e94ae6270",
+      "is_interrupt": false
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "Stop",
+      "mode": "build",
+      "responseText": "The Read call failed as expected with \"File does not exist.\" — the file `nonexistent-hook-probe.txt` is not present in the workspace. No files were created and no other tools were used.",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "stopHookActive": false,
+      "timestamp": "2026-11-07T09:26:04.326Z",
+      "turnId": "turn_c333ee39-96c4-45b3-bd44-1a4738dcd107",
+      "hook_event_name": "Stop",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "last_assistant_message": "The Read call failed as expected with \"File does not exist.\" — the file `nonexistent-hook-probe.txt` is not present in the workspace. No files were created and no other tools were used.",
+      "stop_hook_active": false
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "UserPromptSubmit",
+      "mode": "build",
+      "prompt": "Cancellation validation. Do not use tools. Write a very long detailed explanation of prime numbers.",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:26:04.625Z",
+      "turnId": "turn_bb6b5dbf-eacc-4495-968c-a637d6425338",
+      "hook_event_name": "UserPromptSubmit",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811"
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "UserPromptSubmit",
+      "mode": "build",
+      "prompt": "Reply exactly ZCODE_RECOVERED. Do not use tools.",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:26:08.360Z",
+      "turnId": "turn_233c13f1-41ea-4928-a6ae-fcc683e63401",
+      "hook_event_name": "UserPromptSubmit",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811"
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "Stop",
+      "mode": "build",
+      "responseText": "ZCODE_RECOVERED",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "stopHookActive": false,
+      "timestamp": "2026-11-07T09:26:11.635Z",
+      "turnId": "turn_233c13f1-41ea-4928-a6ae-fcc683e63401",
+      "hook_event_name": "Stop",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "last_assistant_message": "ZCODE_RECOVERED",
+      "stop_hook_active": false
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "UserPromptSubmit",
+      "mode": "build",
+      "prompt": "Reply exactly ZCODE_RECOVERED. Do not use tools.",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "timestamp": "2026-11-07T09:26:12.514Z",
+      "turnId": "turn_621b0aeb-7f50-4c3e-8667-8feeeaac2699",
+      "hook_event_name": "UserPromptSubmit",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811"
+    },
+    {
+      "cwd": "D:/validation/zcode/workspace",
+      "hookEventName": "Stop",
+      "mode": "build",
+      "responseText": "ZCODE_RECOVERED",
+      "sessionId": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "stopHookActive": false,
+      "timestamp": "2026-11-07T09:26:14.659Z",
+      "turnId": "turn_621b0aeb-7f50-4c3e-8667-8feeeaac2699",
+      "hook_event_name": "Stop",
+      "permission_mode": "build",
+      "session_id": "sess_8a105112-a0cd-443c-8d6d-d30ab91f3811",
+      "last_assistant_message": "ZCODE_RECOVERED",
+      "stop_hook_active": false
+    }
+  ],
+  "approval_hook_runs": [
+    {
+      "hookEventName": "PermissionRequest",
+      "durationMs": 103,
+      "outcome": "success"
+    },
+    {
+      "hookEventName": "PermissionRequest",
+      "durationMs": 101,
+      "outcome": "success"
+    }
+  ],
+  "limitations": [
+    "Two earlier immediate-approval probes canceled PermissionRequest before the recorder launched; a 750 ms response delay allowed both native approval hooks to succeed.",
+    "Cancellation while generating emitted UserPromptSubmit only, with no terminal callback after a further three seconds; repeated in three sessions.",
+    "Bash exit 7 returned PostToolUse with status failed and exitCode 7, then the turn reached Stop.",
+    "A nonexistent Read emitted PostToolUseFailure with is_interrupt false, then the turn reached Stop.",
+    "No independent Interrupt or whole-turn Error hook is defined."
+  ],
+  "normal_user_configuration_changed": false,
+  "transcripts_opened_by_recorder": false
+}

@@ -1,0 +1,194 @@
+{
+  "date": "2026-11-07",
+  "desktop_version": "3.14.3.7762",
+  "runtime_version": "0.16.9",
+  "device": "Desktop C++ protocol bridge; no physical ESP32",
+  "production_submission": "Only native hook commands invoked the installed info-tv-hook.exe; app-server drove the disposable test sessions",
+  "native_approvals": [
+    {
+      "toolName": "Bash",
+      "command": "exit 0",
+      "decision": "allow",
+      "card": {
+        "source": "zcode",
+        "task_id": "18a5e3d44f8b5e74852484b80e6e74dc",
+        "state": "waiting_input",
+        "title": "Native adapter smoke test. Do not edit files or spawn agents. Ru",
+        "detail": "Approval requested: Bash",
+        "progress_percent": null,
+        "icon": "code",
+        "conversation_id": "sess_d047c8e2-e084-493c-804f-f913162c8ea7",
+        "conversation_title": "Native adapter smoke test. Do not edit files or spawn agents. Ru",
+        "context": "workspace",
+        "run_sequence": 1,
+        "sequence": 2,
+        "revision": 2,
+        "card_id": "3c07300019e347348ec46d205b17d152",
+        "delivery": {
+          "revision": 2,
+          "message_id": "c9ed2fb24aca40b18cf9b0fab048e381",
+          "accepted": true,
+          "presented": true,
+          "error": null
+        }
+      }
+    },
+    {
+      "toolName": "Bash",
+      "command": "exit 0",
+      "decision": "allow",
+      "card": {
+        "source": "zcode",
+        "task_id": "18a5e3d44f8b5e74852484b80e6e74dc",
+        "state": "waiting_input",
+        "title": "Native adapter smoke test. Do not edit files or spawn agents. Ru",
+        "detail": "Approval requested: Bash",
+        "progress_percent": null,
+        "icon": "code",
+        "conversation_id": "sess_d047c8e2-e084-493c-804f-f913162c8ea7",
+        "conversation_title": "Native adapter smoke test. Do not edit files or spawn agents. Ru",
+        "context": "workspace",
+        "run_sequence": 1,
+        "sequence": 2,
+        "revision": 2,
+        "card_id": "3c07300019e347348ec46d205b17d152",
+        "delivery": {
+          "revision": 2,
+          "message_id": "c9ed2fb24aca40b18cf9b0fab048e381",
+          "accepted": true,
+          "presented": true,
+          "error": null
+        }
+      }
+    },
+    {
+      "toolName": "Bash",
+      "command": "exit 0",
+      "decision": "allow",
+      "card": {
+        "source": "zcode",
+        "task_id": "18a5e3d44f8b5e74852484b80e6e74dc",
+        "state": "waiting_input",
+        "title": "Native adapter smoke test. Do not edit files or spawn agents. Ru",
+        "detail": "Approval requested: Bash",
+        "progress_percent": null,
+        "icon": "code",
+        "conversation_id": "sess_d047c8e2-e084-493c-804f-f913162c8ea7",
+        "conversation_title": "Native adapter smoke test. Do not edit files or spawn agents. Ru",
+        "context": "workspace",
+        "run_sequence": 1,
+        "sequence": 2,
+        "revision": 2,
+        "card_id": "3c07300019e347348ec46d205b17d152",
+        "delivery": {
+          "revision": 2,
+          "message_id": "c9ed2fb24aca40b18cf9b0fab048e381",
+          "accepted": true,
+          "presented": true,
+          "error": null
+        }
+      }
+    },
+    {
+      "toolName": "Bash",
+      "command": "exit 0",
+      "decision": "allow",
+      "card": {
+        "source": "zcode",
+        "task_id": "18a5e3d44f8b5e74852484b80e6e74dc",
+        "state": "waiting_input",
+        "title": "Native adapter smoke test. Do not edit files or spawn agents. Ru",
+        "detail": "Approval requested: Bash",
+        "progress_percent": null,
+        "icon": "code",
+        "conversation_id": "sess_d047c8e2-e084-493c-804f-f913162c8ea7",
+        "conversation_title": "Native adapter smoke test. Do not edit files or spawn agents. Ru",
+        "context": "workspace",
+        "run_sequence": 1,
+        "sequence": 2,
+        "revision": 2,
+        "card_id": "3c07300019e347348ec46d205b17d152",
+        "delivery": {
+          "revision": 2,
+          "message_id": "c9ed2fb24aca40b18cf9b0fab048e381",
+          "accepted": true,
+          "presented": true,
+          "error": null
+        }
+      }
+    }
+  ],
+  "card_after_missing_cancellation_hook": {
+    "source": "zcode",
+    "task_id": "85af9285a4b35d91b421a3c728cd6ed4",
+    "state": "running",
+    "title": "Cancellation test. Do not use tools. Write a very long detailed",
+    "detail": "Working",
+    "progress_percent": null,
+    "icon": "code",
+    "conversation_id": "sess_d047c8e2-e084-493c-804f-f913162c8ea7",
+    "conversation_title": "Native adapter smoke test. Do not edit files or spawn agents. Ru",
+    "context": "workspace",
+    "run_sequence": 3,
+    "sequence": 1,
+    "revision": 7,
+    "card_id": "3c07300019e347348ec46d205b17d152",
+    "delivery": {
+      "revision": 7,
+      "message_id": "7e20ba66fcfe48a0abfbbb389e427c68",
+      "accepted": true,
+      "presented": true,
+      "error": null
+    }
+  },
+  "tasks": [
+    {
+      "source": "zcode",
+      "task_id": "b5e77d7b179c5bba9948823e004f2a4c",
+      "state": "completed",
+      "title": "Reply exactly ZCODE_RECOVERED. Do not use tools.",
+      "detail": "ZCODE_RECOVERED",
+      "progress_percent": null,
+      "icon": "code",
+      "conversation_id": "sess_d047c8e2-e084-493c-804f-f913162c8ea7",
+      "conversation_title": "Native adapter smoke test. Do not edit files or spawn agents. Ru",
+      "context": "workspace",
+      "run_sequence": 4,
+      "sequence": 2,
+      "revision": 9,
+      "card_id": "3c07300019e347348ec46d205b17d152",
+      "delivery": {
+        "revision": 9,
+        "message_id": "22bcb24b6d8a4f2692a1283f3ab8c81b",
+        "accepted": true,
+        "presented": true,
+        "error": null
+      }
+    },
+    {
+      "source": "zcode",
+      "task_id": "0f97a4a37c0a571b8a9680ff0c546d39",
+      "state": "completed",
+      "title": "Independent conversation test. Reply exactly ZCODE_INDEPENDENT.",
+      "detail": "ZCODE_INDEPENDENT",
+      "progress_percent": null,
+      "icon": "code",
+      "conversation_id": "sess_b5e8ad18-86e3-42a0-940f-e8d849e2835c",
+      "conversation_title": "Independent conversation test. Reply exactly ZCODE_INDEPENDENT.",
+      "context": "workspace",
+      "run_sequence": 1,
+      "sequence": 2,
+      "revision": 2,
+      "card_id": "bc660f532ade4df880b5b4356395a5f3",
+      "delivery": {
+        "revision": 2,
+        "message_id": "602ee5247f4d476cb98a999f3e7d2904",
+        "accepted": true,
+        "presented": true,
+        "error": null
+      }
+    }
+  ],
+  "outbox_empty": true,
+  "normal_user_configuration_changed": false
+}

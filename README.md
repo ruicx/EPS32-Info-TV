@@ -15,8 +15,9 @@ Follow this section if you want to use the display without building the project.
 You need the supported **ESP32-S3 board with 16 MB Flash and a 240 × 240 ST7789
 display**, a USB cable that carries data, and a Windows computer. Firmware is
 specific to the [documented board and wiring](docs/hardware-reference.md).
-Install and sign in to Codex or Antigravity CLI separately if you want agent
-updates. The adapters were validated with Codex 0.166.0 and agy 1.5.2.
+Install and sign in to Codex, Antigravity CLI, or ZCode separately if you want
+agent updates. The adapters were validated with Codex 0.166.0, agy 1.5.2, and
+ZCode desktop 3.14.3 (bundled runtime 0.16.9).
 
 You do not need Git, uv, a source checkout, or ESP-IDF for these steps. Run the
 commands below in **PowerShell**. This guide uses `C:\info-tv` as a fixed install
@@ -81,8 +82,8 @@ C:\info-tv\venv\Scripts\info-tv-hook.exe --help
 ```
 
 The last two commands should show help, including `serve` and the hook sources
-`codex` and `agy`. These commands use full executable paths, so you do not need
-to activate the environment or change PowerShell's execution policy. See the
+`codex`, `agy`, and `zcode`. These commands use full executable paths, so you do
+not need to activate the environment or change PowerShell's execution policy. See the
 [Python environment reference](https://docs.python.org/3/library/venv.html) and
 [esptool installation guide](https://docs.espressif.com/projects/esptool/en/latest/esp32s3/installation.html)
 for installation problems.
@@ -174,11 +175,11 @@ The screen should show the card and a completion notice. In `task list`,
 Windows service installation: start `serve` again after restarting your PC.
 Stop it with Ctrl+C before updating the package or flashing firmware.
 
-### 5. Connect Codex or agy hooks
+### 5. Connect agent hooks
 
 A hook is a command the agent runs when an event occurs. It forwards an update
 to the already running host; installing the wheel alone does not configure
-hooks. Configure whichever agent you use, or both. Keep the host running while
+hooks. Configure whichever agents you use. Keep the host running while
 using the agents.
 
 **Codex:** create or edit `%USERPROFILE%\.codex\hooks.json` (for example,
@@ -248,14 +249,56 @@ Codex's `PreToolUse` handler into agy: its policy-response contract differs.
 See the [official agy hooks guide](https://antigravity.google/docs/hooks?tab=cli)
 and [adapter details](docs/agy-hooks.md).
 
+**ZCode (built-in ZCode Agent):** create or edit
+`%USERPROFILE%\.zcode\cli\config.json`. Save it as UTF-8 JSON. Merge the following
+`hooks` object into the existing configuration, preserving other settings and
+handlers. ZCode requires `hooks.enabled: true`; its configuration structure
+differs from Codex and agy.
+
+```json
+{
+  "hooks": {
+    "enabled": true,
+    "events": {
+      "UserPromptSubmit": [
+        {"hooks": [{"type": "process", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+      ],
+      "PreToolUse": [
+        {"hooks": [{"type": "process", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+      ],
+      "PermissionRequest": [
+        {"hooks": [{"type": "process", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+      ],
+      "PostToolUse": [
+        {"hooks": [{"type": "process", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+      ],
+      "PostToolUseFailure": [
+        {"hooks": [{"type": "process", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+      ],
+      "Stop": [
+        {"hooks": [{"type": "process", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+      ]
+    }
+  }
+}
+```
+
+Open **Settings > Hooks** to check the entries, then start a **new session**;
+existing sessions retain their earlier hook configuration. Use the user-level
+file above: the [official ZCode guide](https://zcode.z.ai/en/docs/hooks) currently
+says project-level hooks do not execute. See the
+[adapter details and native limitations](docs/zcode-hooks.md).
+
 Send a new prompt such as `Reply exactly HOOKS_OK; do not use tools.` in your
 configured agent, then run `C:\info-tv\venv\Scripts\info-tv.exe task list`.
-Expect a card with source `codex` or `agy`; a quick response may already show
-`completed`. Each conversation keeps one card across turns, and independent
+Expect a card with source `codex`, `agy`, or `zcode`; a quick response may already
+show `completed`. Each conversation keeps one card across turns, and independent
 conversations get separate cards. Completed means the turn ended, not that a
 task passed acceptance criteria. agy 1.5.2 has no approval hook and can omit the
-stop callback on cancellation, so those cases cannot reliably show waiting or
-interrupted states.
+stop callback on cancellation. ZCode also omitted a terminal callback when
+canceled during generation; fast approvals can skip its approval hook, and
+waiting clears on the next post-tool callback. These native limits prevent
+reliable waiting/interrupted display in the affected cases.
 
 ### 6. Everyday use and troubleshooting
 
@@ -275,6 +318,8 @@ Weather is disabled until configured.
 | The screen is dark | Check USB power, then run `C:\info-tv\venv\Scripts\info-tv.exe brightness 50` with the host online. |
 | Manual test works but agent cards do not appear | Check the absolute hook executable path, JSON filename/syntax, and `/hooks`; trust Codex handlers and restart the agent after editing. |
 | An agy card stays running after cancellation | This is the documented missing native callback; the next turn replaces the run. |
+| ZCode hooks do not fire | Use the user-level config, enable `hooks.enabled`, select the built-in ZCode Agent, and start a new session. |
+| A ZCode card stays running/waiting after cancellation | Native hooks can omit a terminal callback; the next prompt updates the card. |
 
 If an event was captured while the host was unavailable, the next callback
 retries it. You can also retry explicitly after starting the host:
@@ -282,6 +327,7 @@ retries it. You can also retry explicitly after starting the host:
 ```powershell
 C:\info-tv\venv\Scripts\info-tv-hook.exe codex --flush
 C:\info-tv\venv\Scripts\info-tv-hook.exe agy --flush
+C:\info-tv\venv\Scripts\info-tv-hook.exe zcode --flush
 ```
 
 Hook ledgers live under `%LOCALAPPDATA%\info_tv`; keep them when updating or
@@ -373,6 +419,9 @@ end-of-turn, and interrupted states through this same API.
 The [Antigravity CLI hook adapter](docs/agy-hooks.md) forwards native invocation
 starts and explicit stop outcomes. Its [event validation](docs/agy-hook-validation.md)
 records the missing approval and cancellation callbacks in agy 1.5.2.
+The [ZCode adapter](docs/zcode-hooks.md) forwards native turn, approval, and
+post-tool events. Its [validation](docs/zcode-hook-validation.md) records stable
+turn IDs, tool-failure behavior, approval races, and missing cancellation hooks.
 
 The API supports `running`, `waiting_input`, `completed`, `failed`, and
 `interrupted`. Retries
