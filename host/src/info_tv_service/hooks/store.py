@@ -1,15 +1,15 @@
 """Persist Codex run ordering and immutable HTTP retry payloads in SQLite."""
 
-import sqlite3
 from pathlib import Path
 from uuid import uuid4
 
 from info_tv_service.api.models import TaskEventRequest
 from info_tv_service.hooks.codex import CodexHook
+from info_tv_service.hooks.outbox import HookOutbox
 from info_tv_service.tasks.models import TaskIcon, TaskState
 
 
-class CodexStore:
+class CodexStore(HookOutbox):
     """Own one process's connection to the shared hook ledger and outbox."""
 
     def __init__(self, path: Path) -> None:
@@ -27,9 +27,7 @@ class CodexStore:
         sqlite3.Error
             If the state file cannot be opened or initialized.
         """
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self.database = sqlite3.connect(path, timeout=1)
-        self.database.row_factory = sqlite3.Row
+        super().__init__(path)
         self.database.executescript("""
             CREATE TABLE IF NOT EXISTS runs (
                 session_id TEXT NOT NULL, turn_id TEXT NOT NULL,
@@ -38,15 +36,7 @@ class CodexStore:
                 context TEXT NOT NULL, state TEXT NOT NULL,
                 PRIMARY KEY (session_id, turn_id)
             );
-            CREATE TABLE IF NOT EXISTS outbox (
-                position INTEGER PRIMARY KEY AUTOINCREMENT,
-                event_id TEXT NOT NULL UNIQUE, payload TEXT NOT NULL
-            );
         """)
-
-    def close(self) -> None:
-        """Release this process's database handle."""
-        self.database.close()
 
     def capture(self, hook: CodexHook) -> TaskEventRequest | None:
         """Atomically order a transition and retain its exact retry payload.
@@ -118,32 +108,5 @@ class CodexStore:
                 "UPDATE runs SET sequence = ?, state = ? WHERE session_id = ? AND turn_id = ?",
                 (submission.sequence, state, hook.session_id, hook.turn_id),
             )
-            self.database.execute(
-                "INSERT INTO outbox (event_id, payload) VALUES (?, ?)",
-                (submission.event_id.hex, submission.model_dump_json(exclude_none=True)),
-            )
+            self.enqueue(submission)
             return submission
-
-    def next_pending(self) -> tuple[str, str] | None:
-        """Read the oldest unacknowledged event without holding a write lock.
-
-        Returns
-        -------
-        tuple[str, str] or None
-            Event UUID hex and JSON body, or None for an empty queue.
-        """
-        row = self.database.execute(
-            "SELECT event_id, payload FROM outbox ORDER BY position LIMIT 1",
-        ).fetchone()
-        return (row["event_id"], row["payload"]) if row else None
-
-    def acknowledge(self, event_id: str) -> None:
-        """Remove a delivered event; concurrent acknowledgments are harmless.
-
-        Parameters
-        ----------
-        event_id : str
-            UUID of the exact event accepted by the host.
-        """
-        with self.database:
-            self.database.execute("DELETE FROM outbox WHERE event_id = ?", (event_id,))

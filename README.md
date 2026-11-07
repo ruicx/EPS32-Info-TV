@@ -9,6 +9,289 @@ has been flashed and tested on the physical board: USB, progress, notifications,
 overview restoration, and powered serial reconnection passed. See the
 [hardware validation record](docs/hardware-validation.md) for evidence and limits.
 
+## User guide: install from a Release on Windows
+
+Follow this section if you want to use the display without building the project.
+You need the supported **ESP32-S3 board with 16 MB Flash and a 240 × 240 ST7789
+display**, a USB cable that carries data, and a Windows computer. Firmware is
+specific to the [documented board and wiring](docs/hardware-reference.md).
+Install and sign in to Codex or Antigravity CLI separately if you want agent
+updates. The adapters were validated with Codex 0.166.0 and agy 1.5.2.
+
+You do not need Git, uv, a source checkout, or ESP-IDF for these steps. Run the
+commands below in **PowerShell**. This guide uses `C:\info-tv` as a fixed install
+location so hooks can find their executable even when started from another
+project.
+
+### 1. Download the host and complete firmware
+
+Install [Python for Windows](https://www.python.org/downloads/windows/), version
+**3.12 or newer**, including pip and the `py` launcher. Open a new PowerShell
+window and check the version, then create the download directory:
+
+```powershell
+py -3 --version
+New-Item -ItemType Directory -Force C:\info-tv\downloads | Out-Null
+```
+
+Open [Releases](https://github.com/ruicx/EPS32-Info-TV/releases) and expand the
+chosen release's **Assets**. Download both assets from the **same release**:
+
+- The host wheel, named `info_tv_service-<version>-py3-none-any.whl`. Save it in
+  `C:\info-tv\downloads`; keep only the chosen version's wheel in this directory.
+- The complete firmware archive for the supported ESP32-S3 display. Extract it
+  so the files have the layout below. The archive name can vary by release.
+
+The GitHub **Source code** archives are for developers. A complete firmware
+download must provide all four files below; `info_tv.bin` alone is insufficient
+for first-time installation. If those assets are not attached to a release,
+that release is not ready for this installation path.
+
+```text
+C:\info-tv\
+  downloads\
+    info_tv_service-<version>-py3-none-any.whl
+  firmware\
+    flash_args
+    info_tv.bin
+    bootloader\
+      bootloader.bin
+    partition_table\
+      partition-table.bin
+```
+
+`<version>` represents the version in your downloaded filename; do not rename
+the wheel. After extraction, `flash_args` must be directly inside
+`C:\info-tv\firmware`, rather than inside another versioned subdirectory.
+
+### 2. Install the host and flashing tool
+
+Create a Python environment dedicated to info_tv, then install the downloaded
+wheel and esptool. An internet connection is needed to install dependencies;
+the first installation can take several minutes.
+
+```powershell
+py -3 -m venv C:\info-tv\venv
+C:\info-tv\venv\Scripts\python.exe -m pip install --upgrade pip
+$wheel = Get-ChildItem C:\info-tv\downloads -Filter 'info_tv_service-*.whl'
+C:\info-tv\venv\Scripts\python.exe -m pip install $wheel.FullName
+C:\info-tv\venv\Scripts\python.exe -m pip install "esptool>=5,<6"
+C:\info-tv\venv\Scripts\info-tv.exe --help
+C:\info-tv\venv\Scripts\info-tv-hook.exe --help
+```
+
+The last two commands should show help, including `serve` and the hook sources
+`codex` and `agy`. These commands use full executable paths, so you do not need
+to activate the environment or change PowerShell's execution policy. See the
+[Python environment reference](https://docs.python.org/3/library/venv.html) and
+[esptool installation guide](https://docs.espressif.com/projects/esptool/en/latest/esp32s3/installation.html)
+for installation problems.
+
+### 3. Flash the display
+
+Flashing replaces the board's existing firmware. Keep its original recovery
+image if you want to restore the vendor software later. Close any running
+info_tv host and serial monitor before flashing; only one program can own the
+serial port.
+
+Connect the board by USB, then list ports:
+
+```powershell
+C:\info-tv\venv\Scripts\info-tv.exe ports
+```
+
+Find the board's `COM` port in the output or Windows **Device Manager > Ports
+(COM & LPT)**. Unplugging and reconnecting the board helps identify which entry
+belongs to it. The verified board uses USB VID/PID `303A:1001`. **Replace `COM6`
+below with your board's actual port.** First check its chip/Flash identity:
+
+```powershell
+C:\info-tv\venv\Scripts\python.exe -m esptool --chip esp32s3 --port COM6 flash-id
+```
+
+Check that it is the intended ESP32-S3 with 16 MB Flash. Then change to the
+extracted firmware directory and write the files using its supplied address
+manifest:
+
+```powershell
+Set-Location C:\info-tv\firmware
+C:\info-tv\venv\Scripts\python.exe -m esptool --chip esp32s3 --port COM6 --baud 460800 write-flash "@flash_args"
+```
+
+Keep the quotes around `"@flash_args"` in PowerShell. For the current board
+layout, this manifest writes the bootloader at `0x0`, partition table at
+`0x8000`, and application at `0x10000`, with DIO/80 MHz/16 MB settings. Keep
+these files together from one build; follow a release's own instructions if
+its layout changes. This is the standard
+[ESP-IDF binary flashing procedure](https://docs.espressif.com/projects/esptool/en/latest/esp32s3/esptool/flashing-firmware.html).
+
+Wait for esptool to finish writing, verifying, and resetting the board. If it
+stays in download mode, reset or reconnect it, then list ports again: the COM
+number can change. If automatic connection fails and your board exposes
+**BOOT** and **RESET**, hold BOOT, press and release RESET, then release BOOT
+and retry. Otherwise use the board vendor's download-mode instructions. See
+[Espressif's boot-mode guide](https://docs.espressif.com/projects/esptool/en/latest/esp32s3/advanced-topics/boot-mode-selection.html).
+
+### 4. Start the host and check the screen
+
+Start the service in a PowerShell window:
+
+```powershell
+C:\info-tv\venv\Scripts\info-tv.exe serve
+```
+
+Leave this window open. The host automatically selects a single matching USB
+device and reconnects after disconnects. If several devices match, stop it with
+**Ctrl+C** and start it with an explicit port instead:
+
+```powershell
+C:\info-tv\venv\Scripts\info-tv.exe serve --serial-port COM6
+```
+
+Open a **second PowerShell window** to check the running service:
+
+```powershell
+C:\info-tv\venv\Scripts\info-tv.exe status
+```
+
+Look for `"state": "online"`. The local API is available at
+`http://127.0.0.1:8765`, with an interactive reference at
+`http://127.0.0.1:8765/docs`. An HTTP server starting successfully does not by
+itself mean the display is connected.
+
+Before configuring an agent, send a test card from this second window:
+
+```powershell
+$testRun = [guid]::NewGuid().ToString()
+C:\info-tv\venv\Scripts\info-tv.exe task submit --task-id $testRun --sequence 1 --state running --title "Hello info_tv"
+C:\info-tv\venv\Scripts\info-tv.exe task submit --task-id $testRun --sequence 2 --state completed --title "Hello info_tv"
+C:\info-tv\venv\Scripts\info-tv.exe task list
+```
+
+The screen should show the card and a completion notice. In `task list`,
+`delivery.accepted: true` means the firmware accepted the card;
+`delivery.presented: true` confirms presentation feedback. There is no automatic
+Windows service installation: start `serve` again after restarting your PC.
+Stop it with Ctrl+C before updating the package or flashing firmware.
+
+### 5. Connect Codex or agy hooks
+
+A hook is a command the agent runs when an event occurs. It forwards an update
+to the already running host; installing the wheel alone does not configure
+hooks. Configure whichever agent you use, or both. Keep the host running while
+using the agents.
+
+**Codex:** create or edit `%USERPROFILE%\.codex\hooks.json` (for example,
+`C:\Users\YourName\.codex\hooks.json`). If you set `CODEX_HOME`, use that
+directory instead. Save it as UTF-8 JSON, with the filename `hooks.json`, not
+`hooks.json.txt`.
+
+For a new file, paste:
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {"hooks": [{"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+    ],
+    "PreToolUse": [
+      {"hooks": [{"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+    ],
+    "PermissionRequest": [
+      {"hooks": [{"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+    ],
+    "PostToolUse": [
+      {"hooks": [{"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+    ],
+    "Stop": [
+      {"hooks": [{"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+    ],
+    "Interrupt": [
+      {"hooks": [{"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+    ]
+  }
+}
+```
+
+If the file already exists, back it up and append these handlers to the matching
+event arrays inside its existing `hooks` object. Preserve other handlers and
+avoid duplicate JSON keys. Restart Codex, open **`/hooks`**, then review and
+trust the info_tv handlers; configured hooks are skipped until trusted.
+Changing their command later requires review again. In desktop Codex, use
+**Settings > Hooks** to review and trust them. See the
+[official Codex hooks guide](https://learn.chatgpt.com/docs/hooks) and
+[adapter details](docs/codex-hooks.md).
+
+**Antigravity CLI (`agy`):** in the project where you run agy, create or edit
+`.agents/hooks.json`. Create the `.agents` directory if needed. Add this named
+entry, preserving any existing entries:
+
+```json
+{
+  "info-tv": {
+    "PreInvocation": [
+      {"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe agy PreInvocation", "timeout": 3}
+    ],
+    "Stop": [
+      {"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe agy Stop", "timeout": 3}
+    ]
+  }
+}
+```
+
+Restart agy in that trusted project and use **`/hooks`** to check that both
+handlers are loaded. For all projects, the same entry can instead go in
+`%USERPROFILE%\.gemini\config\hooks.json`; use one scope to avoid duplicates.
+That global file is also shared with other Antigravity products; this guide
+targets the CLI. Do not put hooks in agy's `settings.json`, and do not copy
+Codex's `PreToolUse` handler into agy: its policy-response contract differs.
+See the [official agy hooks guide](https://antigravity.google/docs/hooks?tab=cli)
+and [adapter details](docs/agy-hooks.md).
+
+Send a new prompt such as `Reply exactly HOOKS_OK; do not use tools.` in your
+configured agent, then run `C:\info-tv\venv\Scripts\info-tv.exe task list`.
+Expect a card with source `codex` or `agy`; a quick response may already show
+`completed`. Each conversation keeps one card across turns, and independent
+conversations get separate cards. Completed means the turn ended, not that a
+task passed acceptance criteria. agy 1.5.2 has no approval hook and can omit the
+stop callback on cancellation, so those cases cannot reliably show waiting or
+interrupted states.
+
+### 6. Everyday use and troubleshooting
+
+Start the host, connect the display, then use your configured agent normally.
+Completed/interrupted cards expire after five minutes by default. For optional
+weather or a fixed serial port, create your own `C:\info-tv\config.yaml` using
+the [configuration reference](docs/host-configuration.md), then start with
+`C:\info-tv\venv\Scripts\info-tv.exe serve --config C:\info-tv\config.yaml`.
+Weather is disabled until configured.
+
+| Symptom | What to check |
+| --- | --- |
+| `py` is not recognized, or Python is older than 3.12 | Install Python with the launcher and pip, then open a new PowerShell window. |
+| Flashing cannot connect | Check the USB data cable and COM number, close the host/serial monitor, and try download mode. Retry at `--baud 115200` if writes are unreliable. |
+| Host stays `offline` | Repeat the port-list command in step 3; use the current COM port if selection is ambiguous, and install matching host/firmware versions. |
+| Host port 8765 is already in use | Close the previous host instance before starting another one. |
+| The screen is dark | Check USB power, then run `C:\info-tv\venv\Scripts\info-tv.exe brightness 50` with the host online. |
+| Manual test works but agent cards do not appear | Check the absolute hook executable path, JSON filename/syntax, and `/hooks`; trust Codex handlers and restart the agent after editing. |
+| An agy card stays running after cancellation | This is the documented missing native callback; the next turn replaces the run. |
+
+If an event was captured while the host was unavailable, the next callback
+retries it. You can also retry explicitly after starting the host:
+
+```powershell
+C:\info-tv\venv\Scripts\info-tv-hook.exe codex --flush
+C:\info-tv\venv\Scripts\info-tv-hook.exe agy --flush
+```
+
+Hook ledgers live under `%LOCALAPPDATA%\info_tv`; keep them when updating or
+resuming conversations. The host keeps cards in memory, so previously
+acknowledged cards do not automatically return after a host restart; send a new
+prompt to update the display. For an upgrade, stop the host, download a matching
+host/firmware pair, install the new wheel into the same environment, and repeat
+the flash/start steps. Keeping `C:\info-tv\venv` preserves the hook executable
+path.
+
 ## Repository
 
 | Directory | Responsibility |
@@ -24,7 +307,7 @@ See [implementation and class design](docs/demo-implementation.md),
 [device protocol](docs/device-protocol.md), and
 [hardware reference](docs/hardware-reference.md).
 
-## Run the host
+## Run the host from source
 
 From the repository root:
 
@@ -87,6 +370,9 @@ the current task-retention limit.
 Real Codex hook events have been [captured and validated](docs/codex-hook-validation.md).
 The [Codex hook adapter](docs/codex-hooks.md) now forwards running, approval,
 end-of-turn, and interrupted states through this same API.
+The [Antigravity CLI hook adapter](docs/agy-hooks.md) forwards native invocation
+starts and explicit stop outcomes. Its [event validation](docs/agy-hook-validation.md)
+records the missing approval and cancellation callbacks in agy 1.5.2.
 
 The API supports `running`, `waiting_input`, `completed`, `failed`, and
 `interrupted`. Retries
@@ -232,6 +518,14 @@ uv run --project host python scripts/generate_protocol.py
 ```
 
 ## Package the host
+
+For a user-facing Release, attach the host wheel and a complete firmware archive
+from the same revision. The firmware archive must preserve the build directory's
+`flash_args`, `bootloader/bootloader.bin`, `partition_table/partition-table.bin`,
+and `info_tv.bin` layout used by the [Release user guide](#user-guide-install-from-a-release-on-windows).
+Do not publish only the application image for first-time installs. Release
+automation is not currently provided in this repository; these files must be
+assembled and attached when publishing.
 
 ```powershell
 uv build host --out-dir build/host-dist

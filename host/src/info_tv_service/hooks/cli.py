@@ -1,6 +1,7 @@
-"""Run a short-lived, fail-open Codex hook sender or flush its saved outbox."""
+"""Run a short-lived agent hook sender or flush its saved outbox."""
 
 import argparse
+import json
 import math
 import os
 import sqlite3
@@ -12,12 +13,20 @@ from pathlib import Path
 
 import httpx
 
+from info_tv_service.hooks.agy import AgyHook
+from info_tv_service.hooks.agy_store import AgyStore
 from info_tv_service.hooks.codex import CodexHook
+from info_tv_service.hooks.outbox import HookOutbox
 from info_tv_service.hooks.store import CodexStore
 
 
-def default_state_path() -> Path:
+def default_state_path(source: str = "codex") -> Path:
     """Locate persistent per-user state independently of agent workspaces.
+
+    Parameters
+    ----------
+    source : str
+        Selected producer namespace.
 
     Returns
     -------
@@ -25,15 +34,15 @@ def default_state_path() -> Path:
         Windows local application data path, with a portable home fallback.
     """
     root = Path(os.environ["LOCALAPPDATA"]) if "LOCALAPPDATA" in os.environ else Path.home() / ".local/state"
-    return root / "info_tv/codex-hooks.sqlite3"
+    return root / f"info_tv/{source}-hooks.sqlite3"
 
 
-def flush_pending(store: CodexStore, client: httpx.Client, url: str) -> None:
+def flush_pending(store: HookOutbox, client: httpx.Client, url: str) -> None:
     """Send queued events in order within a short callback delivery window.
 
     Parameters
     ----------
-    store : CodexStore
+    store : HookOutbox
         Persistent queue shared by independent hook processes.
     client : httpx.Client
         Local HTTP client with a short request timeout.
@@ -84,21 +93,39 @@ def main(argv: Sequence[str] | None = None) -> None:
     requests remain pending for the next callback or an explicit flush.
     """
     parser = argparse.ArgumentParser(description="Forward agent hooks to the local info_tv service")
-    parser.add_argument("source", choices=["codex"])
+    parser.add_argument("source", choices=["codex", "agy"])
+    parser.add_argument("event", nargs="?", choices=["PreInvocation", "Stop"],
+                        help="Required native event name for agy callbacks")
     parser.add_argument("--url", default="http://127.0.0.1:8765")
-    parser.add_argument("--state-file", type=Path, default=default_state_path())
+    parser.add_argument("--state-file", type=Path)
     parser.add_argument("--timeout", type=float, default=0.5, help="HTTP timeout in seconds")
     parser.add_argument("--flush", action="store_true", help="Retry pending events without reading stdin")
     args = parser.parse_args(argv)
     try:
         if not math.isfinite(args.timeout) or args.timeout <= 0:
             raise ValueError("--timeout must be a finite positive number")
-        hook = None if args.flush else CodexHook.model_validate_json(sys.stdin.buffer.read())
-        with closing(CodexStore(args.state_file)) as store:
-            if hook is not None:
-                store.capture(hook)
-            with httpx.Client(timeout=args.timeout, trust_env=False) as client:
-                flush_pending(store, client, args.url)
+        path = args.state_file or default_state_path(args.source)
+        if args.source == "codex":
+            if args.event is not None:
+                raise ValueError("Codex reads its event name from stdin")
+            codex_hook = None if args.flush else CodexHook.model_validate_json(sys.stdin.buffer.read())
+            with closing(CodexStore(path)) as codex_store:
+                if codex_hook is not None:
+                    codex_store.capture(codex_hook)
+        else:
+            if not args.flush and args.event is None:
+                raise ValueError("agy requires PreInvocation or Stop as its event argument")
+            agy_hook = None
+            if not args.flush:
+                payload = json.loads(sys.stdin.buffer.read())
+                if not isinstance(payload, dict):
+                    raise ValueError("agy callback must be a JSON object")
+                agy_hook = AgyHook.model_validate(payload | {"event": args.event})
+            with closing(AgyStore(path)) as agy_store:
+                if agy_hook is not None:
+                    agy_store.capture(agy_hook)
+        with closing(HookOutbox(path)) as store, httpx.Client(timeout=args.timeout, trust_env=False) as client:
+            flush_pending(store, client, args.url)
     except (OSError, sqlite3.Error, ValueError, httpx.HTTPError, httpx.InvalidURL) as error:
         print(f"info-tv-hook: {error}", file=sys.stderr)
     print("{}")

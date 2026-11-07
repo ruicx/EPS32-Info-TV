@@ -1,0 +1,85 @@
+{
+  "date": "2026-11-07",
+  "agent_version": "1.5.2",
+  "device": "Desktop C++ protocol bridge; no physical ESP32",
+  "production_submission": "Only native PreInvocation and Stop commands; ACP is the test driver",
+  "native_approvals": [
+    {
+      "command": "cmd /c exit 0",
+      "decision": "allow_once"
+    }
+  ],
+  "card_after_missing_cancellation_hook": {
+    "source": "agy",
+    "task_id": "82f1e1f6144150f792676dd76466a541",
+    "state": "running",
+    "title": "This turn will be canceled. Do not use tools. Write a long expla",
+    "detail": "Working",
+    "progress_percent": null,
+    "icon": "code",
+    "conversation_id": "ded07647-e529-45f7-a993-49c1990ff76c",
+    "conversation_title": "Native hooks smoke test. Do not edit files or spawn agents. Run",
+    "context": "workspace",
+    "run_sequence": 3,
+    "sequence": 1,
+    "revision": 5,
+    "card_id": "a76f34de64a14e4c9790af7fb6bc240d",
+    "delivery": {
+      "revision": 5,
+      "message_id": "081d1c21930b412f9d95e0998657bbf7",
+      "accepted": true,
+      "presented": true,
+      "error": null
+    }
+  },
+  "tasks": [
+    {
+      "source": "agy",
+      "task_id": "b10dd21399e15630bc545e58f8b3204f",
+      "state": "completed",
+      "title": "Recovery after cancellation. Do not use tools. Reply exactly AGY",
+      "detail": "Turn ended",
+      "progress_percent": null,
+      "icon": "code",
+      "conversation_id": "ded07647-e529-45f7-a993-49c1990ff76c",
+      "conversation_title": "Native hooks smoke test. Do not edit files or spawn agents. Run",
+      "context": "workspace",
+      "run_sequence": 4,
+      "sequence": 2,
+      "revision": 7,
+      "card_id": "a76f34de64a14e4c9790af7fb6bc240d",
+      "delivery": {
+        "revision": 7,
+        "message_id": "cfcafcdc64944ac5884af19f9862225d",
+        "accepted": true,
+        "presented": true,
+        "error": null
+      }
+    },
+    {
+      "source": "agy",
+      "task_id": "9b47e56d97f35e49a90431dbdab57363",
+      "state": "completed",
+      "title": "Independent conversation smoke test. Do not use tools. Reply exa",
+      "detail": "Turn ended",
+      "progress_percent": null,
+      "icon": "code",
+      "conversation_id": "82e8d94e-6238-4c6f-a45f-359612791ce6",
+      "conversation_title": "Independent conversation smoke test. Do not use tools. Reply exa",
+      "context": "workspace",
+      "run_sequence": 1,
+      "sequence": 2,
+      "revision": 2,
+      "card_id": "c28000060e3f4cfc9c0d2f1eb262b8cc",
+      "delivery": {
+        "revision": 2,
+        "message_id": "bc1c655bbe234237b9384f8c758fe9d0",
+        "accepted": true,
+        "presented": true,
+        "error": null
+      }
+    }
+  ],
+  "outbox_empty": true,
+  "user_hook_configuration_changed": false
+}

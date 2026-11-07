@@ -1,0 +1,412 @@
+{
+  "date": "2026-11-07",
+  "agent_version": "1.5.2",
+  "platform": "Windows",
+  "sources": [
+    "https://antigravity.google/docs/hooks?tab=cli",
+    "Bundled agy-customizations/docs/hooks.md from agy 1.5.2"
+  ],
+  "capture_count": 41,
+  "event_counts": {
+    "SessionStart": 3,
+    "PreInvocation": 14,
+    "PostInvocation": 12,
+    "Stop": 6,
+    "PreToolUse": 4,
+    "PostToolUse": 2
+  },
+  "representative_captures": {
+    "SessionStart": {
+      "event": "SessionStart",
+      "payload": {
+        "artifactDirectoryPath": "D:/validation/user-data/antigravity-cli/brain/2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+        "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+        "lastUserInput": "Reply exactly AGY_HOOK_OK. Do not use tools.",
+        "modelName": "gemini-4-argon-medium",
+        "transcriptPath": "D:/validation/user-data/antigravity-cli/brain/2a2f67f4-5bef-4e53-8e64-84d895aca9b7/.system_generated/logs/transcript_full.jsonl",
+        "workspacePaths": [
+          "D:/validation/agy/workspace"
+        ]
+      }
+    },
+    "PreInvocation": {
+      "event": "PreInvocation",
+      "payload": {
+        "artifactDirectoryPath": "D:/validation/user-data/antigravity-cli/brain/2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+        "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+        "initialNumSteps": 1,
+        "invocationNum": 0,
+        "lastUserInput": "Reply exactly AGY_HOOK_OK. Do not use tools.",
+        "modelName": "gemini-4-argon-medium",
+        "transcriptPath": "D:/validation/user-data/antigravity-cli/brain/2a2f67f4-5bef-4e53-8e64-84d895aca9b7/.system_generated/logs/transcript_full.jsonl",
+        "workspacePaths": [
+          "D:/validation/agy/workspace"
+        ]
+      }
+    },
+    "PostInvocation": {
+      "event": "PostInvocation",
+      "payload": {
+        "artifactDirectoryPath": "D:/validation/user-data/antigravity-cli/brain/2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+        "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+        "initialNumSteps": 1,
+        "invocationNum": 0,
+        "lastUserInput": "Reply exactly AGY_HOOK_OK. Do not use tools.",
+        "modelName": "gemini-4-argon-medium",
+        "transcriptPath": "D:/validation/user-data/antigravity-cli/brain/2a2f67f4-5bef-4e53-8e64-84d895aca9b7/.system_generated/logs/transcript_full.jsonl",
+        "workspacePaths": [
+          "D:/validation/agy/workspace"
+        ]
+      }
+    },
+    "Stop": {
+      "event": "Stop",
+      "payload": {
+        "artifactDirectoryPath": "D:/validation/user-data/antigravity-cli/brain/2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+        "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+        "error": "",
+        "executionNum": 0,
+        "fullyIdle": true,
+        "lastUserInput": "Reply exactly AGY_HOOK_OK. Do not use tools.",
+        "modelName": "gemini-4-argon-medium",
+        "terminationReason": "NO_TOOL_CALL",
+        "transcriptPath": "D:/validation/user-data/antigravity-cli/brain/2a2f67f4-5bef-4e53-8e64-84d895aca9b7/.system_generated/logs/transcript_full.jsonl",
+        "workspacePaths": [
+          "D:/validation/agy/workspace"
+        ]
+      }
+    },
+    "PreToolUse": {
+      "event": "PreToolUse",
+      "payload": {
+        "artifactDirectoryPath": "D:/validation/user-data/antigravity-cli/brain/2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+        "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+        "lastUserInput": "Read .agents/hooks.json with view_file, then read it once again with view_file in a separate call. Do not modify files or execute commands. Reply HOOKS_READ.",
+        "modelName": "gemini-4-argon-medium",
+        "stepIdx": 5,
+        "toolCall": {
+          "args": {
+            "Path": "D:/validation/agy\\workspace\\.agents\\hooks.json"
+          },
+          "name": "read_file"
+        },
+        "transcriptPath": "D:/validation/user-data/antigravity-cli/brain/2a2f67f4-5bef-4e53-8e64-84d895aca9b7/.system_generated/logs/transcript_full.jsonl",
+        "workspacePaths": [
+          "D:/validation/agy/workspace"
+        ]
+      }
+    },
+    "PostToolUse": {
+      "event": "PostToolUse",
+      "payload": {
+        "artifactDirectoryPath": "D:/validation/agy/gemini/antigravity-cli/brain/e201342c-823d-4eb8-bc12-440c43964ed2",
+        "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+        "error": "",
+        "lastUserInput": "Run cmd /c exit 0 using the shell tool, then run cmd /c exit 7 using the shell tool. These are safe hook validation commands. Do not modify files. Reply with both exit codes.",
+        "modelName": "gemini-4-argon-medium",
+        "stepIdx": 2,
+        "toolCall": {
+          "args": {
+            "CommandLine": "cmd /c exit 0",
+            "WaitMsBeforeAsync": 5000,
+            "toolSummary": "Run exit 0 command"
+          },
+          "name": "run_command"
+        },
+        "transcriptPath": "D:/validation/agy/gemini/antigravity-cli/brain/e201342c-823d-4eb8-bc12-440c43964ed2/.system_generated/logs/transcript_full.jsonl",
+        "workspacePaths": [
+          "D:/validation/agy/workspace"
+        ]
+      }
+    }
+  },
+  "timeline": [
+    {
+      "event": "SessionStart",
+      "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7"
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+      "initialNumSteps": 1,
+      "invocationNum": 0
+    },
+    {
+      "event": "PostInvocation",
+      "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+      "initialNumSteps": 1,
+      "invocationNum": 0
+    },
+    {
+      "event": "Stop",
+      "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+      "error": "",
+      "executionNum": 0,
+      "fullyIdle": true,
+      "terminationReason": "NO_TOOL_CALL"
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+      "initialNumSteps": 3,
+      "invocationNum": 0
+    },
+    {
+      "event": "PreToolUse",
+      "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+      "stepIdx": 5
+    },
+    {
+      "event": "PostInvocation",
+      "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+      "initialNumSteps": 3,
+      "invocationNum": 0
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+      "initialNumSteps": 6,
+      "invocationNum": 1
+    },
+    {
+      "event": "PreToolUse",
+      "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+      "stepIdx": 7
+    },
+    {
+      "event": "PostInvocation",
+      "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+      "initialNumSteps": 6,
+      "invocationNum": 1
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+      "initialNumSteps": 8,
+      "invocationNum": 2
+    },
+    {
+      "event": "PostInvocation",
+      "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+      "initialNumSteps": 8,
+      "invocationNum": 2
+    },
+    {
+      "event": "Stop",
+      "conversationId": "2a2f67f4-5bef-4e53-8e64-84d895aca9b7",
+      "error": "",
+      "executionNum": 0,
+      "fullyIdle": true,
+      "terminationReason": "NO_TOOL_CALL"
+    },
+    {
+      "event": "SessionStart",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb"
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "initialNumSteps": 1,
+      "invocationNum": 0
+    },
+    {
+      "event": "PreToolUse",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "stepIdx": 2
+    },
+    {
+      "event": "PostInvocation",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "initialNumSteps": 1,
+      "invocationNum": 0
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "initialNumSteps": 3,
+      "invocationNum": 1
+    },
+    {
+      "event": "PreToolUse",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "stepIdx": 4
+    },
+    {
+      "event": "PostInvocation",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "initialNumSteps": 3,
+      "invocationNum": 1
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "initialNumSteps": 5,
+      "invocationNum": 2
+    },
+    {
+      "event": "PostInvocation",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "initialNumSteps": 5,
+      "invocationNum": 2
+    },
+    {
+      "event": "Stop",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "error": "",
+      "executionNum": 0,
+      "fullyIdle": true,
+      "terminationReason": "NO_TOOL_CALL"
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "initialNumSteps": 7,
+      "invocationNum": 0
+    },
+    {
+      "event": "PostInvocation",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "initialNumSteps": 7,
+      "invocationNum": 0
+    },
+    {
+      "event": "Stop",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "error": "",
+      "executionNum": 0,
+      "fullyIdle": true,
+      "terminationReason": "NO_TOOL_CALL"
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "initialNumSteps": 9,
+      "invocationNum": 0
+    },
+    {
+      "event": "SessionStart",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2"
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "initialNumSteps": 1,
+      "invocationNum": 0
+    },
+    {
+      "event": "PostToolUse",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "error": "",
+      "stepIdx": 2
+    },
+    {
+      "event": "PostInvocation",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "initialNumSteps": 1,
+      "invocationNum": 0
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "initialNumSteps": 3,
+      "invocationNum": 1
+    },
+    {
+      "event": "PostToolUse",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "error": "",
+      "stepIdx": 4
+    },
+    {
+      "event": "PostInvocation",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "initialNumSteps": 3,
+      "invocationNum": 1
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "initialNumSteps": 5,
+      "invocationNum": 2
+    },
+    {
+      "event": "PostInvocation",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "initialNumSteps": 5,
+      "invocationNum": 2
+    },
+    {
+      "event": "Stop",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "error": "",
+      "executionNum": 0,
+      "fullyIdle": true,
+      "terminationReason": "NO_TOOL_CALL"
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "initialNumSteps": 7,
+      "invocationNum": 0
+    },
+    {
+      "event": "PostInvocation",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "initialNumSteps": 7,
+      "invocationNum": 0
+    },
+    {
+      "event": "Stop",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "error": "",
+      "executionNum": 0,
+      "fullyIdle": true,
+      "terminationReason": "NO_TOOL_CALL"
+    },
+    {
+      "event": "PreInvocation",
+      "conversationId": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "initialNumSteps": 9,
+      "invocationNum": 0
+    }
+  ],
+  "native_tool_results_without_pretool_handler": [
+    {
+      "session_id": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "command": "cmd /c exit 0",
+      "status": "completed",
+      "exit_code": 0
+    },
+    {
+      "session_id": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "command": "cmd /c exit 7",
+      "status": "completed",
+      "exit_code": 1
+    }
+  ],
+  "cancellations": [
+    {
+      "session_id": "8d2b4a47-3440-4933-88bb-bcc461b3e4cb",
+      "acp_stop_reason": "cancelled",
+      "stop_hook_observed": false,
+      "post_response_observation_seconds": 0
+    },
+    {
+      "session_id": "e201342c-823d-4eb8-bc12-440c43964ed2",
+      "acp_stop_reason": "cancelled",
+      "stop_hook_observed": false,
+      "post_response_observation_seconds": 3
+    }
+  ],
+  "observations": [
+    "CLI resume kept conversationId; invocationNum and executionNum restarted from zero.",
+    "The first PreInvocation had invocationNum=0 and a new initialNumSteps position for each observed user turn.",
+    "Later invocations incremented invocationNum and changed initialNumSteps within the same user turn.",
+    "A PreToolUse recorder returning {} prevented tool execution and no permission request or PostToolUse followed. Removing that handler restored native approvals and tool execution.",
+    "Both successful and nonzero shell commands had PostToolUse error set to an empty string; native ACP rawOutput independently distinguished exit codes 0 and 1.",
+    "No approval hook event exists in the documented six-event surface.",
+    "Two real ACP cancellations returned cancelled without any Stop hook. The second process remained alive three seconds after the response.",
+    "Only NO_TOOL_CALL was observed as a Stop terminationReason. Other documented reasons remain contract-only, not live-validated."
+  ],
+  "redaction": "User and temporary probe path prefixes replaced with D:/validation paths. No credentials, transcript contents, or model reasoning are included."
+}
