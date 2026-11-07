@@ -58,10 +58,11 @@ has `applied: false` and an error; the previous reported setting remains separat
 The latest settings outcome survives eviction from the bounded general delivery
 history. Rapid unsent requests coalesce to the latest target.
 
-The host starts with target 100, retains the target for its process lifetime,
-and restores it on reconnect. A host restart resets it to 100; disk and device
-NVS persistence are not added. The firmware also initializes at 100 before host
-synchronization. Update both host and firmware: discovery requires the new
+On first use the host starts with target 100. The Rust host persists accepted
+targets, including zero, in SQLite and restores them on restart and reconnect.
+Device Applied feedback is obtained again after each connection. The firmware
+initializes at 100 before host synchronization; device NVS persistence is not
+added. Update both host and firmware: discovery requires the new
 `Hello.brightness_control` capability.
 
 ## Device behavior
@@ -91,6 +92,9 @@ when enabled, only content still selected for display can receive presentation
 feedback. A notification that never becomes visible can expire without Presented.
 
 ## Verification
+
+The historical Python checks below precede the Rust replacement. Current
+restart and correlated-feedback tests are recorded in [Rust host validation](rust-host-validation.md).
 
 - 52 Python tests passed, including strict API validation, offline zero, request
   coalescing, mismatched/absent feedback, application failure, retry identity,

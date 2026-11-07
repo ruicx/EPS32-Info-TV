@@ -1,8 +1,9 @@
-"""Generate or verify the checked-in Python and Nanopb device bindings.
+"""Generate or verify the checked-in Nanopb firmware bindings.
 
 Notes
 -----
-Run with ``uv run --project host python scripts/generate_protocol.py``.
+Run with ``uv run --project scripts --locked python scripts/generate_protocol.py``.
+Rust bindings are generated independently by ``host-rust/build.rs``.
 The generator never downloads or modifies third-party runtime sources.
 """
 
@@ -24,7 +25,7 @@ def main() -> None:
     RuntimeError
         If Nanopb is unavailable or generated files are outdated.
     subprocess.CalledProcessError
-        If either compiler fails.
+        If the Nanopb generator fails.
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
@@ -32,15 +33,12 @@ def main() -> None:
     root = Path(__file__).resolve().parents[1]
     spec = importlib.util.find_spec("nanopb")
     if spec is None or spec.submodule_search_locations is None:
-        raise RuntimeError("Install the host development dependencies first")
+        raise RuntimeError("Install the scripts development dependencies first")
     generator = Path(next(iter(spec.submodule_search_locations))) / "generator" / "nanopb_generator.py"
     with tempfile.TemporaryDirectory() as directory:
         output = Path(directory)
-        subprocess.run([sys.executable, "-m", "grpc_tools.protoc", f"-I{root / 'protocol'}", f"--python_out={output}", f"--pyi_out={output}", str(root / "protocol/device.proto")], check=True)
         subprocess.run([sys.executable, str(generator), f"-I{root / 'protocol'}", f"-D{output}", str(root / "protocol/device.proto")], check=True)
         targets = {
-            "device_pb2.py": root / "host/src/info_tv_service/device/generated",
-            "device_pb2.pyi": root / "host/src/info_tv_service/device/generated",
             "device.pb.c": root / "firmware/main/protocol/generated",
             "device.pb.h": root / "firmware/main/protocol/generated",
         }

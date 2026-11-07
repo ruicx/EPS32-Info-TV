@@ -17,8 +17,7 @@ Set-Location C:\info-tv
 
 The service selects a single matching USB device and retries while disconnected.
 For several matching devices, set `serial_port` in `info-tv.yaml` or pass
-`serve --serial-port COM6`. A running Python host must be stopped before the Rust
-host can use the same HTTP port or display.
+`serve --serial-port COM6`. Run one host instance per HTTP port and display.
 
 From a second PowerShell window:
 

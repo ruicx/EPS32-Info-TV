@@ -1,14 +1,18 @@
 # Host YAML configuration reference
 
-The host reads one explicitly selected UTF-8 YAML file. From the repository root:
+The host reads one UTF-8 YAML file, selected explicitly or discovered in the
+current working directory. From the repository root:
 
 ```powershell
-uv run --project host info-tv serve --config host/config.example.yaml
+cargo run --manifest-path host-rust/Cargo.toml --locked -- serve --config host-rust/info-tv.example.yaml
 ```
 
-Copy [the example configuration](../host/config.example.yaml) for local use.
+Copy [the example configuration](../host-rust/info-tv.example.yaml) for local use.
+Its weather mapping is commented out; uncomment and edit it to enable retrieval.
 Settings are read once at startup; restart the service after editing the file.
-There is no automatic search for a configuration file.
+Without `--config`, `serve` and `ports` look for `info-tv.yaml` in the current
+working directory. A missing default file uses built-in defaults. An explicit
+missing file or an invalid selected file is an error.
 
 ## Complete example
 
@@ -59,7 +63,7 @@ an explicit `serial_port` if several devices match.
 Inspect candidates using the same file, without opening a serial connection:
 
 ```powershell
-uv run --project host info-tv ports --config host/config.example.yaml
+cargo run --manifest-path host-rust/Cargo.toml --locked -- ports --config host-rust/info-tv.example.yaml
 ```
 
 ### Completed-task retention
@@ -68,8 +72,9 @@ Retention starts at the first completed update for the current execution.
 Repeated completed updates do not extend the timer. Cleanup runs once per
 second, so removal can occur shortly after the configured interval.
 `running`, `waiting_input`, and `failed` tasks remain until manually closed or
-replaced by a later execution. Task state is held in memory and is not persisted
-across host restarts. See [task lifecycle](host-lifecycle-weather.md#task-lifecycle)
+replaced by a later execution. Accepted task state and original expiry times
+are persisted in SQLite and restored after host restarts; downtime counts toward
+retention. See [task lifecycle](host-lifecycle-weather.md#task-lifecycle)
 for closure and later-execution behavior.
 
 ## Weather fields
@@ -117,7 +122,7 @@ Precedence is: explicit server CLI options, then YAML, then built-in defaults.
 The server exposes `--serial-port` and `--http-port` overrides:
 
 ```powershell
-uv run --project host info-tv serve --config host/config.example.yaml --serial-port COM9 --http-port 9876
+cargo run --manifest-path host-rust/Cargo.toml --locked -- serve --config host-rust/info-tv.example.yaml --serial-port COM9 --http-port 9876
 ```
 
 This keeps the file's weather and USB settings but uses COM9 and HTTP port 9876.

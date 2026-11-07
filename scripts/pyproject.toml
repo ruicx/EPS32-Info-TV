@@ -1,0 +1,27 @@
+[project]
+name = "info-tv-dev-tools"
+version = "0.1.0"
+description = "Firmware protocol generation and Python development tools"
+requires-python = ">=3.12"
+dependencies = [
+    "grpcio-tools>=1.73,<1.78",
+    "nanopb==0.4.9.1",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11",
+    "ty",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ty.environment]
+python-version = "3.12"

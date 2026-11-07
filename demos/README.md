@@ -10,7 +10,7 @@ These scripts are not pytest/CTest cases and are not run by automated test disco
 2. Start the host service if it is not already running:
 
    ```powershell
-   uv run --project host info-tv --serial-port COM6
+   cargo run --manifest-path host-rust/Cargo.toml --locked -- serve --serial-port COM6
    ```
 
    Replace COM6 with the current device port. Use one host instance per device.
@@ -18,12 +18,13 @@ These scripts are not pytest/CTest cases and are not run by automated test disco
 3. Check `http://127.0.0.1:8765/v1/device` for `"state": "online"` before starting
    a demo. Offline HTTP acceptance alone does not produce a visible notification.
 
-Run all commands from the repository root.
+Run all commands from the repository root. The demo scripts need Python 3.12+
+only and use its standard library; they do not require installing a host package.
 
 ## Task Progress and Completion
 
 ```powershell
-uv run --project host python demos/demo_task.py
+python demos/demo_task.py
 ```
 
 The screen shows `Building firmware` progressing from 0% to 100% in ten seconds.
@@ -35,7 +36,7 @@ and `/v1/device`.
 To use a different local service port:
 
 ```powershell
-uv run --project host python demos/demo_task.py --url http://127.0.0.1:8766
+python demos/demo_task.py --url http://127.0.0.1:8766
 ```
 
 Each run creates a new task identity. Existing tasks remain visible and rotate
@@ -53,7 +54,7 @@ Use the updated host and firmware, and start with an empty host store (the demo
 adds five of its eight available cards):
 
 ```powershell
-uv run --project host python demos/demo_conversations.py
+python demos/demo_conversations.py
 ```
 
 This submits five simulated Codex/agy conversations, not real agent-client hooks.
@@ -61,4 +62,5 @@ Two important notices show first, followed by five compact rows on one page.
 The examples select preset task icons and include unknown, zero, and nonzero
 progress. Waiting/failed conversations sort first. Ordinary progress does not restart
 the six-second page timer. Repeat runs create new conversation identities, so
-close the current demo cards (or restart the host) before repeating it.
+close the current demo cards before repeating it. Restarting the host restores
+persisted cards and does not clear the store.

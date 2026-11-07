@@ -6,7 +6,10 @@ Updated: 2026-11-03
 
 For the later task-retirement, manual-closure, YAML configuration, and automatic
 weather implementation, see [Host lifecycle and weather](host-lifecycle-weather.md).
-The original demo defaults and physical validation below describe the baseline.
+The original demo defaults and physical validation below describe the historical
+Python baseline, whose sources now live in Git history. The production host is
+Rust under `host-rust/`; see the [current design](rust-host-design.md) and
+[host guide](../host-rust/README.md) for current source layout and commands.
 
 ## 1. Scope and Ownership
 

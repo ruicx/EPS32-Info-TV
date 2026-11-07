@@ -1,15 +1,15 @@
 # Host command-line interface
 
 The `info-tv` command starts the service or calls the same HTTP API as producers.
-It is available after installing the host package. From this repository, prefix
-each command with `uv run --project host`. `python -m info_tv_service` exposes the
-same interface. No additional dependencies are required.
+Use the extracted Rust executable. From this repository, prefix each command
+with `cargo run --manifest-path host-rust/Cargo.toml --locked --` and omit the
+`info-tv` command name. No Python environment is required.
 
 ## Start and connect
 
 ```powershell
 info-tv serve
-info-tv serve --config host/config.example.yaml
+info-tv serve --config host-rust/info-tv.example.yaml
 info-tv serve --serial-port COM6 --http-port 8765
 ```
 
@@ -24,7 +24,7 @@ opening any serial handle:
 
 ```powershell
 info-tv ports
-info-tv ports --config host/config.example.yaml
+info-tv ports --config host-rust/info-tv.example.yaml
 info-tv serve --serial-port auto
 ```
 
@@ -42,7 +42,8 @@ usb_pid: 0x1001
 Both IDs are unsigned 16-bit integers (0..65535). YAML accepts hexadecimal
 integers with a `0x` prefix or decimal integers; do not quote these values.
 Omitted IDs retain the defaults. `ports --config ...` uses the same YAML filter
-as `serve --config ...`; plain `ports` uses the defaults. Explicit serial paths
+as `serve --config ...`; plain `ports` discovers `info-tv.yaml` in the current
+working directory and otherwise uses built-in defaults. Explicit serial paths
 bypass USB filtering.
 
 This ID is shared by other ESP32 devices and does not prove that info_tv
@@ -148,6 +149,7 @@ response, including validation details. Schema validation remains authoritative
 in the service. Exit code 0 does not guarantee a task update was newly applied:
 inspect `outcome` for duplicate, stale, or closed submissions.
 
-CLI regression tests use the real FastAPI routes with an offline device
-transport, plus simulated network failures. They do not validate physical display
-behavior or occupy a serial port.
+Rust regression tests exercise the real CLI executable, Axum routes, durable
+restart recovery, and offline hook retries. The native bridge covers the C++
+protocol/presentation core separately; it does not validate physical display
+behavior. See [Rust host validation](rust-host-validation.md).

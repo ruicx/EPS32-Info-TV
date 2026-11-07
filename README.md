@@ -11,7 +11,7 @@ overview restoration, and powered serial reconnection passed. See the
 
 ## Rust host
 
-The replacement host is implemented in Rust under `host-rust/`, with durable
+The host is implemented in Rust under `host-rust/`, with durable
 task/brightness recovery and optional per-user login startup. See the
 [Rust host guide](host-rust/README.md) and
 [architecture and migration design](docs/rust-host-design.md).
@@ -30,15 +30,14 @@ Copy `host-rust/info-tv.example.yaml` for a starting configuration.
 
 Build the Windows binary archive with `scripts/build_rust_release.ps1`; output is
 under `build/rust-host-dist`. Extracted executables need no Python installation.
-The script does not publish a GitHub release. Existing firmware flashing tools
-and the Python reference implementation remain available below. Stop a running
-Python host before using the same HTTP port or serial device with Rust.
+The script does not publish a GitHub release. The Python host has been removed;
+its implementation remains in Git history. Python is only needed for development
+tools, optional demos, or the separate firmware flashing tool.
 
 ## User guide: install from a Release on Windows
 
-This section describes the legacy Python host assets and firmware flashing.
-For the Rust host, use the guide above; existing published assets are not
-automatically replaced by a source change.
+Source changes do not automatically publish release assets. Use a release that
+contains the Rust host archive and matching firmware described below.
 
 Follow this section if you want to use the display without building the project.
 You need the supported **ESP32-S3 board with 16 MB Flash and a 240 × 240 ST7789
@@ -55,32 +54,19 @@ project.
 
 ### 1. Download the host and complete firmware
 
-Install [Python for Windows](https://www.python.org/downloads/windows/), version
-**3.12 or newer**, including pip and the `py` launcher. Open a new PowerShell
-window and check the version, then create the download directory:
-
-```powershell
-py -3 --version
-New-Item -ItemType Directory -Force C:\info-tv\downloads | Out-Null
-```
-
-Open [Releases](https://github.com/ruicx/EPS32-Info-TV/releases) and expand the
+Open [Releases](https://github.com/ruicx/ESP32-Info-TV/releases) and expand the
 chosen release's **Assets**. Download both assets from the **same release**:
 
-- The host wheel, named `info_tv_service-<version>-py3-none-any.whl`. Save it in
-  `C:\info-tv\downloads`; keep only the chosen version's wheel in this directory.
-- The complete firmware archive for the supported ESP32-S3 display. Extract it
-  so the files have the layout below. The archive name can vary by release.
-
-The GitHub **Source code** archives are for developers. A complete firmware
-download must provide all four files below; `info_tv.bin` alone is insufficient
-for first-time installation. If those assets are not attached to a release,
-that release is not ready for this installation path.
+- The Rust host archive, such as `info-tv-<version>-x86_64-pc-windows-msvc.zip`.
+  Extract its executables, `info-tv.yaml`, and README directly into `C:\info-tv`.
+- The complete firmware archive for the supported board. Extract it under
+  `C:\info-tv\firmware` with the layout below.
 
 ```text
 C:\info-tv\
-  downloads\
-    info_tv_service-<version>-py3-none-any.whl
+  info-tv.exe
+  info-tv-hook.exe
+  info-tv.yaml
   firmware\
     flash_args
     info_tv.bin
@@ -90,32 +76,31 @@ C:\info-tv\
       partition-table.bin
 ```
 
-`<version>` represents the version in your downloaded filename; do not rename
-the wheel. After extraction, `flash_args` must be directly inside
-`C:\info-tv\firmware`, rather than inside another versioned subdirectory.
+The GitHub **Source code** archives are for developers. `info_tv.bin` alone is
+insufficient for first-time flashing. If these assets are absent, that release
+is not ready for this installation path. Building the host from source does not
+require installing the removed Python host.
 
-### 2. Install the host and flashing tool
+### 2. Check the host and install the optional flashing tool
 
-Create a Python environment dedicated to info_tv, then install the downloaded
-wheel and esptool. An internet connection is needed to install dependencies;
-the first installation can take several minutes.
+The host executables run directly without Python:
 
 ```powershell
-py -3 -m venv C:\info-tv\venv
-C:\info-tv\venv\Scripts\python.exe -m pip install --upgrade pip
-$wheel = Get-ChildItem C:\info-tv\downloads -Filter 'info_tv_service-*.whl'
-C:\info-tv\venv\Scripts\python.exe -m pip install $wheel.FullName
-C:\info-tv\venv\Scripts\python.exe -m pip install "esptool>=5,<6"
-C:\info-tv\venv\Scripts\info-tv.exe --help
-C:\info-tv\venv\Scripts\info-tv-hook.exe --help
+C:\info-tv\info-tv.exe --help
+C:\info-tv\info-tv-hook.exe --help
 ```
 
-The last two commands should show help, including `serve` and the hook sources
-`codex`, `agy`, and `zcode`. These commands use full executable paths, so you do
-not need to activate the environment or change PowerShell's execution policy. See the
-[Python environment reference](https://docs.python.org/3/library/venv.html) and
-[esptool installation guide](https://docs.espressif.com/projects/esptool/en/latest/esp32s3/installation.html)
-for installation problems.
+If compatible firmware is already installed, continue to step 4. To flash it
+yourself, install [Python for Windows](https://www.python.org/downloads/windows/)
+with pip and the `py` launcher, then create a separate flashing environment:
+
+```powershell
+py -3 -m venv C:\info-tv\flash-tools
+C:\info-tv\flash-tools\Scripts\python.exe -m pip install "esptool>=5,<6"
+```
+
+See the [esptool installation guide](https://docs.espressif.com/projects/esptool/en/latest/esp32s3/installation.html).
+The flashing environment is independent of the running host.
 
 ### 3. Flash the display
 
@@ -127,7 +112,7 @@ serial port.
 Connect the board by USB, then list ports:
 
 ```powershell
-C:\info-tv\venv\Scripts\info-tv.exe ports
+C:\info-tv\info-tv.exe ports
 ```
 
 Find the board's `COM` port in the output or Windows **Device Manager > Ports
@@ -136,7 +121,7 @@ belongs to it. The verified board uses USB VID/PID `303A:1001`. **Replace `COM6`
 below with your board's actual port.** First check its chip/Flash identity:
 
 ```powershell
-C:\info-tv\venv\Scripts\python.exe -m esptool --chip esp32s3 --port COM6 flash-id
+C:\info-tv\flash-tools\Scripts\python.exe -m esptool --chip esp32s3 --port COM6 flash-id
 ```
 
 Check that it is the intended ESP32-S3 with 16 MB Flash. Then change to the
@@ -145,7 +130,7 @@ manifest:
 
 ```powershell
 Set-Location C:\info-tv\firmware
-C:\info-tv\venv\Scripts\python.exe -m esptool --chip esp32s3 --port COM6 --baud 460800 write-flash "@flash_args"
+C:\info-tv\flash-tools\Scripts\python.exe -m esptool --chip esp32s3 --port COM6 --baud 460800 write-flash "@flash_args"
 ```
 
 Keep the quotes around `"@flash_args"` in PowerShell. For the current board
@@ -167,7 +152,8 @@ and retry. Otherwise use the board vendor's download-mode instructions. See
 Start the service in a PowerShell window:
 
 ```powershell
-C:\info-tv\venv\Scripts\info-tv.exe serve
+Set-Location C:\info-tv
+.\info-tv.exe serve
 ```
 
 Leave this window open. The host automatically selects a single matching USB
@@ -175,13 +161,13 @@ device and reconnects after disconnects. If several devices match, stop it with
 **Ctrl+C** and start it with an explicit port instead:
 
 ```powershell
-C:\info-tv\venv\Scripts\info-tv.exe serve --serial-port COM6
+C:\info-tv\info-tv.exe serve --serial-port COM6
 ```
 
 Open a **second PowerShell window** to check the running service:
 
 ```powershell
-C:\info-tv\venv\Scripts\info-tv.exe status
+C:\info-tv\info-tv.exe status
 ```
 
 Look for `"state": "online"`. The local API is available at
@@ -193,21 +179,26 @@ Before configuring an agent, send a test card from this second window:
 
 ```powershell
 $testRun = [guid]::NewGuid().ToString()
-C:\info-tv\venv\Scripts\info-tv.exe task submit --task-id $testRun --sequence 1 --state running --title "Hello info_tv"
-C:\info-tv\venv\Scripts\info-tv.exe task submit --task-id $testRun --sequence 2 --state completed --title "Hello info_tv"
-C:\info-tv\venv\Scripts\info-tv.exe task list
+C:\info-tv\info-tv.exe task submit --task-id $testRun --sequence 1 --state running --title "Hello info_tv"
+C:\info-tv\info-tv.exe task submit --task-id $testRun --sequence 2 --state completed --title "Hello info_tv"
+C:\info-tv\info-tv.exe task list
 ```
 
 The screen should show the card and a completion notice. In `task list`,
 `delivery.accepted: true` means the firmware accepted the card;
-`delivery.presented: true` confirms presentation feedback. There is no automatic
-Windows service installation: start `serve` again after restarting your PC.
-Stop it with Ctrl+C before updating the package or flashing firmware.
+`delivery.presented: true` confirms presentation feedback. For optional startup
+after login, run the following command; see the [host guide](host-rust/README.md#login-startup).
+
+```powershell
+C:\info-tv\info-tv.exe autostart install --config C:\info-tv\info-tv.yaml
+```
+
+Stop the host before replacing its executables or flashing firmware.
 
 ### 5. Connect agent hooks
 
 A hook is a command the agent runs when an event occurs. It forwards an update
-to the already running host; installing the wheel alone does not configure
+to the already running host; extracting the host archive alone does not configure
 hooks. Configure whichever agents you use. Keep the host running while
 using the agents.
 
@@ -222,22 +213,22 @@ For a new file, paste:
 {
   "hooks": {
     "UserPromptSubmit": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
     ],
     "PreToolUse": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
     ],
     "PermissionRequest": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
     ],
     "PostToolUse": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
     ],
     "Stop": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
     ],
     "Interrupt": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
     ]
   }
 }
@@ -260,10 +251,10 @@ entry, preserving any existing entries:
 {
   "info-tv": {
     "PreInvocation": [
-      {"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe agy PreInvocation", "timeout": 3}
+      {"type": "command", "command": "C:/info-tv/info-tv-hook.exe agy PreInvocation", "timeout": 3}
     ],
     "Stop": [
-      {"type": "command", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe agy Stop", "timeout": 3}
+      {"type": "command", "command": "C:/info-tv/info-tv-hook.exe agy Stop", "timeout": 3}
     ]
   }
 }
@@ -290,22 +281,22 @@ differs from Codex and agy.
     "enabled": true,
     "events": {
       "UserPromptSubmit": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
       ],
       "PreToolUse": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
       ],
       "PermissionRequest": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
       ],
       "PostToolUse": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
       ],
       "PostToolUseFailure": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
       ],
       "Stop": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/venv/Scripts/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
       ]
     }
   }
@@ -319,7 +310,7 @@ says project-level hooks do not execute. See the
 [adapter details and native limitations](docs/zcode-hooks.md).
 
 Send a new prompt such as `Reply exactly HOOKS_OK; do not use tools.` in your
-configured agent, then run `C:\info-tv\venv\Scripts\info-tv.exe task list`.
+configured agent, then run `C:\info-tv\info-tv.exe task list`.
 Expect a card with source `codex`, `agy`, or `zcode`; a quick response may already
 show `completed`. Each conversation keeps one card across turns, and independent
 conversations get separate cards. Completed means the turn ended, not that a
@@ -335,16 +326,16 @@ Start the host, connect the display, then use your configured agent normally.
 Completed/interrupted cards expire after five minutes by default. For optional
 weather or a fixed serial port, create your own `C:\info-tv\config.yaml` using
 the [configuration reference](docs/host-configuration.md), then start with
-`C:\info-tv\venv\Scripts\info-tv.exe serve --config C:\info-tv\config.yaml`.
+`C:\info-tv\info-tv.exe serve --config C:\info-tv\config.yaml`.
 Weather is disabled until configured.
 
 | Symptom | What to check |
 | --- | --- |
-| `py` is not recognized, or Python is older than 3.12 | Install Python with the launcher and pip, then open a new PowerShell window. |
+| `py` is not recognized when flashing | Install Python with the launcher and pip, then open a new PowerShell window. The host itself needs no Python. |
 | Flashing cannot connect | Check the USB data cable and COM number, close the host/serial monitor, and try download mode. Retry at `--baud 115200` if writes are unreliable. |
 | Host stays `offline` | Repeat the port-list command in step 3; use the current COM port if selection is ambiguous, and install matching host/firmware versions. |
 | Host port 8765 is already in use | Close the previous host instance before starting another one. |
-| The screen is dark | Check USB power, then run `C:\info-tv\venv\Scripts\info-tv.exe brightness 50` with the host online. |
+| The screen is dark | Check USB power, then run `C:\info-tv\info-tv.exe brightness 50` with the host online. |
 | Manual test works but agent cards do not appear | Check the absolute hook executable path, JSON filename/syntax, and `/hooks`; trust Codex handlers and restart the agent after editing. |
 | An agy card stays running after cancellation | This is the documented missing native callback; the next turn replaces the run. |
 | ZCode hooks do not fire | Use the user-level config, enable `hooks.enabled`, select the built-in ZCode Agent, and start a new session. |
@@ -354,49 +345,49 @@ If an event was captured while the host was unavailable, the next callback
 retries it. You can also retry explicitly after starting the host:
 
 ```powershell
-C:\info-tv\venv\Scripts\info-tv-hook.exe codex --flush
-C:\info-tv\venv\Scripts\info-tv-hook.exe agy --flush
-C:\info-tv\venv\Scripts\info-tv-hook.exe zcode --flush
+C:\info-tv\info-tv-hook.exe codex --flush
+C:\info-tv\info-tv-hook.exe agy --flush
+C:\info-tv\info-tv-hook.exe zcode --flush
 ```
 
-Hook ledgers live under `%LOCALAPPDATA%\info_tv`; keep them when updating or
-resuming conversations. The host keeps cards in memory, so previously
-acknowledged cards do not automatically return after a host restart; send a new
-prompt to update the display. For an upgrade, stop the host, download a matching
-host/firmware pair, install the new wheel into the same environment, and repeat
-the flash/start steps. Keeping `C:\info-tv\venv` preserves the hook executable
-path.
+Hook ledgers and the default host database live under `%LOCALAPPDATA%\info_tv`;
+keep them when upgrading or resuming conversations. The host restores accepted
+tasks, target brightness, and weather expiry across restarts. Device delivery
+feedback is obtained again, and old pop-up notifications are not replayed.
+To upgrade, stop the host, replace the executables at the same stable paths,
+and follow the matching firmware instructions. Keep your YAML and state files.
 
 ## Repository
 
 | Directory | Responsibility |
 | --- | --- |
-| `host-rust/` | Rust replacement host, SQLite recovery, CLI/hooks, and login startup |
-| `host/` | Python 3.12+, FastAPI reference retained for migration checks and tooling |
+| `host-rust/` | Rust host, SQLite recovery, CLI/hooks, and login startup |
 | `firmware/` | ESP-IDF 6.1, FreeRTOS, C++, LVGL 9.3, ST7789 |
 | `protocol/` | Shared schema, Nanopb bounds, and compatibility vector |
-| `scripts/` | Protocol generation and development operations |
+| `scripts/` | Firmware protocol generation, locked Python development tools, and release packaging |
 | `demos/` | Manual physical-display demonstrations using the production HTTP API |
 | `docs/` | Requirements, hardware evidence, and implementation design |
 
-See [implementation and class design](docs/demo-implementation.md),
+See [current host architecture](docs/rust-host-design.md),
 [device protocol](docs/device-protocol.md), and
 [hardware reference](docs/hardware-reference.md).
 
 ## Run the host from source
 
-The following commands run the Python reference. Rust commands are in the
-[Rust host guide](host-rust/README.md). From the repository root:
+Requires Rust 1.89+ and platform C/C++ build tools for bundled SQLite. From the
+repository root:
 
 ```powershell
-uv sync --project host --locked
-uv run --project host info-tv serve
+cargo run --manifest-path host-rust/Cargo.toml --locked -- serve
 ```
 
-To use YAML configuration with automatic Shanghai weather:
+Copy the example and uncomment its `weather` mapping to enable Shanghai weather
+(or edit the coordinates for your location), then start with that file:
 
 ```powershell
-uv run --project host info-tv --config host/config.example.yaml
+Copy-Item host-rust/info-tv.example.yaml info-tv.yaml
+# Edit info-tv.yaml to enable and configure weather.
+cargo run --manifest-path host-rust/Cargo.toml --locked -- serve --config info-tv.yaml
 ```
 
 See the [YAML field reference](docs/host-configuration.md) for field meanings,
@@ -404,7 +395,7 @@ types, defaults, limits, and configuration precedence.
 
 Serial discovery defaults to `auto`: the host selects a single USB `303A:1001`
 candidate and rescans after disconnects. YAML keys `usb_vid` and `usb_pid` can
-override that USB filter. Use `info-tv ports --config host/config.example.yaml`
+override that USB filter. Use `info-tv ports --config host-rust/info-tv.example.yaml`
 to list candidates using the same configuration;
 with multiple matching devices, select one explicitly with `--serial-port COM6`.
 Other ESP32 devices share this USB ID; the protocol handshake checks compatibility.
@@ -419,11 +410,11 @@ retries an unavailable device while continuing to accept task state.
 The CLI also calls the running host directly:
 
 ```powershell
-uv run --project host info-tv status
-uv run --project host info-tv task submit --task-id build-1 --sequence 1 --state running --title "Build firmware" --progress-percent 20
-uv run --project host info-tv task list
-uv run --project host info-tv weather updater
-uv run --project host info-tv brightness 30
+cargo run --manifest-path host-rust/Cargo.toml --locked -- status
+cargo run --manifest-path host-rust/Cargo.toml --locked -- task submit --task-id build-1 --sequence 1 --state running --title "Build firmware" --progress-percent 20
+cargo run --manifest-path host-rust/Cargo.toml --locked -- task list
+cargo run --manifest-path host-rust/Cargo.toml --locked -- weather updater
+cargo run --manifest-path host-rust/Cargo.toml --locked -- brightness 30
 ```
 
 Use `info-tv serve --config ...` for explicit startup; existing startup commands
@@ -433,7 +424,7 @@ for task closure, retries, weather/alerts, connection options, and exit codes.
 Check `GET /v1/device` for `state: online`. In another terminal:
 
 ```powershell
-uv run --project host python demos/demo_task.py
+python demos/demo_task.py
 ```
 
 The script calls the real `POST /v1/task-events` endpoint. It submits one unique
@@ -501,12 +492,12 @@ modified by selecting a frame, trimming transparency, and resizing. See the
 Device backlight settings are available through `PUT /v1/device/settings` with
 `{"brightness_percent":30}` (integer 0..100; zero turns the backlight off).
 `GET /v1/device/settings` distinguishes the target from device Applied feedback.
-The host retains the target for its process lifetime and restores it on reconnect.
+The host persists the target and restores it on restart and reconnect.
 The brightness revision is built and desktop-tested; the latest flashed firmware
 returned Applied feedback at 100%. Update host
 and firmware together; see [brightness control](docs/brightness-control.md).
 
-Use an activated **ESP-IDF v6.1** environment, separate from the host uv environment:
+Use an activated **ESP-IDF v6.1** environment, separate from the protocol-generation environment:
 
 ```powershell
 idf.py -C firmware build
@@ -533,110 +524,63 @@ in the hardware validation document.
 
 ## Verification
 
-Run Python checks **from `host/`**, so pytest uses that project's configuration:
+Run host checks from the repository root:
 
 ```powershell
-cd host
-uv run pytest
-uv run ruff check --config pyproject.toml . ../scripts ../demos
-uv run ty check . ../scripts ../demos
-uv run python ../scripts/generate_protocol.py --check
+cargo fmt --manifest-path host-rust/Cargo.toml -- --check
+cargo clippy --manifest-path host-rust/Cargo.toml --all-targets --locked -- -D warnings
+cargo test --manifest-path host-rust/Cargo.toml --locked
 ```
 
-Native firmware-core tests require CMake and a desktop C/C++ compiler, not an ESP32.
-Run these commands from the repository root:
+Native firmware-core tests require CMake and a desktop C/C++ compiler:
 
 ```powershell
 cmake -S firmware/tests -B build/native-tests
 cmake --build build/native-tests --config Debug
-ctest --test-dir build/native-tests -C Debug --show-only
 ctest --test-dir build/native-tests -C Debug -LE hardware --output-on-failure
 ```
 
-CTest discovers the registered C++ tests; the current three tests have the
-`unit` label and run entirely on the desktop. `protocol_bridge` is a helper
-executable driven by the Python integration test, not a standalone CTest case.
-After a firmware build has downloaded LVGL, configure native tests with
-`-DINFO_TV_BUILD_UI_TESTS=ON` to add the fourth desktop screen test. It renders
-the real widget layout into portable images. See
-[multi-conversation validation and screenshots](docs/multi-conversation-validation.md).
+Build native tests before running Rust tests to include the HTTP-to-C++ bridge
+integration. `protocol_bridge` is a helper executable, not a CTest case; set
+`INFO_TV_PROTOCOL_BRIDGE` if it is built in a nondefault location. It simulates
+refresh completion and does not test LCD hardware. After an ESP-IDF build has
+downloaded LVGL, configure with `-DINFO_TV_BUILD_UI_TESTS=ON` to include the
+fourth desktop screen test. Physical checks remain separate from desktop tests.
 
-Hardware-dependent C++ cases must use the `hardware` CTest label, and Python
-cases must use `@pytest.mark.hardware`. There are currently no registered
-hardware-dependent cases in either suite; the earlier physical checks used
-the local manual harness described in the validation record.
-
-Pytest registers strict `hardware` and `integration` markers. Its default
-selection excludes `hardware`; the native bridge test is marked `integration`
-and requires a compiled executable, without requiring an ESP32. Useful filters:
+Python development dependencies are isolated under `scripts/` and are not
+installed with the host. To generate/check the committed Nanopb firmware bindings:
 
 ```powershell
-# From the repository root: discover/run C++ cases without hardware.
-ctest --test-dir build/native-tests -C Debug -N -LE hardware
-ctest --test-dir build/native-tests -C Debug -LE hardware --output-on-failure
-
-# From host/: run the desktop integration test.
-uv run pytest -m "integration and not hardware"
-
-# Explicit opt-in, when physical-device cases have been added.
-uv run pytest -m hardware
-# From the repository root:
-ctest --test-dir build/native-tests -C Debug -L hardware --output-on-failure
+uv sync --project scripts --locked
+uv run --project scripts --locked python scripts/generate_protocol.py --check
+uv run --project scripts --locked ruff check --config scripts/pyproject.toml scripts demos
+uv run --project scripts --locked ty check --project scripts scripts demos
 ```
 
-On Windows with multiple Visual Studio installations, configure with
-`-G "Visual Studio 17 2022" -A x64`. The resulting `protocol_bridge` executable
-enables an additional Python test connecting the real HTTP service to the real
-C++ codec and presentation core. The bridge simulates refresh completion;
-it does not test LCD hardware. Set `INFO_TV_PROTOCOL_BRIDGE` if your generator
-places the executable elsewhere.
-
-Regenerate bindings after schema changes, from the repository root:
-
-```powershell
-uv run --project host python scripts/generate_protocol.py
-```
+Omit `--check` to regenerate after schema changes. Cargo generates Rust bindings
+from the same schema during builds. See [development tools](scripts/README.md).
+The language-independent compatibility fixtures in `host-rust/tests/fixtures`
+remain usable without the removed Python service.
 
 ## Package the host
 
-For the Rust binary archive, run `scripts/build_rust_release.ps1`; see the
-[Rust host guide](host-rust/README.md). The following instructions retain the
-Python distribution path.
-
-For a Python user-facing Release, attach the host wheel and a complete firmware archive
-from the same revision. The firmware archive must preserve the build directory's
-`flash_args`, `bootloader/bootloader.bin`, `partition_table/partition-table.bin`,
-and `info_tv.bin` layout used by the [Release user guide](#user-guide-install-from-a-release-on-windows).
-Do not publish only the application image for first-time installs. Release
-automation is not currently provided in this repository; these files must be
-assembled and attached when publishing.
-
 ```powershell
-uv build host --out-dir build/host-dist
+powershell -NoProfile -File scripts/build_rust_release.ps1
 ```
 
-The package version is generated by `hatch-vcs` from repository Git tags (for
-example `v0.1.0`), with development versions between releases. The generated
-`host/src/info_tv_service/_version.py` is included in distributions and ignored
-by Git and code checks. Builds without Git metadata or retained package metadata
-fall back to `0.0.0`. Source distributions retain their version when rebuilt into
-wheels. Ruff and ty settings live in `host/pyproject.toml`; generated protocol
-bindings are excluded from checks. Ruff formatting is available explicitly with
-`uv run ruff format` from `host/`; keep formatting changes scoped.
+The Windows archive is written under `build/rust-host-dist`; its version comes
+from `host-rust/Cargo.toml`. See the [host guide](host-rust/README.md). The script
+builds both executables with the static MSVC runtime and does not publish them.
 
-Python 3.12 is the default development interpreter in `host/.python-version`,
-while package metadata permits Python 3.12 and newer. Select another interpreter
-explicitly with `uv run --project host --python 3.14 ...`. Ruff and ty target the
-minimum supported Python version. Ordinary dependency declarations specify lower
-bounds; `uv.lock` fixes the reproducible installation. Protocol compiler/runtime
-constraints remain narrower to match the checked-in bindings and vendored Nanopb
-runtime; update and verify those together when upgrading protocol tooling.
+For a user-facing Release, attach the host archive and complete firmware from
+the same revision. Preserve `flash_args`, `bootloader/bootloader.bin`,
+`partition_table/partition-table.bin`, and `info_tv.bin` in the firmware archive.
+These assets must be assembled and attached when publishing.
 
 ## Demo limits
 
-This list describes the Python reference and firmware baseline. Rust persists
-host task/replay state, brightness, and weather validity; Windows login startup
-is available through its `autostart` commands.
+The host persists task/replay state, brightness, and weather validity. Windows
+login startup is available through its `autostart` commands.
 
 - One device, USB only; eight current conversation/task cards. Completed cards
   retire after five minutes by default; other states remain until manually closed.
@@ -645,8 +589,9 @@ is available through its `autostart` commands.
   defaults of 5/10 seconds. Important notices interrupt ordinary notices; an
   interrupted ordinary notice ends. Three-row pages rotate every six seconds.
 - Offline submissions retain task state without accumulating popup history.
-- State is in memory. A USB power loss is a cold boot, not powered offline caching.
+- The host restores persisted state after restart. A USB power loss cold-boots
+  the device; it receives a fresh snapshot when the host reconnects.
 - English system labels; the bundled LVGL CJK font supports a limited character
   subset, not arbitrary Chinese. Full Chinese font coverage, automatic calendar
-  producers, additional character actions, touch, Wi-Fi, BLE, and OS service registration remain
-  future work. Closed-task protection retains 256 retired identities in memory.
+  producers, additional character actions, touch, Wi-Fi, BLE, and operation before login remain
+  future work. Closed-task protection retains 256 persisted retired identities.

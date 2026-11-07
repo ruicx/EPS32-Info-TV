@@ -75,7 +75,6 @@ __pycache__/
 .ruff_cache/
 dist/
 *.egg-info/
-host/src/info_tv_service/_version.py
 managed_components/
 sdkconfig
 sdkconfig.old

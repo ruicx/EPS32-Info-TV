@@ -7,21 +7,23 @@ Updated: 2026-11-07
 See the [YAML field reference](host-configuration.md) for a complete table of
 settings, defaults, allowed values, and override rules.
 
-The service accepts an explicitly selected UTF-8 YAML file. Run from the root:
+The service accepts an explicit UTF-8 YAML path or discovers `info-tv.yaml` in
+the working directory. Run from the root:
 
 ```powershell
-uv sync --project host --locked
-uv run --project host info-tv --config host/config.example.yaml
+cargo run --manifest-path host-rust/Cargo.toml --locked -- serve --config info-tv.yaml
 ```
 
-Copy and edit [the example](../host/config.example.yaml) for local use. The
+Copy and edit [the example](../host-rust/info-tv.example.yaml) as `info-tv.yaml`
+for local use; uncomment its weather mapping to enable retrieval. The
 default `serial_port: auto` selects a single USB candidate using `usb_vid` and
 `usb_pid` (defaults `303A:1001`); omitting these keys retains those defaults.
-Use `info-tv ports --config host/config.example.yaml` to inspect candidates or set
+Use `info-tv ports --config host-rust/info-tv.example.yaml` to inspect candidates or set
 an explicit port such as COM6. See [serial discovery](host-cli.md#start-and-connect)
 for ambiguity handling, shared USB IDs, and reconnect behavior.
 `--serial-port` and `--http-port` override their YAML values. The original
-`info-tv --serial-port COM6` command remains valid and makes no weather requests.
+`info-tv --serial-port COM6` command remains valid. Weather requests depend on
+the selected configuration, including working-directory discovery.
 Unknown keys, invalid ranges, and malformed YAML fail before resources open.
 Configuration is read at startup; restart the process after editing it.
 
@@ -73,8 +75,9 @@ that window, retries remain duplicates, older updates remain stale, and higher
 sequence updates for a closed run return `outcome: closed` without reviving it.
 A conversation can return with a new `task_id` and greater `run_sequence`; it
 receives a new card identity after retirement. A standalone task needs a new
-task ID. Protection and current task state are in memory, not durable history.
-After retired identities are evicted or the host restarts, that protection ends.
+task ID. Current task state and bounded replay/closure protection are persisted in
+SQLite and restored after a host restart. Protection ends after the relevant
+retired identities are evicted; this is not an unbounded history.
 
 The paired firmware change cancels active and queued notifications related to
 cards missing from the replacement snapshot. Unrelated notices and weather alerts
@@ -111,6 +114,9 @@ replace their result at the next successful refresh. It does not change the
 independent weather-alert API or synthesize warnings from a thunderstorm icon.
 
 ## Verification and Limits
+
+The following results describe the historical Python implementation. Current
+Rust checks and remaining qualification are in [Rust host validation](rust-host-validation.md).
 
 Verification completed on 2026-11-07:
 

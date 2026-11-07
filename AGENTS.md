@@ -2,43 +2,45 @@
 
 ## Project Structure & Module Organization
 
-- `host/src/info_tv_service/`: Python 3.12+ FastAPI service, task state, and USB device communication; tests live in `host/tests/`.
+- `host-rust/`: Rust service, durable task state, USB device communication, CLI, and hooks; integration tests live in `host-rust/tests/`.
 - `firmware/main/`: ESP32-S3 application, board drivers, communication, protocol, and LVGL UI; desktop C++ tests live in `firmware/tests/`.
-- `protocol/`: shared Protobuf schema, Nanopb bounds, and compatibility vectors. Generated bindings are checked into both implementations.
-- `scripts/`: protocol generation; `demos/`: physical-display demonstrations; `docs/`: architecture, hardware references, and validation evidence.
+- `protocol/`: shared Protobuf schema, Nanopb bounds, and compatibility vectors. Firmware bindings are checked in; Cargo generates Rust bindings during builds.
+- `scripts/`: protocol generation, locked Python development tools, and release packaging; `demos/`: standard-library Python HTTP demonstrations; `docs/`: architecture, hardware references, and validation evidence.
 
 ## Build, Test, and Development Commands
 
 Run from the repository root unless stated otherwise:
 
 ```powershell
-uv sync --project host --locked
-uv run --project host info-tv --serial-port COM6
-uv run --project host python demos/demo_task.py
+cargo run --manifest-path host-rust/Cargo.toml --locked -- serve --serial-port COM6
+python demos/demo_task.py
 idf.py -C firmware build
 cmake -S firmware/tests -B build/native-tests
 cmake --build build/native-tests --config Debug
 ctest --test-dir build/native-tests -C Debug -LE hardware --output-on-failure
 ```
 
-These install locked dependencies, launch the host, demonstrate task progress, build firmware, and build/run desktop tests. Replace `COM6` with the enumerated device port. Firmware builds require an activated ESP-IDF v6.1 environment.
+These launch the host, demonstrate task progress, build firmware, and build/run desktop tests. Replace `COM6` with the enumerated device port. Firmware builds require an activated ESP-IDF v6.1 environment.
 
-From `host/`:
+Additional checks from the repository root:
 
 ```powershell
-uv run pytest
-uv run ruff check --config pyproject.toml . ../scripts ../demos
-uv run ty check . ../scripts ../demos
-uv run python ../scripts/generate_protocol.py --check
+cargo fmt --manifest-path host-rust/Cargo.toml -- --check
+cargo clippy --manifest-path host-rust/Cargo.toml --all-targets --locked -- -D warnings
+cargo test --manifest-path host-rust/Cargo.toml --locked
+uv sync --project scripts --locked
+uv run --project scripts --locked ruff check --config scripts/pyproject.toml scripts demos
+uv run --project scripts --locked ty check --project scripts scripts demos
+uv run --project scripts --locked python scripts/generate_protocol.py --check
 ```
 
-After schema changes, regenerate bindings from the root with `uv run --project host python scripts/generate_protocol.py`.
+After schema changes, regenerate firmware bindings with `uv run --project scripts --locked python scripts/generate_protocol.py`. Cargo independently generates Rust bindings from the same schema.
 
 ## Coding Style & Naming Conventions
 
-Use four-space Python indentation, `snake_case` functions, `PascalCase` classes, complete type annotations, and NumPy-style docstrings. Prefer small, pure helpers and explicit dataclasses; avoid global mutable state. Use Ruff for linting and ty for type checking; Ruff formatting is available but keep formatting changes scoped. Generated protocol bindings and the VCS version file are excluded from checks.
+Use four-space Python indentation, `snake_case` functions, `PascalCase` classes, complete type annotations, and NumPy-style docstrings. Prefer small, pure helpers and explicit dataclasses; avoid global mutable state. Use Ruff for linting and ty for type checking; their settings live in `scripts/pyproject.toml`. Keep formatting changes scoped.
 
-Build host distributions with `uv build host --out-dir build/host-dist`. Hatch-vcs derives the package version from repository Git tags; do not edit or commit the generated `_version.py`.
+Use rustfmt and Clippy for Rust, keeping changes consistent with surrounding code. Build Windows host archives with `scripts/build_rust_release.ps1`; the package version comes from `host-rust/Cargo.toml`. No Python host package is built.
 
 For C++, use two-space indentation, Google-style conventions, `camelCase` functions/variables, `PascalCase` classes, and Doxygen comments. Prefer `nullptr`, `override`, and short functions with early returns. Keep changes focused and match surrounding code.
 
@@ -48,7 +50,7 @@ Write all documentation in English. Bilingual README files are the only exceptio
 
 ## Testing Guidelines
 
-Use pytest files named `test_*.py` and native C++ files named `test_*.cpp`, registered through CMake/CTest. Default pytest runs exclude `hardware`; mark physical-device cases explicitly. Use `integration` for cross-component Python tests. Build `protocol_bridge` before bridge integration tests. No coverage threshold is configured; add regression coverage for changed behavior.
+Use Rust integration tests under `host-rust/tests/` and native C++ files named `test_*.cpp`, registered through CMake/CTest. Mark physical-device checks explicitly; native C++ hardware cases use the `hardware` label. Build `protocol_bridge` before Rust bridge integration tests. Retain language-independent compatibility fixtures when removing legacy implementations. No coverage threshold is configured; add regression coverage for changed behavior.
 
 ## Commit & Pull Request Guidelines
 

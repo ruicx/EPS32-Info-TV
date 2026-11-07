@@ -13,8 +13,9 @@ implementation. Resource improvements must be measured rather than assumed.
 
 The following product decisions are confirmed:
 
-- Rust will replace the production Python host. Python remains a migration
-  reference until the replacement passes acceptance checks.
+- Rust is the production host. The Python service and its tests have been
+  removed with user approval; the reference remains in Git history and retained
+  compatibility fixtures. Release qualification remains separately tracked.
 - The host must restore current tasks and target brightness after restart.
 - Automatic startup is required after user login; operation before login is not
   required.
@@ -33,7 +34,7 @@ platform-specific integration separate so other desktop platforms can follow.
 
 ## 2. Existing Contracts and Migration Scope
 
-The Python implementation is the reference for current behavior. Relevant
+The historical Python implementation supplied the migration baseline. Relevant
 contracts and evidence are recorded in:
 
 - [Software architecture](architecture.md).
@@ -46,7 +47,7 @@ contracts and evidence are recorded in:
 Migration includes the service, client CLI, all three hook adapters, automatic
 weather, manual weather and alerts, brightness, serial discovery, reconnect
 synchronization, and delivery feedback. Python may remain a developer dependency
-for existing tests and firmware tooling; installed host users must not need it.
+for firmware tooling and optional HTTP demos; installed host users must not need it.
 
 Preserve the HTTP routes, JSON fields, validation rules, status-code semantics,
 YAML field precedence, UTF-8 byte limits, and Protobuf field numbers. Persistence
@@ -415,7 +416,9 @@ state. Existing hook ledgers require their own compatibility checks.
 
 ## 12. Implementation Decisions
 
-- The package lives in `host-rust/`; the Python host is retained as a reference.
+- The package lives in `host-rust/`. Python service sources, tests, packaging,
+  and bindings have been removed. `scripts/` owns the locked Python development
+  tools for Nanopb generation; Cargo generates Rust bindings independently.
 - Schema version 1 stores the bounded business snapshot as JSON in one SQLite
   row. A dedicated worker commits it with WAL and `synchronous=FULL`; queries
   use coordinator-owned state. This avoids a second normalized business model.

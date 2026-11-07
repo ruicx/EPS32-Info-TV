@@ -38,6 +38,33 @@ ESP-IDF CMake tools because it was not on the shell PATH.
 | Weather | Source age, daily extrema, rounding, WMO mapping, malformed input, and Unicode label validation pass. |
 | Startup launcher | Generated PowerShell parses with paths containing spaces/apostrophes. `autostart status` runs against the real user task registry without installing anything. |
 
+## Python Host Removal
+
+With user approval, the `host/` service, Python tests/bindings, wheel packaging,
+and its dependency project were removed. Historical implementations remain in
+Git history; the 39 hook transition fixtures and embedded API contract remain
+in `host-rust/`. This does not imply completion of the release checks below.
+
+Python development dependencies now live in `scripts/pyproject.toml` and
+`scripts/uv.lock`. A fresh `uv sync --project scripts --locked` installed the
+Nanopb/compiler and Ruff/ty tools without the removed host or its HTTP/serial
+dependencies. From the repository root, these commands passed:
+
+```powershell
+uv run --project scripts --locked python scripts/generate_protocol.py --check
+uv run --project scripts --locked python scripts/generate_protocol.py
+uv run --project scripts --locked ruff check --config scripts/pyproject.toml scripts demos
+uv run --project scripts --locked ty check --project scripts scripts demos
+```
+
+Regeneration left the committed firmware bindings unchanged. Nanopb needed a
+run outside the coding sandbox because its subprocess could not access Python's
+temporary directories inside that sandbox. No generator workaround was added.
+Both standard-library HTTP demos passed their `--help` checks without the Python
+host. All 24 Rust tests (including the C++ bridge), Clippy, rustfmt, and four
+native CTests passed again after removal. The running Rust host remained online
+with fresh weather accepted by the physical device.
+
 ## Windows Distribution
 
 `scripts/build_rust_release.ps1` successfully built both optimized executables
@@ -136,10 +163,15 @@ confirms the native `Stop` path after the initial synthetic smoke notification.
   registered on the user's computer.
 - A clean Windows machine without developer tools still needs a full install/run
   check. Linux/macOS and Windows ARM64 are not qualified by this record.
-- Live provider retrieval, proxy variants, long-running connected workloads, and
-  suspend/resume or wall-clock corrections need additional environment validation.
+- Live Open-Meteo retrieval passed on 2026-11-07 after restarting Rust with the
+  existing Shanghai configuration: the updater reported success, weather was
+  fresh, and the physical device accepted it. Proxy variants, long-running
+  connected workloads, suspend/resume, and wall-clock corrections remain pending.
 - Existing Python in-memory cards are not automatically imported at cutover;
   existing hook ledger compatibility is covered by schema and transition tests.
 
-Retain the Python reference and the historical hardware evidence until these
-checks establish the intended release support level.
+The Python service was subsequently removed with user approval. Its source
+remains in Git history, and the compatibility fixtures, embedded API contract,
+and historical hardware evidence are retained. Removal does not qualify the
+remaining release checks above. Python is now limited to development tooling
+and optional HTTP demos under `scripts/` and `demos/`.

@@ -25,23 +25,24 @@ requires trust before non-managed hooks run. Trust state is not changed by this
 repository setup. After review, send another prompt to test native callbacks.
 
 See [Rust host validation](rust-host-validation.md#physical-device-and-project-hook-follow-up)
-for the physical callback-adapter smoke test and its limits. The Python setup
-below is retained as a reference; it is not needed to run the Rust hooks.
+for native callback delivery and its limits. The setup below uses the same
+Rust adapters in a standalone installation.
 
 ## Install and configure
 
-From the repository root:
+Extract the host archive to a stable path such as `C:\info-tv`, then start it:
 
 ```powershell
-uv sync --project host --locked
-uv run --project host info-tv serve
+C:\info-tv\info-tv.exe serve
 ```
 
+For source builds, see the [host guide](../host-rust/README.md).
+
 `info-tv-hook codex` reads a single UTF-8 JSON callback from stdin. The equivalent
-module entry point is `python -m info_tv_service.hooks codex`.
+consolidated entry point is `info-tv hook codex`.
 
 Add the following handlers to your Codex `hooks.json`. The paths below match
-this Windows checkout; update them if the installation moves. Use the installed
+the installation above; update them if the installation moves. Use the installed
 executable directly so hook invocations do not resolve dependencies or launch
 another service. Merge these handlers with any existing configuration.
 
@@ -49,22 +50,22 @@ another service. Merge these handlers with any existing configuration.
 {
   "hooks": {
     "UserPromptSubmit": [
-      {"hooks": [{"type": "command", "command": "D:/work/ESP32/info_tv/host/.venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
     ],
     "PreToolUse": [
-      {"hooks": [{"type": "command", "command": "D:/work/ESP32/info_tv/host/.venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
     ],
     "PermissionRequest": [
-      {"hooks": [{"type": "command", "command": "D:/work/ESP32/info_tv/host/.venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
     ],
     "PostToolUse": [
-      {"hooks": [{"type": "command", "command": "D:/work/ESP32/info_tv/host/.venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
     ],
     "Stop": [
-      {"hooks": [{"type": "command", "command": "D:/work/ESP32/info_tv/host/.venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
     ],
     "Interrupt": [
-      {"hooks": [{"type": "command", "command": "D:/work/ESP32/info_tv/host/.venv/Scripts/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
     ]
   }
 }
@@ -159,9 +160,9 @@ A flush uses the same short delivery window; a large backlog may need another
 flush or callback. Use the same URL/state options in every configured handler.
 The adapter does not run a background retry process or automatically delete run
 history. Keep the ledger while its conversations can resume; deleting it can
-reuse ordinals that the running host still knows. The host's own task store
-remains in memory: a host restart does not replay already acknowledged cards
-from the adapter. Pending updates can still be retried.
+reuse ordinals that the running host still knows. The Rust host restores its own
+accepted task state from SQLite after restart. Pending adapter updates can still
+be retried; old pop-up notifications are not replayed.
 
 ## First-version limits
 

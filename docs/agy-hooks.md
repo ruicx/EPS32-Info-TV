@@ -7,12 +7,13 @@ use this adapter.
 
 ## Configure
 
-From this checkout:
+Extract the Rust host archive to a stable path such as `C:\info-tv` and start it:
 
 ```powershell
-uv sync --project host --locked
-uv run --project host info-tv serve
+C:\info-tv\info-tv.exe serve
 ```
+
+For source builds, see the [host guide](../host-rust/README.md).
 
 Merge this named entry into the trusted workspace's `.agents/hooks.json`:
 
@@ -22,14 +23,14 @@ Merge this named entry into the trusted workspace's `.agents/hooks.json`:
     "PreInvocation": [
       {
         "type": "command",
-        "command": "D:/work/ESP32/info_tv/host/.venv/Scripts/info-tv-hook.exe agy PreInvocation",
+        "command": "C:/info-tv/info-tv-hook.exe agy PreInvocation",
         "timeout": 3
       }
     ],
     "Stop": [
       {
         "type": "command",
-        "command": "D:/work/ESP32/info_tv/host/.venv/Scripts/info-tv-hook.exe agy Stop",
+        "command": "C:/info-tv/info-tv-hook.exe agy Stop",
         "timeout": 3
       }
     ]
@@ -39,8 +40,8 @@ Merge this named entry into the trusted workspace's `.agents/hooks.json`:
 
 Adjust the executable path if the checkout moves, and quote paths containing
 spaces. Hook commands receive UTF-8 JSON on stdin. The native payload has no
-event-name field, so the event argument is required. The equivalent module
-command is `python -m info_tv_service.hooks agy PreInvocation` or `... agy Stop`.
+event-name field, so the event argument is required. The consolidated commands
+are `info-tv hook agy PreInvocation` and `info-tv hook agy Stop`.
 
 Use `/hooks` to inspect the loaded handlers. Workspace hooks must be discovered
 from the actual trusted workspace, rather than agy's scratch directory. The
@@ -120,8 +121,8 @@ info-tv-hook agy --state-file D:/info_tv-state/agy.sqlite3 --flush
 Use identical URL/state options in both configured handlers. A large backlog
 may need more than one flush. There is no background sender. Keep the ledger
 while conversations may resume: deleting it can reuse ordinals already known
-by the host. The host's task store remains in memory; a host restart does not
-automatically replay previously acknowledged cards.
+by the host. The Rust host restores accepted task state from SQLite after
+restart, obtains new device feedback, and does not replay old pop-up notices.
 
 ## Native limitations
 

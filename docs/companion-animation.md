@@ -91,7 +91,7 @@ frames[0].save('build/native-tests/companion-animation.gif', save_all=True,
     append_images=frames[1:], duration=[int(row['duration_ms']) for row in rows],
     loop=0, disposal=1, optimize=False)
 '@
-uv run --no-project --python host/.venv/Scripts/python.exe --with pillow python -c $export
+uv run --no-project --python 3.12 --with pillow python -c $export
 ```
 
 ## Verification

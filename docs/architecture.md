@@ -4,12 +4,14 @@ Status: Minimal host/firmware USB implementation built, tested, and validated on
 
 Updated: 2026-11-03
 
-The host is being replaced by Rust. The accepted direction and implementation
+The production host is implemented in Rust under `host-rust/`. The accepted direction and implementation
 boundaries are in [Rust host design](rust-host-design.md), including restart
 recovery and per-user login startup. Python/FastAPI choices below describe the
-original implementation and remain useful migration context.
+original implementation, removed from the working tree and retained in Git
+history. This document preserves those historical choices; use the linked Rust
+design and guide for current source layout and commands.
 
-The implemented baseline is described in [Minimal Demo Implementation](demo-implementation.md) and the current [Device Protocol](device-protocol.md). The host is now organized under `host/`: Python core code is portable, with Windows tested first. Earlier references to Windows describe the initial deployment context. Proposed sections below retain the broader product design; the implementation document takes precedence for concrete demo choices.
+The implemented baseline is described in [Minimal Demo Implementation](demo-implementation.md) and the current [Device Protocol](device-protocol.md). That historical host was organized under `host/`, with Windows tested first. Earlier references to Windows describe the initial deployment context. Proposed sections below retain the broader product design; the implementation document takes precedence for concrete demo choices.
 
 [Hardware Validation](hardware-validation.md) records the successful first flash, actual USB/display feedback, user visual confirmation, and powered serial-recovery test.
 
