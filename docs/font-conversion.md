@@ -16,17 +16,10 @@ do not invoke conversion or require Node.js/npm. Font conversion is a separate
 maintenance operation; update the generated C asset alongside generator changes.
 
 Generation requires Python 3.12+ and Node.js/npm; no installed source font is
-needed. To explicitly regenerate from PowerShell at the repository root:
-
-```powershell
-./scripts/firmware/generate_font.ps1
-```
-
-The PowerShell entry point invokes the cross-platform Python standard-library
-script. On Linux, or to use a specific Python interpreter, run:
+needed. To explicitly regenerate at the repository root:
 
 ```bash
-python3 scripts/firmware/generate_font.py
+python scripts/firmware/generate_font.py
 ```
 
 The script downloads the official
@@ -59,10 +52,10 @@ options are documented in the official
 
 To generate a text-oriented comparison outside the production source tree:
 
-```powershell
-./scripts/firmware/generate_font.ps1 `
-    -OutputPath 'build/fonts/font_maple_mono_text_16.c' `
-    -Range '0x20-0x7E,0x2000-0x206F,0x3000-0x30FF,0x4E00-0x9FFF,0xFF00-0xFFEF'
+```bash
+python scripts/firmware/generate_font.py \
+    --output build/fonts/font_maple_mono_text_16.c \
+    --range '0x20-0x7E,0x2000-0x206F,0x3000-0x30FF,0x4E00-0x9FFF,0xFF00-0xFFEF'
 ```
 
 Each requested range must contain at least one supported character. Both assets

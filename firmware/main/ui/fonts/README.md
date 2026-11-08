@@ -13,12 +13,11 @@ and comparison outputs belong under the ignored `build/` directory.
 
 Only font maintainers need to regenerate from the repository root with:
 
-```powershell
-./scripts/firmware/generate_font.ps1
+```bash
+python scripts/firmware/generate_font.py
 ```
 
-The PowerShell wrapper invokes `scripts/firmware/generate_font.py`, which also
-runs directly with Python on Linux. Generation needs Python 3.12+, Node.js/npm,
-and first-run access to GitHub Releases and npm; no installed font is required.
+Generation needs Python 3.12+, Node.js/npm, and first-run access to GitHub Releases
+and npm; no installed font is required.
 See [font conversion and validation](../../../../docs/font-conversion.md)
 for hashes, coverage, memory use, layout constraints, previews, and build checks.

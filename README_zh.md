@@ -381,10 +381,6 @@ uv run --project scripts --locked python scripts/protocol/generate_protocol.py
 若需要重新生成或替换字体资源，可在仓库根目录下执行维护脚本（需要本地安装 Node.js 与 npm）：
 
 ```bash
-# Windows (PowerShell)
-./scripts/firmware/generate_font.ps1
-
-# Linux / 通用 Python 入口
 python scripts/firmware/generate_font.py
 ```
 

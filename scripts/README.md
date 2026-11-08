@@ -15,8 +15,7 @@ scripts/
     build_firmware.sh           # Bash build or build and flash
     build_firmware_release.sh   # Bash merged firmware release binary
     prepare_character.ps1       # Generate character image and C assets
-    generate_font.ps1       # Windows entry point for font generation
-    generate_font.py        # Download and convert the pinned Maple Mono release
+    generate_font.py            # Download and convert the pinned Maple Mono release
   protocol/
     generate_protocol.py    # Generate or verify Nanopb bindings
   pyproject.toml            # Shared Python development environment
@@ -30,8 +29,7 @@ See [font conversion](../docs/font-conversion.md) for Maple Mono NF CN conversio
 measured asset sizes, coverage limits, and firmware integration requirements.
 The generated C font is committed and compiled directly; ordinary firmware and
 desktop UI builds do not require Node.js/npm. Font maintainers can run
-`./scripts/firmware/generate_font.ps1`, or
-`python3 scripts/firmware/generate_font.py` on Linux, to regenerate explicitly.
+`python scripts/firmware/generate_font.py` (or `python3` on Linux) to regenerate explicitly.
 Regeneration requires Python 3.12+, Node.js/npm, and first-run access to GitHub
 Releases and npm; no installed source font is required.
 
