@@ -47,7 +47,7 @@ flowchart LR
     A2 -->|Hooks| H1
     A3 -->|Hooks| H1
     A4 -.->|Hooks| H1
-    H2 -->|USB 串口 (Protobuf)| HW
+    H2 -->|"USB 串口 (Protobuf)"| HW
 ```
 
 ### 效果展示

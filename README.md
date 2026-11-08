@@ -47,7 +47,7 @@ flowchart LR
     A2 -->|Hooks| H1
     A3 -->|Hooks| H1
     A4 -.->|Hooks| H1
-    H2 -->|USB Serial (Protobuf)| HW
+    H2 -->|"USB Serial (Protobuf)"| HW
 ```
 
 ### Visual Showcase
