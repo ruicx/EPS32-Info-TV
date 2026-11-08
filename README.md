@@ -357,7 +357,7 @@ and follow the matching firmware instructions. Keep your YAML and state files.
 | `host/` | Rust host, SQLite recovery, CLI/hooks, and login startup |
 | `firmware/` | ESP-IDF 6.1, FreeRTOS, C++, LVGL 9.3, ST7789 |
 | `protocol/` | Shared schema, Nanopb bounds, and compatibility vector |
-| `scripts/` | Firmware protocol generation, locked Python development tools, and release packaging |
+| `scripts/` | Host and firmware build/release packaging, character and font tools, protocol generation |
 | `demos/` | Manual physical-display demonstrations using the production HTTP API |
 | `docs/` | Requirements, hardware evidence, and implementation design |
 
@@ -365,22 +365,51 @@ See [current host architecture](docs/rust-host-design.md),
 [device protocol](docs/device-protocol.md), and
 [hardware reference](docs/hardware-reference.md).
 
-## Run the host from source
+## Build and run the host from source
 
 Requires Rust 1.89+ and platform C/C++ build tools for bundled SQLite. From the
 repository root:
 
+**Windows (PowerShell)**:
+
 ```powershell
-cargo run --manifest-path host/Cargo.toml --locked -- serve
+# Build Release executable (output under host/target/release/)
+./scripts/host/build_host.ps1
+
+# (Optional) Build Debug executable
+./scripts/host/build_host.ps1 -Debug
+
+# Package release archive (output under build/host-dist/)
+./scripts/host/build_host_release.ps1
 ```
 
-Copy the example and uncomment its `weather` mapping to enable Shanghai weather
-(or edit the coordinates for your location), then start with that file:
+**Linux / macOS (Bash)**:
+
+```bash
+# Build Release executable (output under host/target/release/)
+bash scripts/host/build_host.sh
+
+# (Optional) Build Debug executable
+bash scripts/host/build_host.sh --debug
+
+# Package release archive (output under build/host-dist/)
+bash scripts/host/build_host_release.sh
+```
+
+**Development, debugging, and testing (cross-platform)**:
 
 ```powershell
+# Run the service directly
+cargo run --manifest-path host/Cargo.toml --locked -- serve
+
+# Start with configuration (e.g. enabling weather sync):
 Copy-Item host/info-tv.example.yaml info-tv.yaml
-# Edit info-tv.yaml to enable and configure weather.
 cargo run --manifest-path host/Cargo.toml --locked -- serve --config info-tv.yaml
+
+# Format check, lint, and test suite
+cargo fmt --manifest-path host/Cargo.toml -- --check
+cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnings
+cargo test --manifest-path host/Cargo.toml --locked
 ```
 
 See the [YAML field reference](docs/host-configuration.md) for field meanings,
@@ -490,10 +519,42 @@ The brightness revision is built and desktop-tested; the latest flashed firmware
 returned Applied feedback at 100%. Update host
 and firmware together; see [brightness control](docs/brightness-control.md).
 
-Use an activated **ESP-IDF v6.1** environment, separate from the protocol-generation environment:
+Use an activated **ESP-IDF v6.1** environment, separate from the protocol-generation environment. From the repository root:
+
+**Windows (PowerShell)**:
 
 ```powershell
+# Build firmware (output under firmware/build/)
+./scripts/firmware/build_firmware.ps1
+
+# Build and flash (stop the host first to release serial port, replace COM6 with device port)
+./scripts/firmware/build_firmware.ps1 -Action Flash -Port COM6
+
+# Package merged release binary (output under build/firmware-dist/)
+./scripts/firmware/build_firmware_release.ps1
+```
+
+**Linux (Bash)**:
+
+```bash
+# Build firmware (output under firmware/build/)
+bash scripts/firmware/build_firmware.sh
+
+# Build and flash (replace /dev/ttyACM0 with device port)
+bash scripts/firmware/build_firmware.sh --action flash --port /dev/ttyACM0
+
+# Package merged release binary (output under build/firmware-dist/)
+bash scripts/firmware/build_firmware_release.sh
+```
+
+**Raw ESP-IDF commands (cross-platform)**:
+
+```bash
+# Build firmware (the component manager downloads the locked LVGL version)
 idf.py -C firmware build
+
+# Flash to connected ESP32-S3 (stop the host first)
+idf.py -C firmware -p COM6 flash
 ```
 
 The component manager downloads the locked LVGL version. Nanopb runtime sources
@@ -502,11 +563,7 @@ Flash configuration and does not require PSRAM for this demo.
 
 The output is `firmware/build/info_tv.bin`, together with bootloader and partition
 images. Building does not write the device. When hardware flashing is arranged,
-stop the host first so it releases the serial port, then use:
-
-```powershell
-idf.py -C firmware -p COM6 flash
-```
+stop the host first so it releases the serial port.
 
 Re-enumerate the port afterward and restart the host. Application logs use
 UART0; do not run an IDF USB serial monitor concurrently with the host protocol.
@@ -554,6 +611,26 @@ Omit `--check` to regenerate after schema changes. Cargo generates Rust bindings
 from the same schema during builds. See [development tools](scripts/README.md).
 The language-independent compatibility fixtures in `host/tests/fixtures`
 remain usable without the removed Python service.
+
+### Custom font generation
+
+The firmware integrates the open-source **Maple Mono NF CN Regular v7.9** font at 16 px, 4 bpp. To regenerate or replace font assets (requires Node.js and npm):
+
+```bash
+python scripts/firmware/generate_font.py
+```
+
+The script downloads the official release, verifies its SHA-256 digest, and invokes `lv_font_conv` to generate `firmware/main/ui/fonts/font_maple_mono_16.c`. See [font conversion and validation](docs/font-conversion.md).
+
+### Character animation assets
+
+Companion character animation frames displayed on the screen can be clipped, scaled, and converted to LVGL C sources:
+
+```bash
+uv run --project scripts python scripts/characters/prepare_whale.py
+```
+
+The script automatically downloads upstream sprite sheets, verifies SHA-256 digests, and generates 80 × 84 preview PNGs and C arrays under `firmware/main/ui/assets/`. See [character asset attribution and details](firmware/main/ui/assets/README.md).
 
 ## Package the host
 
