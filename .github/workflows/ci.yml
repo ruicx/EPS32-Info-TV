@@ -1,0 +1,80 @@
+# Continuous-integration checks for pushes and pull requests.
+#
+# Runs the Rust host checks (including the desktop C++ firmware-core tests and
+# the protocol bridge integration), the locked Python tooling checks, and an
+# ESP-IDF firmware build so breakage surfaces before a release tag.
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    name: Host checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host
+      - name: Check formatting
+        run: cargo fmt --manifest-path host/Cargo.toml -- --check
+      - name: Lint
+        run: cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnings
+      - name: Build native firmware-core tests
+        run: |
+          cmake -S firmware/tests -B build/native-tests
+          cmake --build build/native-tests --config Debug
+      - name: Run native tests
+        run: ctest --test-dir build/native-tests -C Debug -LE hardware --output-on-failure
+      - name: Test host
+        run: cargo test --manifest-path host/Cargo.toml --locked
+
+  python:
+    name: Python tooling checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Sync locked environment
+        run: uv sync --project scripts --locked
+      - name: Ruff
+        run: uv run --project scripts --locked ruff check --config scripts/pyproject.toml scripts demos
+      - name: Types
+        run: uv run --project scripts --locked ty check --project scripts scripts demos
+      - name: Protocol bindings
+        run: uv run --project scripts --locked python scripts/protocol/generate_protocol.py --check
+
+  firmware:
+    name: Firmware build
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v6.1
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: firmware-ccache-${{ github.sha }}
+          restore-keys: firmware-ccache-
+      - name: Build firmware
+        env:
+          IDF_CCACHE_ENABLE: '1'
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py -C firmware build

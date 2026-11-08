@@ -1,0 +1,145 @@
+# Build and publish versioned release archives.
+#
+# Pushing a `v*` tag (matching the version in host/Cargo.toml) builds the host
+# archives for all supported targets plus the merged ESP32-S3 firmware image,
+# then publishes them as a GitHub Release. A manual workflow_dispatch run
+# performs the same builds but only uploads workflow artifacts, so the
+# packaging pipeline can be verified without publishing a release.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate tag version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compare tag with host package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          manifest_version="$(grep -m1 '^version = ' host/Cargo.toml | sed 's/^version = "\(.*\)"$/\1/')"
+          echo "Tag version: ${tag_version}"
+          echo "host/Cargo.toml version: ${manifest_version}"
+          if [ "$tag_version" != "$manifest_version" ]; then
+            echo "::error::Tag v${tag_version} does not match host/Cargo.toml version ${manifest_version}." >&2
+            exit 1
+          fi
+
+  host:
+    name: Host ${{ matrix.target }}
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            archive: tar.gz
+            apt: musl-tools
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+            apt: gcc-aarch64-linux-gnu
+            linker-env: CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER
+            linker: aarch64-linux-gnu-gcc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host
+          key: ${{ matrix.target }}
+      - name: Install cross toolchain
+        if: matrix.apt != ''
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.apt }}
+      - name: Configure cross linker
+        if: matrix.linker != ''
+        run: echo "${{ matrix.linker-env }}=${{ matrix.linker }}" >> "$GITHUB_ENV"
+      - name: Package Windows archive
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/host/build_rust_release.ps1 -Target ${{ matrix.target }}
+      - name: Package Linux archive
+        if: runner.os == 'Linux'
+        run: bash scripts/host/build_rust_release.sh --target ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: host-${{ matrix.target }}
+          path: build/rust-host-dist/*.${{ matrix.archive }}
+          if-no-files-found: error
+
+  firmware:
+    name: Firmware (ESP32-S3)
+    needs: validate
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v6.1
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Read package version
+        id: version
+        run: |
+          version="$(grep -m1 '^version = ' host/Cargo.toml | sed 's/^version = "\(.*\)"$/\1/')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: firmware-ccache-${{ github.sha }}
+          restore-keys: firmware-ccache-
+      - name: Build and merge firmware
+        env:
+          IDF_CCACHE_ENABLE: '1'
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py -C firmware build
+          idf.py -C firmware merge-bin -o "info_tv-firmware-${{ steps.version.outputs.version }}-esp32s3.bin"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-esp32s3
+          path: firmware/build/info_tv-firmware-*-esp32s3.bin
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [validate, host, firmware]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum -- * | tee SHA256SUMS.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
