@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build host executables in Release mode unless --debug is specified.
+# Build the host executable in Release mode unless --debug is specified.
 set -euo pipefail
 
 repository="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"

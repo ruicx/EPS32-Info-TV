@@ -20,7 +20,7 @@ use crate::{
     weather::validate_label,
 };
 
-/// Callback command options, also used by the compatibility hook executable.
+/// Callback command options for the hook subcommand.
 #[derive(Debug, Args)]
 pub struct HookArgs {
     #[arg(value_parser = ["codex", "agy", "zcode"])]
@@ -560,7 +560,7 @@ pub fn run(args: HookArgs) {
         flush(&path, &args.source, &args.url, args.timeout)
     };
     if let Err(error) = attempt() {
-        eprintln!("info-tv-hook: {error:#}");
+        eprintln!("info-tv hook: {error:#}");
     }
     println!("{{}}");
 }

@@ -1,6 +1,6 @@
 # Antigravity CLI hook adapter
 
-`info-tv-hook agy` translates native Antigravity CLI callbacks into the common
+`info-tv hook agy` translates native Antigravity CLI callbacks into the common
 `POST /v1/task-events` contract. It is a short-lived hook command; the normal
 `info-tv` service owns USB and device delivery. No ACP wrapper is required to
 use this adapter.
@@ -23,14 +23,14 @@ Merge this named entry into the trusted workspace's `.agents/hooks.json`:
     "PreInvocation": [
       {
         "type": "command",
-        "command": "C:/info-tv/info-tv-hook.exe agy PreInvocation",
+        "command": "C:/info-tv/info-tv.exe hook agy PreInvocation",
         "timeout": 3
       }
     ],
     "Stop": [
       {
         "type": "command",
-        "command": "C:/info-tv/info-tv-hook.exe agy Stop",
+        "command": "C:/info-tv/info-tv.exe hook agy Stop",
         "timeout": 3
       }
     ]
@@ -113,9 +113,9 @@ with a successful exit status. Network failures retain pending events.
 The default host URL is `http://127.0.0.1:8765`. To retry without a new callback:
 
 ```powershell
-info-tv-hook agy --flush
-info-tv-hook agy --url http://127.0.0.1:8766 --flush
-info-tv-hook agy --state-file D:/info_tv-state/agy.sqlite3 --flush
+info-tv hook agy --flush
+info-tv hook agy --url http://127.0.0.1:8766 --flush
+info-tv hook agy --state-file D:/info_tv-state/agy.sqlite3 --flush
 ```
 
 Use identical URL/state options in both configured handlers. A large backlog

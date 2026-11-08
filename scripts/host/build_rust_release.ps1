@@ -2,7 +2,7 @@
 .SYNOPSIS
 Build a Windows Rust host archive with a statically linked MSVC runtime.
 .DESCRIPTION
-Produces info-tv.exe, the compatibility hook executable, configuration, and a
+Produces info-tv.exe, configuration, and a
 quick-start guide. Does not register startup, open serial ports, or publish a release.
 #>
 [CmdletBinding()]
@@ -29,7 +29,6 @@ try {
     New-Item -ItemType Directory -Force $stage | Out-Null
     $binaryDirectory = Join-Path $metadata.target_directory "$Target/release"
     Copy-Item -LiteralPath (Join-Path $binaryDirectory 'info-tv.exe') -Destination $stage
-    Copy-Item -LiteralPath (Join-Path $binaryDirectory 'info-tv-hook.exe') -Destination $stage
     Copy-Item -LiteralPath (Join-Path $repository 'host/info-tv.example.yaml') -Destination (Join-Path $stage 'info-tv.yaml')
     Copy-Item -LiteralPath (Join-Path $repository 'host/README.md') -Destination $stage
     $archive = Join-Path $output "info-tv-$version-$Target.zip"

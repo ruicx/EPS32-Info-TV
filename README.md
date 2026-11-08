@@ -29,7 +29,7 @@ Use `--config <path>` to select YAML. Without it, `serve` and `ports` read
 Copy `host/info-tv.example.yaml` for a starting configuration.
 
 Build the Windows binary archive with `scripts/host/build_rust_release.ps1`; output is
-under `build/rust-host-dist`. Extracted executables need no Python installation.
+under `build/rust-host-dist`. The extracted executable needs no Python installation.
 The script does not publish a GitHub release. The Python host has been removed;
 its implementation remains in Git history. Python is only needed for development
 tools, optional demos, or the separate firmware flashing tool.
@@ -58,14 +58,13 @@ Open [Releases](https://github.com/ruicx/ESP32-Info-TV/releases) and expand the
 chosen release's **Assets**. Download both assets from the **same release**:
 
 - The Rust host archive, such as `info-tv-<version>-x86_64-pc-windows-msvc.zip`.
-  Extract its executables, `info-tv.yaml`, and README directly into `C:\info-tv`.
+  Extract its executable, `info-tv.yaml`, and README directly into `C:\info-tv`.
 - The complete firmware archive for the supported board. Extract it under
   `C:\info-tv\firmware` with the layout below.
 
 ```text
 C:\info-tv\
   info-tv.exe
-  info-tv-hook.exe
   info-tv.yaml
   firmware\
     flash_args
@@ -83,11 +82,11 @@ require installing the removed Python host.
 
 ### 2. Check the host and install the optional flashing tool
 
-The host executables run directly without Python:
+The host executable runs directly without Python:
 
 ```powershell
 C:\info-tv\info-tv.exe --help
-C:\info-tv\info-tv-hook.exe --help
+C:\info-tv\info-tv.exe hook --help
 ```
 
 If compatible firmware is already installed, continue to step 4. To flash it
@@ -193,7 +192,7 @@ after login, run the following command; see the [host guide](host/README.md#logi
 C:\info-tv\info-tv.exe autostart install --config C:\info-tv\info-tv.yaml
 ```
 
-Stop the host before replacing its executables or flashing firmware.
+Stop the host before replacing its executable or flashing firmware.
 
 ### 5. Connect agent hooks
 
@@ -213,22 +212,22 @@ For a new file, paste:
 {
   "hooks": {
     "UserPromptSubmit": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv.exe hook codex", "timeout": 3}]}
     ],
     "PreToolUse": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv.exe hook codex", "timeout": 3}]}
     ],
     "PermissionRequest": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv.exe hook codex", "timeout": 3}]}
     ],
     "PostToolUse": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv.exe hook codex", "timeout": 3}]}
     ],
     "Stop": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv.exe hook codex", "timeout": 3}]}
     ],
     "Interrupt": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv.exe hook codex", "timeout": 3}]}
     ]
   }
 }
@@ -251,10 +250,10 @@ entry, preserving any existing entries:
 {
   "info-tv": {
     "PreInvocation": [
-      {"type": "command", "command": "C:/info-tv/info-tv-hook.exe agy PreInvocation", "timeout": 3}
+      {"type": "command", "command": "C:/info-tv/info-tv.exe hook agy PreInvocation", "timeout": 3}
     ],
     "Stop": [
-      {"type": "command", "command": "C:/info-tv/info-tv-hook.exe agy Stop", "timeout": 3}
+      {"type": "command", "command": "C:/info-tv/info-tv.exe hook agy Stop", "timeout": 3}
     ]
   }
 }
@@ -281,22 +280,22 @@ differs from Codex and agy.
     "enabled": true,
     "events": {
       "UserPromptSubmit": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv.exe", "args": ["hook", "zcode"], "timeoutMs": 3000}]}
       ],
       "PreToolUse": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv.exe", "args": ["hook", "zcode"], "timeoutMs": 3000}]}
       ],
       "PermissionRequest": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv.exe", "args": ["hook", "zcode"], "timeoutMs": 3000}]}
       ],
       "PostToolUse": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv.exe", "args": ["hook", "zcode"], "timeoutMs": 3000}]}
       ],
       "PostToolUseFailure": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv.exe", "args": ["hook", "zcode"], "timeoutMs": 3000}]}
       ],
       "Stop": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv.exe", "args": ["hook", "zcode"], "timeoutMs": 3000}]}
       ]
     }
   }
@@ -345,16 +344,16 @@ If an event was captured while the host was unavailable, the next callback
 retries it. You can also retry explicitly after starting the host:
 
 ```powershell
-C:\info-tv\info-tv-hook.exe codex --flush
-C:\info-tv\info-tv-hook.exe agy --flush
-C:\info-tv\info-tv-hook.exe zcode --flush
+C:\info-tv\info-tv.exe hook codex --flush
+C:\info-tv\info-tv.exe hook agy --flush
+C:\info-tv\info-tv.exe hook zcode --flush
 ```
 
 Hook ledgers and the default host database live under `%LOCALAPPDATA%\info_tv`;
 keep them when upgrading or resuming conversations. The host restores accepted
 tasks, target brightness, and weather expiry across restarts. Device delivery
 feedback is obtained again, and old pop-up notifications are not replayed.
-To upgrade, stop the host, replace the executables at the same stable paths,
+To upgrade, stop the host, replace the executable at the same stable path,
 and follow the matching firmware instructions. Keep your YAML and state files.
 
 ## Repository
@@ -570,7 +569,7 @@ powershell -NoProfile -File scripts/host/build_rust_release.ps1
 
 The Windows archive is written under `build/rust-host-dist`; its version comes
 from `host/Cargo.toml`. See the [host guide](host/README.md). The script
-builds both executables with the static MSVC runtime and does not publish them.
+builds the executable with the static MSVC runtime and does not publish it.
 
 For a user-facing Release, attach the host archive and complete firmware from
 the same revision. Preserve `flash_args`, `bootloader/bootloader.bin`,

@@ -430,9 +430,10 @@ state. Existing hook ledgers require their own compatibility checks.
 - `autostart install/status/remove` manage a limited-privilege Windows logon task.
   Its hidden PowerShell launcher keeps absolute paths and waits for the service.
   Installation is explicit and does not modify startup during a normal launch.
-- Both `info-tv hook <source>` and the `info-tv-hook <source>` compatibility binary
-  use the same adapter code and existing ledger schemas. Source flags and stored
-  event UUIDs remain compatible; executable paths still need to be updated.
+- `info-tv hook <source>` runs the adapters using the existing ledger schemas.
+  Source flags and stored event UUIDs remain compatible. The separate
+  `info-tv-hook` compatibility binary has been removed; configurations must use
+  `info-tv hook <source>`.
 - `/openapi.json` embeds the Python contract and `/docs` presents it through
   Swagger UI. Validation keeps status 422 and a `detail` array; diagnostic messages
   and field-location granularity differ from Pydantic. Domain errors retain their
@@ -443,7 +444,7 @@ state. Existing hook ledgers require their own compatibility checks.
   vendored protoc. Cargo.lock pins dependencies. Reqwest supports SOCKS for
   weather; local clients bypass proxies and automatic redirects.
 - The first packaged release target is Windows x86-64 MSVC. The packaging script
-  links the MSVC runtime statically and bundles both executables and example YAML.
+  links the MSVC runtime statically and bundles the executable and example YAML.
   Publishing, clean-machine qualification, physical USB/display checks, and actual
   logout/login validation must be recorded separately.
 

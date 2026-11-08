@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Package Linux host executables, configuration, and README in a tar.gz archive.
+# Package Linux host executable, configuration, and README in a tar.gz archive.
 set -euo pipefail
 
 script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -43,10 +43,10 @@ output="$repository/build/rust-host-dist"
 mkdir -p -- "$output"
 stage="$(mktemp -d "$output/staging-XXXXXXXX")"
 binary_directory="$target_directory/$target/release"
-cp -- "$binary_directory/info-tv" "$binary_directory/info-tv-hook" "$stage/"
+cp -- "$binary_directory/info-tv" "$stage/"
 cp -- "$repository/host/info-tv.example.yaml" "$stage/info-tv.yaml"
 cp -- "$repository/host/README.md" "$stage/README.md"
 archive="$output/info-tv-$version-$target.tar.gz"
-tar -czf "$archive" -C "$stage" info-tv info-tv-hook info-tv.yaml README.md
+tar -czf "$archive" -C "$stage" info-tv info-tv.yaml README.md
 sha256sum -- "$archive"
 printf 'Archive: %s\n' "$archive"

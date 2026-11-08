@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Build the host executables with Cargo.
+Build the host executable with Cargo.
 .DESCRIPTION
 Requires Rust and the platform's native build tools. Builds Release by default.
 Use -Debug for a debug build, or build_rust_release.ps1 for a Windows archive.

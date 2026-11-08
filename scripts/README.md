@@ -5,7 +5,7 @@ Scripts are grouped by responsibility:
 ```text
 scripts/
   host/
-    build_host.ps1          # Release or Debug host executables
+    build_host.ps1          # Release or Debug host executable
     build_rust_release.ps1  # Windows release archive
     build_host.sh           # Bash host build
     build_rust_release.sh   # Linux tar.gz release archive
@@ -46,7 +46,7 @@ be invoked from any working directory. Examples below run from the repository ro
 ```
 
 Host builds require Rust and native build tools (on Windows, the Visual Studio
-C++ build tools and Windows SDK). Cargo builds both host executables with the
+C++ build tools and Windows SDK). Cargo builds the host executable with the
 locked dependencies; the default output is `host/target/release`, or
 `host/target/debug` with `-Debug`, unless Cargo's target directory is overridden.
 Use `host/build_rust_release.ps1` for a packaged Windows release archive:
@@ -81,7 +81,7 @@ Install Rust and native C/C++ build tools for Host builds. Cross compilation wit
 `--target` also requires the appropriate Rust target and native linker/toolchain.
 The Linux packaging script defaults to the Rust compiler's host triple, reuses
 `build_host.sh`, and reads the version and output directory from Cargo metadata.
-It requires Python 3, tar, and sha256sum, and writes the two executables,
+It requires Python 3, tar, and sha256sum, and writes the executable,
 configuration, and README to `build/rust-host-dist/info-tv-VERSION-TARGET.tar.gz`.
 Linux archives use the target's normal runtime linkage; GNU builds require a
 compatible system runtime on the destination machine.
@@ -100,7 +100,7 @@ for normal Linux firmware builds.
 The host is built and tested with Cargo under `host/`. The Python project
 here only supplies firmware protocol generation and Ruff/ty checks. It does not
 install a host service, CLI, or hooks. Python 3.12+ and uv are needed for these
-development operations; released host executables need neither.
+development operations; the released host executable needs neither.
 
 Run from the repository root:
 

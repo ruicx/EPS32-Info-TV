@@ -12,8 +12,7 @@ Validated with desktop **3.14.3.7762**, bundled CLI runtime **0.16.9**. See the
 
 Extract the Rust host archive and keep the service running as described in the
 [Release user guide](../README.md#user-guide-install-from-a-release-on-windows).
-`info-tv-hook zcode` reads one UTF-8 JSON callback from stdin. The equivalent
-consolidated command is `info-tv hook zcode`.
+`info-tv hook zcode` reads one UTF-8 JSON callback from stdin.
 
 Merge this `hooks` object into `%USERPROFILE%/.zcode/cli/config.json`, preserving
 other configuration and existing handlers. Change the absolute executable path
@@ -26,22 +25,22 @@ without invoking a shell; `timeoutMs` is measured in milliseconds.
     "enabled": true,
     "events": {
       "UserPromptSubmit": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv.exe", "args": ["hook", "zcode"], "timeoutMs": 3000}]}
       ],
       "PreToolUse": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv.exe", "args": ["hook", "zcode"], "timeoutMs": 3000}]}
       ],
       "PermissionRequest": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv.exe", "args": ["hook", "zcode"], "timeoutMs": 3000}]}
       ],
       "PostToolUse": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv.exe", "args": ["hook", "zcode"], "timeoutMs": 3000}]}
       ],
       "PostToolUseFailure": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv.exe", "args": ["hook", "zcode"], "timeoutMs": 3000}]}
       ],
       "Stop": [
-        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv-hook.exe", "args": ["zcode"], "timeoutMs": 3000}]}
+        {"hooks": [{"type": "process", "command": "C:/info-tv/info-tv.exe", "args": ["hook", "zcode"], "timeoutMs": 3000}]}
       ]
     }
   }
@@ -106,9 +105,9 @@ event; network errors and invalid acknowledgments retain it for retry. Another
 callback or explicit flush retries pending events:
 
 ```powershell
-info-tv-hook zcode --flush
-info-tv-hook zcode --url http://127.0.0.1:8766 --flush
-info-tv-hook zcode --state-file D:/info-tv-state/zcode.sqlite3 --flush
+info-tv hook zcode --flush
+info-tv hook zcode --url http://127.0.0.1:8766 --flush
+info-tv hook zcode --state-file D:/info-tv-state/zcode.sqlite3 --flush
 ```
 
 Runtime validation, storage, and HTTP errors print diagnostics to stderr and

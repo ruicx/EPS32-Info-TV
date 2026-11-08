@@ -38,8 +38,7 @@ C:\info-tv\info-tv.exe serve
 
 For source builds, see the [host guide](../host/README.md).
 
-`info-tv-hook codex` reads a single UTF-8 JSON callback from stdin. The equivalent
-consolidated entry point is `info-tv hook codex`.
+`info-tv hook codex` reads a single UTF-8 JSON callback from stdin.
 
 Add the following handlers to your Codex `hooks.json`. The paths below match
 the installation above; update them if the installation moves. Use the installed
@@ -50,22 +49,22 @@ another service. Merge these handlers with any existing configuration.
 {
   "hooks": {
     "UserPromptSubmit": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv.exe hook codex", "timeout": 3}]}
     ],
     "PreToolUse": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv.exe hook codex", "timeout": 3}]}
     ],
     "PermissionRequest": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv.exe hook codex", "timeout": 3}]}
     ],
     "PostToolUse": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv.exe hook codex", "timeout": 3}]}
     ],
     "Stop": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv.exe hook codex", "timeout": 3}]}
     ],
     "Interrupt": [
-      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv-hook.exe codex", "timeout": 3}]}
+      {"hooks": [{"type": "command", "command": "C:/info-tv/info-tv.exe hook codex", "timeout": 3}]}
     ]
   }
 }
@@ -151,9 +150,9 @@ The next callback retries pending events first. To retry without a new agent
 event, or target a different local service port:
 
 ```powershell
-info-tv-hook codex --flush
-info-tv-hook codex --url http://127.0.0.1:8766 --flush
-info-tv-hook codex --state-file D:/info_tv-state/codex.sqlite3 --flush
+info-tv hook codex --flush
+info-tv hook codex --url http://127.0.0.1:8766 --flush
+info-tv hook codex --state-file D:/info_tv-state/codex.sqlite3 --flush
 ```
 
 A flush uses the same short delivery window; a large backlog may need another

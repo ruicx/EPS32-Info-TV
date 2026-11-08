@@ -165,11 +165,11 @@ fn forced_termination_recovers_acknowledged_state_and_hook_ledger() {
         .query_row("SELECT COUNT(*) FROM outbox", [], |r| r.get(0))
         .expect("pending");
     assert_eq!(before, 1);
-    let output = Command::new(env!("CARGO_BIN_EXE_info-tv-hook"))
-        .args(["codex", "--flush", "--url", &url, "--state-file"])
+    let output = Command::new(env!("CARGO_BIN_EXE_info-tv"))
+        .args(["hook", "codex", "--flush", "--url", &url, "--state-file"])
         .arg(&outbox)
         .output()
-        .expect("compatibility hook");
+        .expect("hook flush");
     assert!(output.status.success());
     let after: i64 = connection
         .query_row("SELECT COUNT(*) FROM outbox", [], |r| r.get(0))

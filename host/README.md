@@ -70,9 +70,7 @@ Committed state survives this forced stop.
 
 ## Agent hooks
 
-Replace the Python executable path in existing hook configurations with
-`C:\info-tv\info-tv-hook.exe`; source names and callback arguments stay the same.
-The equivalent consolidated entry point is `info-tv.exe hook <source>`:
+Use `C:\info-tv\info-tv.exe hook <source>` in agent hook configurations:
 
 ```text
 info-tv.exe hook codex
@@ -104,7 +102,7 @@ powershell -NoProfile -File scripts/host/build_rust_release.ps1
 ```
 
 The archive is written under `build/rust-host-dist`. The packaging script builds
-both executables with the static MSVC runtime. It does not publish them.
+the executable with the static MSVC runtime. It does not publish it.
 Build `firmware/tests` first to run the Rust-to-C++ bridge integration. Set
 `INFO_TV_PROTOCOL_BRIDGE` if the executable uses a nondefault path. Other Rust
 tests do not need the device, ESP-IDF, or Python. Hardware and login startup
