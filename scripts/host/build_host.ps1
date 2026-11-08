@@ -3,7 +3,7 @@
 Build the host executable with Cargo.
 .DESCRIPTION
 Requires Rust and the platform's native build tools. Builds Release by default.
-Use -Debug for a debug build, or build_rust_release.ps1 for a Windows archive.
+Use -Debug for a debug build, or build_host_release.ps1 for a Windows archive.
 .PARAMETER Target
 Optional Rust target triple. When omitted, Cargo uses its configured default.
 #>

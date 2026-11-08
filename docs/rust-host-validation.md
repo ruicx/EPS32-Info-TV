@@ -68,11 +68,11 @@ with fresh weather accepted by the physical device.
 
 ## Windows Distribution
 
-`scripts/host/build_rust_release.ps1` successfully built both optimized executables
+`scripts/host/build_host_release.ps1` successfully built both optimized executables
 with `-C target-feature=+crt-static` for `x86_64-pc-windows-msvc` and produced:
 
 ```text
-build/rust-host-dist/info-tv-0.1.0-x86_64-pc-windows-msvc.zip
+build/host-dist/info-tv-0.1.0-x86_64-pc-windows-msvc.zip
 ```
 
 The archive contains `info-tv.exe`, `info-tv-hook.exe`, `info-tv.yaml`, and a

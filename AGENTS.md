@@ -40,7 +40,7 @@ After schema changes, regenerate firmware bindings with `uv run --project script
 
 Use four-space Python indentation, `snake_case` functions, `PascalCase` classes, complete type annotations, and NumPy-style docstrings. Prefer small, pure helpers and explicit dataclasses; avoid global mutable state. Use Ruff for linting and ty for type checking; their settings live in `scripts/pyproject.toml`. Keep formatting changes scoped.
 
-Use rustfmt and Clippy for Rust, keeping changes consistent with surrounding code. Build Windows host archives with `scripts/host/build_rust_release.ps1`; the package version comes from `host/Cargo.toml`. No Python host package is built.
+Use rustfmt and Clippy for Rust, keeping changes consistent with surrounding code. Build Windows host archives with `scripts/host/build_host_release.ps1`; the package version comes from `host/Cargo.toml`. No Python host package is built.
 
 For C++, use two-space indentation, Google-style conventions, `camelCase` functions/variables, `PascalCase` classes, and Doxygen comments. Prefer `nullptr`, `override`, and short functions with early returns. Keep changes focused and match surrounding code.
 

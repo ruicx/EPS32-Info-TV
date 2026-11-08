@@ -11,7 +11,7 @@ while (($#)); do
             [[ $# -ge 2 && -n "$2" ]] || { echo '--target requires a Rust target triple.' >&2; exit 2; }
             target="$2"; shift 2 ;;
         -h|--help)
-            echo 'Usage: bash build_rust_release.sh [--target LINUX_TRIPLE]'; exit 0 ;;
+            echo 'Usage: bash build_host_release.sh [--target LINUX_TRIPLE]'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 2 ;;
     esac
 done
@@ -39,7 +39,7 @@ print(metadata["target_directory"])
 package_info="${package_info//$'\r'/}"
 version="${package_info%%$'\n'*}"
 target_directory="${package_info#*$'\n'}"
-output="$repository/build/rust-host-dist"
+output="$repository/build/host-dist"
 mkdir -p -- "$output"
 stage="$(mktemp -d "$output/staging-XXXXXXXX")"
 binary_directory="$target_directory/$target/release"

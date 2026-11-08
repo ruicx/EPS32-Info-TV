@@ -294,8 +294,8 @@ cargo fmt --manifest-path host/Cargo.toml -- --check
 cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnings
 cargo test --manifest-path host/Cargo.toml --locked
 
-# 打包发布版可执行程序（Windows 下输出至 build/rust-host-dist）
-powershell -NoProfile -File scripts/host/build_rust_release.ps1
+# 打包发布版可执行程序（Windows 下输出至 build/host-dist）
+powershell -NoProfile -File scripts/host/build_host_release.ps1
 ```
 
 ### ESP32 固件编译
@@ -311,6 +311,9 @@ idf.py -C firmware build
 
 # 烧录到连接的 ESP32-S3（注意先停止 Host 服务以释放串口，替换为实际串口号）
 idf.py -C firmware -p <串口号> flash
+
+# 打包发布版合并固件（输出至 build/firmware-dist）
+powershell -NoProfile -File scripts/firmware/build_firmware_release.ps1
 ```
 
 ### 协议代码生成

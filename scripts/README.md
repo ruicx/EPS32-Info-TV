@@ -6,13 +6,15 @@ Scripts are grouped by responsibility:
 scripts/
   host/
     build_host.ps1          # Release or Debug host executable
-    build_rust_release.ps1  # Windows release archive
+    build_host_release.ps1  # Windows release archive
     build_host.sh           # Bash host build
-    build_rust_release.sh   # Linux tar.gz release archive
+    build_host_release.sh   # Linux tar.gz release archive
   firmware/
-    build_firmware.ps1      # Build or build and flash
-    build_firmware.sh       # Bash build or build and flash
-    prepare_character.ps1   # Generate character image and C assets
+    build_firmware.ps1          # Build or build and flash
+    build_firmware_release.ps1  # Merged firmware release binary
+    build_firmware.sh           # Bash build or build and flash
+    build_firmware_release.sh   # Bash merged firmware release binary
+    prepare_character.ps1       # Generate character image and C assets
     generate_font.ps1       # Windows entry point for font generation
     generate_font.py        # Download and convert the pinned Maple Mono release
   protocol/
@@ -43,22 +45,25 @@ be invoked from any working directory. Examples below run from the repository ro
 ./scripts/host/build_host.ps1 -Debug
 ./scripts/firmware/build_firmware.ps1
 ./scripts/firmware/build_firmware.ps1 -Action Flash -Port COM6
+./scripts/firmware/build_firmware_release.ps1
 ```
 
 Host builds require Rust and native build tools (on Windows, the Visual Studio
 C++ build tools and Windows SDK). Cargo builds the host executable with the
 locked dependencies; the default output is `host/target/release`, or
 `host/target/debug` with `-Debug`, unless Cargo's target directory is overridden.
-Use `host/build_rust_release.ps1` for a packaged Windows release archive:
+Use `host/build_host_release.ps1` for a packaged Windows release archive:
 
 ```powershell
-./scripts/host/build_rust_release.ps1
+./scripts/host/build_host_release.ps1
 ```
 
 Firmware commands require an activated ESP-IDF v6.1 PowerShell environment.
 `Build` is the default action. `Flash` builds first and requires an explicit port;
 replace `COM6` with the device's serial port and stop any service or monitor using
 that port before flashing. Build output goes to `firmware/build`.
+Use `firmware/build_firmware_release.ps1` to build and merge the firmware into a
+single 0x0 flashable binary under `build/firmware-dist/`.
 The scripts stop with an error when the underlying command fails.
 
 These shortcuts and direct `idf.py build` use the committed C font. Font
@@ -72,9 +77,10 @@ Run with Bash; no executable permission changes are required:
 bash scripts/host/build_host.sh
 bash scripts/host/build_host.sh --debug
 bash scripts/host/build_host.sh --target aarch64-unknown-linux-gnu
-bash scripts/host/build_rust_release.sh
+bash scripts/host/build_host_release.sh
 bash scripts/firmware/build_firmware.sh
 bash scripts/firmware/build_firmware.sh --action flash --port /dev/ttyACM0
+bash scripts/firmware/build_firmware_release.sh
 ```
 
 Install Rust and native C/C++ build tools for Host builds. Cross compilation with
@@ -82,7 +88,7 @@ Install Rust and native C/C++ build tools for Host builds. Cross compilation wit
 The Linux packaging script defaults to the Rust compiler's host triple, reuses
 `build_host.sh`, and reads the version and output directory from Cargo metadata.
 It requires Python 3, tar, and sha256sum, and writes the executable,
-configuration, and README to `build/rust-host-dist/info-tv-VERSION-TARGET.tar.gz`.
+configuration, and README to `build/host-dist/info-tv-VERSION-TARGET.tar.gz`.
 Linux archives use the target's normal runtime linkage; GNU builds require a
 compatible system runtime on the destination machine.
 
@@ -128,5 +134,5 @@ python demos/demo_conversations.py --help
 See [display demos](../demos/README.md) before running them against a device.
 They submit real events to the running service.
 
-Build the Windows release archive with `scripts/host/build_rust_release.ps1`; Python
+Build the Windows release archive with `scripts/host/build_host_release.ps1`; Python
 is not used by that script. ESP-IDF retains its own independent tool environment.

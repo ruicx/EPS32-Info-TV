@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Build a Windows Rust host archive with a statically linked MSVC runtime.
+Build a Windows host archive with a statically linked MSVC runtime.
 .DESCRIPTION
 Produces info-tv.exe, configuration, and a
 quick-start guide. Does not register startup, open serial ports, or publish a release.
@@ -24,7 +24,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Cannot read Rust package metadata.' }
     $metadata = $metadataText | ConvertFrom-Json
     $version = ($metadata.packages | Where-Object { $_.name -eq 'info-tv' }).version
-    $output = Join-Path $repository 'build/rust-host-dist'
+    $output = Join-Path $repository 'build/host-dist'
     $stage = Join-Path $output ('staging-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Force $stage | Out-Null
     $binaryDirectory = Join-Path $metadata.target_directory "$Target/release"

@@ -80,14 +80,14 @@ jobs:
       - name: Package Windows archive
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/host/build_rust_release.ps1 -Target ${{ matrix.target }}
+        run: ./scripts/host/build_host_release.ps1 -Target ${{ matrix.target }}
       - name: Package Linux archive
         if: runner.os == 'Linux'
-        run: bash scripts/host/build_rust_release.sh --target ${{ matrix.target }}
+        run: bash scripts/host/build_host_release.sh --target ${{ matrix.target }}
       - uses: actions/upload-artifact@v4
         with:
           name: host-${{ matrix.target }}
-          path: build/rust-host-dist/*.${{ matrix.archive }}
+          path: build/host-dist/*.${{ matrix.archive }}
           if-no-files-found: error
 
   firmware:
@@ -100,27 +100,21 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: Read package version
-        id: version
-        run: |
-          version="$(grep -m1 '^version = ' host/Cargo.toml | sed 's/^version = "\(.*\)"$/\1/')"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
         with:
           path: ~/.cache/ccache
           key: firmware-ccache-${{ github.sha }}
           restore-keys: firmware-ccache-
-      - name: Build and merge firmware
+      - name: Package firmware release
         env:
           IDF_CCACHE_ENABLE: '1'
         run: |
           . "$IDF_PATH/export.sh"
-          idf.py -C firmware build
-          idf.py -C firmware merge-bin -o "info_tv-firmware-${{ steps.version.outputs.version }}-esp32s3.bin"
+          bash scripts/firmware/build_firmware_release.sh
       - uses: actions/upload-artifact@v4
         with:
           name: firmware-esp32s3
-          path: firmware/build/info_tv-firmware-*-esp32s3.bin
+          path: build/firmware-dist/info_tv-firmware-*-esp32s3.bin
           if-no-files-found: error
 
   release:

@@ -3,6 +3,7 @@
 Build firmware, optionally flashing it to an explicitly selected serial port.
 .DESCRIPTION
 Run in an activated ESP-IDF v6.1 PowerShell environment. Flash always builds first.
+Use build_firmware_release.ps1 to generate the merged release binary.
 .PARAMETER Action
 Build compiles firmware. Flash compiles and writes firmware to the device.
 .PARAMETER Port

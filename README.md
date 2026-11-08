@@ -28,8 +28,8 @@ Use `--config <path>` to select YAML. Without it, `serve` and `ports` read
 `info-tv.yaml` from the current working directory if present, otherwise defaults.
 Copy `host/info-tv.example.yaml` for a starting configuration.
 
-Build the Windows binary archive with `scripts/host/build_rust_release.ps1`; output is
-under `build/rust-host-dist`. The extracted executable needs no Python installation.
+Build the Windows binary archive with `scripts/host/build_host_release.ps1`; output is
+under `build/host-dist`. The extracted executable needs no Python installation.
 The script does not publish a GitHub release. The Python host has been removed;
 its implementation remains in Git history. Python is only needed for development
 tools, optional demos, or the separate firmware flashing tool.
@@ -558,10 +558,10 @@ remain usable without the removed Python service.
 ## Package the host
 
 ```powershell
-powershell -NoProfile -File scripts/host/build_rust_release.ps1
+powershell -NoProfile -File scripts/host/build_host_release.ps1
 ```
 
-The Windows archive is written under `build/rust-host-dist`; its version comes
+The Windows archive is written under `build/host-dist`; its version comes
 from `host/Cargo.toml`. See the [host guide](host/README.md). The script
 builds the executable with the static MSVC runtime and does not publish it.
 

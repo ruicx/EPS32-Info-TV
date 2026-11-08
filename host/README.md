@@ -98,10 +98,10 @@ From the repository root:
 cargo test --manifest-path host/Cargo.toml --locked
 cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnings
 cargo fmt --manifest-path host/Cargo.toml -- --check
-powershell -NoProfile -File scripts/host/build_rust_release.ps1
+powershell -NoProfile -File scripts/host/build_host_release.ps1
 ```
 
-The archive is written under `build/rust-host-dist`. The packaging script builds
+The archive is written under `build/host-dist`. The packaging script builds
 the executable with the static MSVC runtime. It does not publish it.
 Build `firmware/tests` first to run the Rust-to-C++ bridge integration. Set
 `INFO_TV_PROTOCOL_BRIDGE` if the executable uses a nondefault path. Other Rust
