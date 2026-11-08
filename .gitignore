@@ -84,3 +84,6 @@ sdkconfig.old
 
 # vscode
 .vscode/
+.codex/
+.zcode/
+.claude/
