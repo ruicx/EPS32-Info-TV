@@ -143,6 +143,10 @@ and live transitions still require physical validation.
 
 ## Remaining limits
 
+Font update: The subset limitation below describes this historical validation.
+The production firmware now uses the release-sourced Maple Mono font documented
+in [font conversion and validation](font-conversion.md).
+
 System labels remain English. The enabled LVGL Source Han Sans SC 16 px font is
 a limited CJK subset; these screenshots establish the displayed example only,
 not arbitrary Chinese coverage. A complete simplified-Chinese font remains work

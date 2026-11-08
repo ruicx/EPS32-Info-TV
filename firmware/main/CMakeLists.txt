@@ -4,6 +4,7 @@ idf_component_register(
          "communication/usb_transport.cpp" "communication/device_session.cpp"
          "protocol/codec.cpp" "protocol/framing.cpp" "protocol/generated/device.pb.c"
          "ui/display_state.cpp" "ui/presentation_controller.cpp" "ui/screen_view.cpp"
+         "ui/fonts/font_maple_mono_16.c"
          "ui/assets/whale_idle.c"
          "ui/assets/whale_closed.c" "ui/assets/whale_shift_0.c"
          "ui/assets/whale_shift_1.c" "ui/assets/whale_shift_2.c" "ui/assets/whale_shift_3.c"

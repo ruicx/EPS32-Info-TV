@@ -1,1 +1,4 @@
 *.sh text eol=lf
+
+# Preserve the reproducible generated font hash across Windows checkouts.
+firmware/main/ui/fonts/font_maple_mono_16.c text eol=lf

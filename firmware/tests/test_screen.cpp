@@ -6,11 +6,33 @@
 #include <string>
 
 #include "lvgl.h"
+#include "src/misc/lv_text_private.h"
 
 #include "test_support.h"
 #include "ui/screen_view.h"
 
+extern "C" {
+LV_FONT_DECLARE(font_maple_mono_16);
+}
+
 namespace {
+/** Verify the full pinned Han coverage and an icon outside the Unicode BMP. */
+void checkFontCoverage() {
+  size_t hanCount = 0;
+  lv_font_glyph_dsc_t glyph{};
+  for (uint32_t code = 0x4e00; code <= 0x9fff; ++code) {
+    if (lv_font_get_glyph_dsc(&font_maple_mono_16, &glyph, code, 0)) {
+      CHECK(!glyph.is_placeholder && glyph.box_w > 0 && glyph.box_h > 0);
+      ++hanCount;
+    }
+  }
+  CHECK(hanCount == 20976);
+  for (uint32_t code : {0x6df1, 0x5733, 0x9e66, 0x9e49, 0x9f98, 0xf0001}) {
+    CHECK(lv_font_get_glyph_dsc(&font_maple_mono_16, &glyph, code, 0));
+    CHECK(!glyph.is_placeholder && glyph.box_w > 0 && glyph.box_h > 0);
+  }
+}
+
 /** Capture one full CPU-rendered image without simulating physical LCD timing. */
 struct Capture {
   std::array<uint8_t, 240 * 240 * 3> pixels{};
@@ -55,6 +77,25 @@ void checkBounds(lv_obj_t* parent = lv_screen_active()) {
     CHECK(lv_obj_get_x(child) >= 0 && lv_obj_get_y(child) >= 0);
     CHECK(lv_obj_get_x(child) + lv_obj_get_width(child) <= lv_obj_get_width(parent));
     CHECK(lv_obj_get_y(child) + lv_obj_get_height(child) <= lv_obj_get_height(parent));
+    if (lv_obj_check_type(child, &lv_label_class)) {
+      const auto* font = lv_obj_get_style_text_font(child, LV_PART_MAIN);
+      const auto* text = lv_label_get_text(child);
+      CHECK(lv_obj_get_content_height(child) >= font->line_height);
+      uint32_t offset = 0;
+      while (text[offset]) {
+        const uint32_t code = lv_text_encoded_next(text, &offset);
+        lv_font_glyph_dsc_t glyph{};
+        CHECK(lv_font_get_glyph_dsc(font, &glyph, code, 0));
+        if (!glyph.box_h) continue;
+        const int top = font->line_height - font->base_line - glyph.box_h - glyph.ofs_y;
+        if (top < 0 || top + glyph.box_h > lv_obj_get_content_height(child)) {
+          std::cerr << "Clipped U+" << std::hex << code << std::dec << " in " << text
+                    << ": top=" << top << ", height=" << glyph.box_h << '\n';
+        }
+        CHECK(top >= 0);
+        CHECK(top + glyph.box_h <= lv_obj_get_content_height(child));
+      }
+    }
     checkBounds(child);
   }
 }
@@ -180,12 +221,31 @@ void checkPartialAnimation() {
   CHECK(capture.pixelsFlushed == 80 * 84 && capture.pixels == baseline);
   lv_display_delete(display);
 }
+
+/** Capture the production font directly, including supplementary Nerd glyphs. */
+void captureFontSpecimen(lv_display_t* display, Capture& capture, const std::string& prefix) {
+  auto* root = lv_screen_active();
+  lv_obj_clean(root);
+  const char* samples[] = {"Maple Mono / 16 px", "简体：深圳鹦鹉", "繁體：龍龘臺灣",
+      "Aa0O1l -> != {}", "中文，。！？（）", "かな カナ 123", "Nerd: \U000f0001 \U000f0004 \U000f012c"};
+  for (size_t row = 0; row < 7; ++row) {
+    auto* label = lv_label_create(root);
+    lv_obj_set_pos(label, 8, 8 + row * 32);
+    lv_obj_set_size(label, 224, 30);
+    lv_obj_set_style_text_font(label, &font_maple_mono_16, 0);
+    lv_label_set_text(label, samples[row]);
+  }
+  checkBounds();
+  lv_refr_now(display);
+  save(capture, prefix + "-font-specimen.ppm");
+}
 }  // namespace
 
 /** Verify and capture overview, notification, offline, and empty widget states. */
 int main(int argc, char** argv) {
   CHECK(argc == 2);
   lv_init();
+  checkFontCoverage();
   Capture capture;
   std::array<uint8_t, 240 * 240 * 3> buffer{};
   auto* display = lv_display_create(240, 240);
@@ -430,6 +490,49 @@ int main(int argc, char** argv) {
   CHECK(hasLabel("-100\xc2\xb0 / 100\xc2\xb0"));
   lv_refr_now(display);
   save(capture, std::string(argv[1]) + "-weather-extreme.ppm");
+  model = overviewModel;
+  const char* chineseTitles[] = {"深圳构建", "鹦鹉接口", "龘龍测试"};
+  const char* chineseStates[] = {"等待", "失败", "运行"};
+  for (size_t row = 0; row < model.rowCount; ++row) {
+    std::strcpy(model.rows[row].card.view.title, chineseTitles[row]);
+    std::strcpy(model.rows[row].card.view.content.status.text, chineseStates[row]);
+  }
+  std::strcpy(model.weather.location, "深圳南山");
+  model.weather.has_daily_low_c = model.weather.has_daily_high_c = true;
+  model.weather.daily_low_c = 18;
+  model.weather.daily_high_c = 26;
+  model.weatherAlert = makeWeatherAlert().envelope.body.weather_alert;
+  std::strcpy(model.weatherAlert.title, "暴雨");
+  model.weatherAlertActive = true;
+  screen.render(model);
+  checkBounds();
+  CHECK(hasLabel("深圳构建") && hasLabel("深圳南山"));
+  CHECK(hasLabel("等待") && hasLabel("ORG 暴雨"));
+  lv_refr_now(display);
+  save(capture, std::string(argv[1]) + "-chinese-overview.ppm");
+  model.kind = info_tv::RenderModel::Kind::kNotification;
+  model.view = model.rows[2].card.view;
+  std::strcpy(model.cardId, "c003");
+  std::strcpy(model.view.source, "助手");
+  std::strcpy(model.view.context, "字库");
+  std::strcpy(model.view.content.status.text, "正在编译");
+  std::strcpy(model.view.content.status.detail, "鹦鹉：兼容繁體龍龘");
+  screen.render(model);
+  checkBounds();
+  CHECK(hasLabel("助手 #c003 | 字库") && hasLabel("正在编译 42%"));
+  lv_refr_now(display);
+  save(capture, std::string(argv[1]) + "-chinese-notification.ppm");
+  std::strcpy(model.view.title, "检查中文省略号和裁切的长标题");
+  std::strcpy(model.view.content.status.detail, "长文本应保持在气泡内部");
+  screen.render(model);
+  checkBounds();
+  lv_refr_now(display);
+  save(capture, std::string(argv[1]) + "-chinese-long.ppm");
+  model.view = model.rows[0].card.view;
+  screen.render(model);
+  checkBounds();
+  CHECK(hasLabel("深圳构建"));
+  captureFontSpecimen(display, capture, argv[1]);
   lv_display_delete(display);
   checkPartialAnimation();
   lv_deinit();

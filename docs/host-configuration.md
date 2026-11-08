@@ -84,7 +84,7 @@ The other weather fields have defaults. Every time value below is in seconds.
 
 | Field | Type | Default | Meaning and allowed values |
 | --- | --- | --- | --- |
-| `weather.location` | String | Required | Display label, such as `Shanghai`. Must be nonblank, printable, and at most 24 UTF-8 bytes. It does not determine coordinates or trigger geocoding. The bundled font supports only a limited set of Chinese characters. |
+| `weather.location` | String | Required | Display label, such as `Shanghai`. Must be nonblank, printable, and at most 24 UTF-8 bytes. It does not determine coordinates or trigger geocoding. See [font coverage](font-conversion.md) for supported Chinese characters and display limits. |
 | `weather.latitude` | Number | Required | Latitude from -90 to 90 inclusive. Must be finite; integer and decimal numeric values are accepted. |
 | `weather.longitude` | Number | Required | Longitude from -180 to 180 inclusive, with the same numeric rules as latitude. |
 | `weather.refresh_seconds` | Integer | `900` | Delay after a successful retrieval before the next attempt. Must be at least 60; no configured upper limit. |

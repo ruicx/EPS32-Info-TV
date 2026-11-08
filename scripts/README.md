@@ -13,6 +13,8 @@ scripts/
     build_firmware.ps1      # Build or build and flash
     build_firmware.sh       # Bash build or build and flash
     prepare_character.ps1   # Generate character image and C assets
+    generate_font.ps1       # Windows entry point for font generation
+    generate_font.py        # Download and convert the pinned Maple Mono release
   protocol/
     generate_protocol.py    # Generate or verify Nanopb bindings
   pyproject.toml            # Shared Python development environment
@@ -21,6 +23,15 @@ scripts/
 
 See [character assets](../firmware/main/ui/assets/README.md) for the source
 images and arguments required by `firmware/prepare_character.ps1`.
+
+See [font conversion](../docs/font-conversion.md) for Maple Mono NF CN conversion,
+measured asset sizes, coverage limits, and firmware integration requirements.
+The generated C font is committed and compiled directly; ordinary firmware and
+desktop UI builds do not require Node.js/npm. Font maintainers can run
+`./scripts/firmware/generate_font.ps1`, or
+`python3 scripts/firmware/generate_font.py` on Linux, to regenerate explicitly.
+Regeneration requires Python 3.12+, Node.js/npm, and first-run access to GitHub
+Releases and npm; no installed source font is required.
 
 ## Build and flash shortcuts
 
@@ -49,6 +60,9 @@ Firmware commands require an activated ESP-IDF v6.1 PowerShell environment.
 replace `COM6` with the device's serial port and stop any service or monitor using
 that port before flashing. Build output goes to `firmware/build`.
 The scripts stop with an error when the underlying command fails.
+
+These shortcuts and direct `idf.py build` use the committed C font. Font
+conversion is a separate maintenance operation and is never invoked by builds.
 
 ## Linux / Bash
 

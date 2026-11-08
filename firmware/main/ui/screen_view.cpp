@@ -4,6 +4,7 @@
 #include <cstring>
 
 extern "C" {
+LV_FONT_DECLARE(font_maple_mono_16);
 LV_IMAGE_DECLARE(whale_idle);
 LV_IMAGE_DECLARE(whale_closed);
 LV_IMAGE_DECLARE(whale_shift_0);
@@ -181,10 +182,13 @@ void ScreenView::initialize() {
   auto* screen = lv_screen_active();
   lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
   lv_obj_set_style_text_color(screen, lv_color_hex(0xf0f4f8), 0);
-  lv_obj_set_style_text_font(screen, &lv_font_source_han_sans_sc_16_cjk, 0);
+  lv_obj_set_style_text_font(screen, &font_maple_mono_16, 0);
   lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
   smallFont_ = lv_font_montserrat_14;
-  smallFont_.fallback = &lv_font_source_han_sans_sc_16_cjk;
+  smallFont_.fallback = &font_maple_mono_16;
+  // Reserve the full CJK fallback ink height and align its baseline with metadata.
+  smallFont_.line_height = 18;
+  smallFont_.base_line = 2;
   header_ = label(screen, 12, 5, 12, 20);
   lv_obj_set_style_text_font(header_, &lv_font_montserrat_16, 0);
   headerUnit_ = label(screen, 28, 7, 50, 18);
@@ -204,12 +208,12 @@ void ScreenView::initialize() {
   sender_ = label(message_, 34, 5, 174, 20);
   lv_obj_set_style_text_font(sender_, &smallFont_, 0);
   lv_obj_set_style_text_color(sender_, lv_color_hex(0xb1bdcb), 0);
-  title_ = label(message_, 10, 27, 198, 22);
-  status_ = label(message_, 10, 51, 198, 22);
-  detail_ = label(message_, 10, 76, 198, 20);
+  title_ = label(message_, 10, 21, 198, 30);
+  status_ = label(message_, 10, 46, 198, 30);
+  detail_ = label(message_, 10, 71, 198, 30);
   lv_obj_set_style_text_color(detail_, lv_color_hex(0xc7d2df), 0);
   progress_ = progressBar(message_, 10, 102, 198);
-  empty_ = label(screen, 12, 65, 216, 22);
+  empty_ = label(screen, 12, 59, 216, 30);
   lv_label_set_text(empty_, "No tasks yet");
   lv_obj_set_style_text_align(empty_, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_set_style_text_color(empty_, lv_color_hex(0x9baabd), 0);
@@ -217,7 +221,7 @@ void ScreenView::initialize() {
   characterFrame_ = &whale_idle;
   lv_image_set_src(character_, characterFrame_);
   lv_obj_set_pos(character_, 14, 152);
-  location_ = label(screen, 106, 151, 122, 20);
+  location_ = label(screen, 106, 145, 122, 30);
   temperature_ = label(screen, 106, 174, 86, 22);
   lv_obj_set_style_text_font(temperature_, &lv_font_montserrat_16, 0);
   conditions_ = label(screen, 106, 198, 122, 18);
@@ -247,7 +251,7 @@ void ScreenView::initialize() {
     rowBubbles_[row] = bubble(29 + row * 38, 34);
     rowIcons_[row] = label(rowBubbles_[row], 10, 6, 18, 20);
     lv_obj_set_style_text_font(rowIcons_[row], &lv_font_montserrat_16, 0);
-    rowTitles_[row] = label(rowBubbles_[row], 34, 5, 120, 20);
+    rowTitles_[row] = label(rowBubbles_[row], 34, 0, 120, 30);
     rowDetails_[row] = label(rowBubbles_[row], 158, 5, 48, 21);
     lv_obj_set_style_text_font(rowDetails_[row], &smallFont_, 0);
     lv_obj_set_style_text_align(rowDetails_[row], LV_TEXT_ALIGN_CENTER, 0);

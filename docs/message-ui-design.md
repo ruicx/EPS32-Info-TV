@@ -253,7 +253,7 @@ Supply `conversation_id` together with a positive integer `run_sequence`. Increm
 
 Each submission is complete state. Later updates should include any conversation title and project label that must remain visible; this API does not apply partial field patches.
 
-System labels remain English. The enabled LVGL Source Han Sans SC 16 px CJK font is a subset and cannot cover arbitrary Chinese input. Complete simplified-Chinese coverage still needs a separate font asset pass. The desktop screenshots show supported Chinese examples, not a guarantee that every Chinese character can be displayed.
+System labels remain English. The production font now uses the complete encoded glyph set from Maple Mono NF CN Regular v7.9. See [font conversion and validation](font-conversion.md) for its pinned source, Chinese coverage limits, layout adjustments, and current rendered previews. Earlier screenshots in this document used the limited Source Han subset.
 
 ### Notification Page
 
