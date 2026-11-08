@@ -25,13 +25,13 @@ use `whale_shift_0` through `whale_shift_3`.
 Frame order and timing reference the same revision's `src/renderer/motion.js`.
 The firmware uses discrete poses without the upstream WebGL motion interpolation.
 
-To reproduce all frames on Windows after downloading both pinned sheets:
+To reproduce all frames across platforms:
 
-```powershell
-./scripts/firmware/prepare_character.ps1 `
-    -SourcePath .local/design/whale-source/idle-front.png `
-    -MotionSourcePath .local/design/whale-source/dense-idle.png
+```bash
+uv run --project scripts python scripts/characters/prepare_whale.py
 ```
+
+The script automatically downloads and verifies the pinned upstream sheets, or you can specify local source paths with `--source` and `--motion-source`.
 
 The original upstream license is preserved verbatim in [LICENSE](LICENSE), and
 the upstream asset attribution and third-party reference boundaries are preserved

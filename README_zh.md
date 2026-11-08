@@ -386,6 +386,17 @@ python scripts/firmware/generate_font.py
 
 脚本将自动拉取官方字体文件，校验 SHA-256，调用 `lv_font_conv` 工具转换生成 `firmware/main/ui/fonts/font_maple_mono_16.c`。详细细节请参阅 [字体转换文档](docs/font-conversion.md)。
 
+
+### 卡通素材制作
+
+屏幕显示的伴侣动画角色帧可通过专属脚本从原图精灵表中自动裁剪、等比缩放并转换为 LVGL C 源码：
+
+```bash
+uv run --project scripts python scripts/characters/prepare_whale.py
+```
+
+脚本将自动从上游开源项目拉取官方立绘精灵表、校验 SHA-256，生成 80 × 84 统一画幅的 `.png` 预览图与 `firmware/main/ui/assets/` 下的 C 源码数组。详细说明请参阅 [角色素材说明](firmware/main/ui/assets/README.md)。
+
 ---
 
 ## 鸣谢与致谢

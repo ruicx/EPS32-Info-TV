@@ -14,16 +14,17 @@ scripts/
     build_firmware_release.ps1  # Merged firmware release binary
     build_firmware.sh           # Bash build or build and flash
     build_firmware_release.sh   # Bash merged firmware release binary
-    prepare_character.ps1       # Generate character image and C assets
     generate_font.py            # Download and convert the pinned Maple Mono release
+  characters/
+    prepare_whale.py            # Prepare full-body whale animation frames
   protocol/
-    generate_protocol.py    # Generate or verify Nanopb bindings
-  pyproject.toml            # Shared Python development environment
+    generate_protocol.py        # Generate or verify Nanopb bindings
+  pyproject.toml                # Shared Python development environment
   uv.lock
 ```
 
 See [character assets](../firmware/main/ui/assets/README.md) for the source
-images and arguments required by `firmware/prepare_character.ps1`.
+images and the `scripts/characters/prepare_whale.py` script.
 
 See [font conversion](../docs/font-conversion.md) for Maple Mono NF CN conversion,
 measured asset sizes, coverage limits, and firmware integration requirements.
@@ -95,9 +96,8 @@ device port, ensure your account has serial-port access, and stop any service or
 monitor using that port before flashing.
 
 The Python commands below also work in Bash. Character asset preparation via
-`firmware/prepare_character.ps1` remains Windows-only because it uses
-`System.Drawing`; the generated assets are already checked in and are sufficient
-for normal Linux firmware builds.
+`scripts/characters/prepare_whale.py` is cross-platform using Python/Pillow; the
+generated assets are already checked in and are sufficient for normal firmware builds.
 
 ## Python development tools
 
