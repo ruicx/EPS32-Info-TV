@@ -58,27 +58,23 @@ Open [Releases](https://github.com/ruicx/ESP32-Info-TV/releases) and expand the
 chosen release's **Assets**. Download both assets from the **same release**:
 
 - The Rust host archive, such as `info-tv-<version>-x86_64-pc-windows-msvc.zip`.
-  Extract its executable, `info-tv.yaml`, and README directly into `C:\info-tv`.
-- The complete firmware archive for the supported board. Extract it under
-  `C:\info-tv\firmware` with the layout below.
+  Extract its executables, `info-tv.yaml`, and README directly into `C:\info-tv`.
+- The complete firmware image, such as
+  `info_tv-firmware-<version>-esp32s3.bin`. Save it as `C:\info-tv\firmware.bin`.
 
 ```text
 C:\info-tv\
   info-tv.exe
   info-tv.yaml
-  firmware\
-    flash_args
-    info_tv.bin
-    bootloader\
-      bootloader.bin
-    partition_table\
-      partition-table.bin
+  firmware.bin
 ```
 
-The GitHub **Source code** archives are for developers. `info_tv.bin` alone is
-insufficient for first-time flashing. If these assets are absent, that release
-is not ready for this installation path. Building the host from source does not
-require installing the removed Python host.
+The GitHub **Source code** archives are for developers. The firmware image is a
+single merged file covering the whole application flash layout, so no separate
+bootloader or partition-table files are needed for first-time flashing. If these
+assets are absent, that release is not ready for this installation path.
+Building the host from source does not require installing the removed Python
+host.
 
 ### 2. Check the host and install the optional flashing tool
 
@@ -123,20 +119,18 @@ below with your board's actual port.** First check its chip/Flash identity:
 C:\info-tv\flash-tools\Scripts\python.exe -m esptool --chip esp32s3 --port COM6 flash-id
 ```
 
-Check that it is the intended ESP32-S3 with 16 MB Flash. Then change to the
-extracted firmware directory and write the files using its supplied address
-manifest:
+Check that it is the intended ESP32-S3 with 16 MB Flash. Then write the merged
+firmware image downloaded from the Release, starting at offset `0x0`:
 
 ```powershell
-Set-Location C:\info-tv\firmware
-C:\info-tv\flash-tools\Scripts\python.exe -m esptool --chip esp32s3 --port COM6 --baud 460800 write-flash "@flash_args"
+C:\info-tv\flash-tools\Scripts\python.exe -m esptool --chip esp32s3 --port COM6 --baud 460800 write-flash 0x0 C:\info-tv\firmware.bin
 ```
 
-Keep the quotes around `"@flash_args"` in PowerShell. For the current board
-layout, this manifest writes the bootloader at `0x0`, partition table at
-`0x8000`, and application at `0x10000`, with DIO/80 MHz/16 MB settings. Keep
-these files together from one build; follow a release's own instructions if
-its layout changes. This is the standard
+The merged image contains the bootloader at `0x0`, the partition table at
+`0x8000`, and the application at `0x10000`, with DIO/80 MHz/16 MB settings, so a
+single `write-flash` covers first-time flashing. Always use the image from the
+same release as the host archive; follow a release's own instructions if its
+layout changes. This is the standard
 [ESP-IDF binary flashing procedure](https://docs.espressif.com/projects/esptool/en/latest/esp32s3/esptool/flashing-firmware.html).
 
 Wait for esptool to finish writing, verifying, and resetting the board. If it
@@ -571,10 +565,19 @@ The Windows archive is written under `build/rust-host-dist`; its version comes
 from `host/Cargo.toml`. See the [host guide](host/README.md). The script
 builds the executable with the static MSVC runtime and does not publish it.
 
-For a user-facing Release, attach the host archive and complete firmware from
-the same revision. Preserve `flash_args`, `bootloader/bootloader.bin`,
-`partition_table/partition-table.bin`, and `info_tv.bin` in the firmware archive.
-These assets must be assembled and attached when publishing.
+For a user-facing Release, use the automated release workflow instead of
+assembling assets by hand.
+
+## Releases
+
+Pushing a tag `v<version>` that matches the `host/Cargo.toml` version triggers
+the [Release workflow](.github/workflows/release.yml). It packages the host for
+Windows x64/ARM64 and Linux x64 (musl)/ARM64, builds the firmware in the pinned
+ESP-IDF v6.1 container, merges the flash layout into
+`info_tv-firmware-<version>-esp32s3.bin`, and publishes a GitHub Release with a
+`SHA256SUMS.txt` covering every asset. A manual `workflow_dispatch` run performs
+the same builds and keeps them as workflow artifacts without publishing, which
+verifies the pipeline ahead of tagging.
 
 ## Demo limits
 
