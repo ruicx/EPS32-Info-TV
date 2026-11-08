@@ -68,6 +68,45 @@ To generate a text-oriented comparison outside the production source tree:
 Each requested range must contain at least one supported character. Both assets
 use the same public symbol, so only one should be compiled into an application.
 
+## Repository storage policy
+
+Keep the generated C font and its license in Git so ordinary users can build
+without Node.js/npm, font downloads, or Git LFS. Continue using the C asset:
+it compiles into read-only Flash data, while the project's LVGL 9.3 binary-font
+loader allocates the glyph descriptions and bitmap data in RAM. Switching to
+LVGL's `.bin` format alone would therefore change runtime memory requirements.
+
+Regenerating identical contents does not create another font blob in Git.
+Changed versions can benefit from compression and delta packing; the repository
+does not necessarily grow by the full C source size on every update. See
+[Git packfiles](https://git-scm.com/book/en/v2/Git-Internals-Packfiles.html).
+For the current asset, measured locally on 2026-11-08, 25,372,208 source bytes
+occupied 5,765,545 bytes (about 5.5 MiB) as a compressed loose Git object. This
+is an observation, not a guarantee about future versions or packed storage.
+
+Preserve reproducible output to avoid unnecessary changes: pin the source
+release, input checksums, converter version, size, bpp, and character range;
+normalize absolute paths, LF line endings, and the final newline. Do not add
+timestamps or machine-specific metadata. Review the generated diff and SHA-256
+before committing a font update. Downloaded ZIP/TTF files, npm caches, and
+comparison outputs remain under the ignored `build/` directory.
+
+If frequent font updates or multiple sizes make history growth significant,
+consider publishing a compressed, pre-generated C asset as a GitHub Release
+attachment. The repository would retain the pinned asset version, URL, checksum,
+license, and download instructions or script. Users would still not need npm,
+but would need the asset downloaded and verified before their first build;
+offline builds would require an already populated cache. This is a future
+option, not the current build behavior.
+
+Git LFS is not currently selected: it adds a client dependency, and GitHub LFS
+stores a complete new object for each changed version rather than only its
+delta. See [LFS collaboration requirements](https://docs.github.com/en/repositories/working-with-files/managing-large-files/collaboration-with-git-large-file-storage)
+and [LFS storage accounting](https://docs.github.com/en/billing/concepts/product-billing/git-lfs).
+Deleting an old working-tree file or adding an ignore rule does not remove
+versions already retained in Git history. No history rewrite is needed for the
+current single font asset.
+
 ## Pinned inputs and coverage
 
 | Input | SHA-256 |
