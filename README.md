@@ -54,11 +54,11 @@ flowchart LR
 
 | Task Overview Carousel | Notification Popup |
 | :---: | :---: |
-| ![Task Overview](docs/images/message-polish-overview.png) | ![Notification Popup](docs/images/message-polish-notification.png) |
+| ![Task Overview](docs/images/maple-overview.png) | ![Notification Popup](docs/images/maple-notification.png) |
 
 | Weather & Alert Display | Companion Animation |
 | :---: | :---: |
-| ![Weather Overview](docs/images/weather-overview.png) | ![Companion Animation](docs/images/companion-animation.gif) |
+| ![Weather Overview](docs/images/showcase-weather.png) | ![Companion Animation](docs/images/companion-animation.gif) |
 
 ---
 

@@ -54,11 +54,11 @@ flowchart LR
 
 | 任务概览轮播 | 弹窗通知 |
 | :---: | :---: |
-| ![任务概览](docs/images/message-polish-overview.png) | ![弹窗通知](docs/images/message-polish-notification.png) |
+| ![任务概览](docs/images/maple-chinese-overview.png) | ![弹窗通知](docs/images/maple-chinese-notification.png) |
 
 | 天气与预警显示 | 桌宠动画效果 |
 | :---: | :---: |
-| ![天气概览](docs/images/weather-overview.png) | ![桌宠动画](docs/images/companion-animation.gif) |
+| ![天气概览](docs/images/showcase-weather.png) | ![桌宠动画](docs/images/companion-animation.gif) |
 
 ---
 
