@@ -268,7 +268,7 @@ info_tv/
 ├── host/           # Rust 服务端工程：任务状态管理、SQLite 缓存、USB 串口驱动、HTTP API、CLI 与 Hooks
 ├── firmware/       # ESP32-S3 固件工程：基于 ESP-IDF v6.1、FreeRTOS、C++、LVGL 9.3 与 ST7789 驱动
 ├── protocol/       # 通信协议定义：Protobuf 结构体与 Nanopb 配置文件
-├── scripts/        # 工具脚本：固件字体转换生成、协议代码生成、Windows 发布打包脚本等
+├── scripts/        # 工具脚本：Host 与固件编译打包发布脚本、协议代码生成、字体转换等
 ├── demos/          # 演示脚本：用于向 HTTP API 提交模拟任务进度的 Python 示例
 └── docs/           # 架构文档、协议细节、硬件参考以及设计说明
 ```
@@ -281,21 +281,45 @@ info_tv/
 
 在仓库根目录下运行：
 
+**Windows (PowerShell)**：
+
+```powershell
+# 编译 Release 版可执行程序（输出至 host/target/release/）
+./scripts/host/build_host.ps1
+
+# （可选）编译 Debug 版
+./scripts/host/build_host.ps1 -Debug
+
+# 打包发布版完整归档（输出至 build/host-dist/）
+./scripts/host/build_host_release.ps1
+```
+
+**Linux / macOS (Bash)**：
+
 ```bash
-# 运行服务
+# 编译 Release 版可执行程序（输出至 host/target/release/）
+bash scripts/host/build_host.sh
+
+# （可选）编译 Debug 版
+bash scripts/host/build_host.sh --debug
+
+# 打包发布版完整归档（输出至 build/host-dist/）
+bash scripts/host/build_host_release.sh
+```
+
+**开发调试与测试（跨平台）**：
+
+```bash
+# 直接运行服务
 cargo run --manifest-path host/Cargo.toml --locked -- serve
 
 # 启动带有配置文件的服务（例如开启天气同步功能）
-cp host/info-tv.example.yaml info-tv.yaml
 cargo run --manifest-path host/Cargo.toml --locked -- serve --config info-tv.yaml
 
 # 代码格式化与测试
 cargo fmt --manifest-path host/Cargo.toml -- --check
 cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnings
 cargo test --manifest-path host/Cargo.toml --locked
-
-# 打包发布版可执行程序（Windows 下输出至 build/host-dist）
-powershell -NoProfile -File scripts/host/build_host_release.ps1
 ```
 
 ### ESP32 固件编译
@@ -305,15 +329,40 @@ powershell -NoProfile -File scripts/host/build_host_release.ps1
 
 在仓库根目录下运行：
 
+**Windows (PowerShell)**：
+
+```powershell
+# 编译固件（输出至 firmware/build/）
+./scripts/firmware/build_firmware.ps1
+
+# 编译并烧录至设备（注意先停止 Host 服务以释放串口，替换 COM6 为实际串口号）
+./scripts/firmware/build_firmware.ps1 -Action Flash -Port COM6
+
+# 打包发布版合并固件（输出至 build/firmware-dist/）
+./scripts/firmware/build_firmware_release.ps1
+```
+
+**Linux (Bash)**：
+
+```bash
+# 编译固件（输出至 firmware/build/）
+bash scripts/firmware/build_firmware.sh
+
+# 编译并烧录至设备（替换 /dev/ttyACM0 为实际串口号）
+bash scripts/firmware/build_firmware.sh --action flash --port /dev/ttyACM0
+
+# 打包发布版合并固件（输出至 build/firmware-dist/）
+bash scripts/firmware/build_firmware_release.sh
+```
+
+**原生 idf.py 命令（跨平台）**：
+
 ```bash
 # 编译固件（组件管理器会自动拉取锁定的 LVGL 9.3 依赖）
 idf.py -C firmware build
 
-# 烧录到连接的 ESP32-S3（注意先停止 Host 服务以释放串口，替换为实际串口号）
+# 烧录到连接的 ESP32-S3
 idf.py -C firmware -p <串口号> flash
-
-# 打包发布版合并固件（输出至 build/firmware-dist）
-powershell -NoProfile -File scripts/firmware/build_firmware_release.ps1
 ```
 
 ### 协议代码生成
