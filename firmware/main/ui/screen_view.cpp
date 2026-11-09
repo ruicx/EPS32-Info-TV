@@ -191,10 +191,17 @@ void ScreenView::initialize() {
   smallFont_.base_line = 2;
   header_ = label(screen, 12, 5, 12, 20);
   lv_obj_set_style_text_font(header_, &lv_font_montserrat_16, 0);
-  headerUnit_ = label(screen, 28, 7, 50, 18);
+  headerUnit_ = label(screen, 28, 7, 38, 18);
   lv_obj_set_style_text_font(headerUnit_, &smallFont_, 0);
   lv_obj_set_style_text_color(headerUnit_, lv_color_hex(0x8998ab), 0);
-  summary_ = label(screen, 111, 5, 46, 20);
+  touchBadge_ = label(screen, 68, 5, 38, 20);
+  lv_obj_set_style_text_font(touchBadge_, &smallFont_, 0);
+  lv_obj_set_style_text_align(touchBadge_, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_pad_top(touchBadge_, 2, 0);
+  lv_obj_set_style_radius(touchBadge_, 6, 0);
+  lv_obj_set_style_bg_opa(touchBadge_, LV_OPA_COVER, 0);
+  lv_obj_add_flag(touchBadge_, LV_OBJ_FLAG_HIDDEN);
+  summary_ = label(screen, 114, 5, 46, 20);
   lv_obj_set_style_text_font(summary_, &smallFont_, 0);
   lv_obj_set_style_text_align(summary_, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_set_style_pad_top(summary_, 2, 0);
@@ -260,6 +267,58 @@ void ScreenView::initialize() {
     lv_obj_set_style_bg_opa(rowDetails_[row], LV_OPA_COVER, 0);
     rowProgress_[row] = progressBar(rowBubbles_[row], 34, 28, 174);
   }
+}
+
+bool ScreenView::setTouchIndicator(bool touched, uint32_t clickCount) {
+  if (!touchBadge_) return false;
+
+  enum class IndicatorState {
+    kHidden,
+    kKey,
+    kClick1,
+    kClick2,
+  };
+  static IndicatorState lastState = IndicatorState::kHidden;
+
+  IndicatorState currentState = IndicatorState::kHidden;
+  if (clickCount >= 2) {
+    currentState = IndicatorState::kClick2;
+  } else if (clickCount == 1) {
+    currentState = IndicatorState::kClick1;
+  } else if (touched) {
+    currentState = IndicatorState::kKey;
+  }
+
+  if (currentState == lastState) {
+    return false;
+  }
+  lastState = currentState;
+
+  switch (currentState) {
+    case IndicatorState::kClick2:
+      lv_obj_remove_flag(touchBadge_, LV_OBJ_FLAG_HIDDEN);
+      lv_label_set_text(touchBadge_, "2X");
+      lv_obj_set_style_bg_color(touchBadge_, lv_color_hex(0x302718), 0);
+      lv_obj_set_style_text_color(touchBadge_, lv_color_hex(0xffcf7a), 0);
+      break;
+    case IndicatorState::kClick1:
+      lv_obj_remove_flag(touchBadge_, LV_OBJ_FLAG_HIDDEN);
+      lv_label_set_text(touchBadge_, "1X");
+      lv_obj_set_style_bg_color(touchBadge_, lv_color_hex(0x183029), 0);
+      lv_obj_set_style_text_color(touchBadge_, lv_color_hex(0x82dcb4), 0);
+      break;
+    case IndicatorState::kKey:
+      lv_obj_remove_flag(touchBadge_, LV_OBJ_FLAG_HIDDEN);
+      lv_label_set_text(touchBadge_, "KEY");
+      lv_obj_set_style_bg_color(touchBadge_, lv_color_hex(0x183029), 0);
+      lv_obj_set_style_text_color(touchBadge_, lv_color_hex(0x82dcb4), 0);
+      break;
+    case IndicatorState::kHidden:
+    default:
+      lv_obj_add_flag(touchBadge_, LV_OBJ_FLAG_HIDDEN);
+      break;
+  }
+  return true;
 }
 
 bool ScreenView::animate(uint64_t nowMs) {

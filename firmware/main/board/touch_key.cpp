@@ -13,7 +13,8 @@ bool onTouchActive(touch_sensor_handle_t /*sensHandle*/,
                    const touch_active_event_data_t* /*event*/,
                    void* userCtx) {
   auto* self = static_cast<info_tv::TouchKey*>(userCtx);
-  if (self) self->setTouched(true);
+  if (self) self->setIsrTouched(true);
+  ESP_EARLY_LOGI("touch_key", "Pad ACTIVE (pressed)");
   return false;
 }
 
@@ -21,7 +22,8 @@ bool onTouchInactive(touch_sensor_handle_t /*sensHandle*/,
                      const touch_inactive_event_data_t* /*event*/,
                      void* userCtx) {
   auto* self = static_cast<info_tv::TouchKey*>(userCtx);
-  if (self) self->setTouched(false);
+  if (self) self->setIsrTouched(false);
+  ESP_EARLY_LOGI("touch_key", "Pad INACTIVE (released)");
   return false;
 }
 }  // namespace
@@ -42,8 +44,9 @@ bool TouchKey::initialize() {
   }
   sensHandle_ = sensHandle;
 
+  thresh_ = 35;
   touch_channel_config_t chanCfg = {
-      .active_thresh = { 1500 },
+      .active_thresh = { 100 },
       .charge_speed = TOUCH_CHARGE_SPEED_7,
       .init_charge_volt = TOUCH_INIT_CHARGE_VOLT_DEFAULT,
   };
@@ -56,23 +59,6 @@ bool TouchKey::initialize() {
 
   touch_sensor_filter_config_t filterCfg = TOUCH_SENSOR_DEFAULT_FILTER_CONFIG();
   touch_sensor_config_filter(sensHandle, &filterCfg);
-
-  if (touch_sensor_enable(sensHandle) == ESP_OK) {
-    for (int i = 0; i < 3; ++i) {
-      touch_sensor_trigger_oneshot_scanning(sensHandle, 2000);
-    }
-    touch_sensor_disable(sensHandle);
-
-    uint32_t benchmark[SOC_TOUCH_SAMPLE_CFG_NUM] = {};
-    if (touch_channel_read_data(chanHandle, TOUCH_CHAN_DATA_TYPE_BENCHMARK, benchmark) == ESP_OK) {
-      uint32_t thresh = static_cast<uint32_t>(benchmark[0] * 0.03f);
-      if (thresh < 800) thresh = 800;
-      chanCfg.active_thresh[0] = thresh;
-      touch_sensor_reconfig_channel(chanHandle, &chanCfg);
-      ESP_LOGI(kTag, "Touch key benchmark %lu, threshold %lu",
-               static_cast<unsigned long>(benchmark[0]), static_cast<unsigned long>(thresh));
-    }
-  }
 
   touch_event_callbacks_t callbacks = {
       .on_active = onTouchActive,
@@ -100,6 +86,54 @@ bool TouchKey::initialize() {
 }
 
 ButtonEvent TouchKey::tick(uint64_t nowMs) {
+#if defined(ESP_PLATFORM)
+  if (chanHandle_) {
+    uint32_t smooth = 0;
+    auto* ch = static_cast<touch_channel_handle_t>(chanHandle_);
+    if (touch_channel_read_data(ch, TOUCH_CHAN_DATA_TYPE_SMOOTH, &smooth) == ESP_OK && smooth > 0) {
+      lastSmooth_ = smooth;
+      if (baseline_ == 0) {
+        baseline_ = smooth;
+      }
+
+      // Fast-track baseline upwards if reading jumps up (e.g. after finger release)
+      if (lastSmooth_ > baseline_ + 25) {
+        baseline_ = lastSmooth_;
+      }
+
+      // Touching TP_KEY drops count by ~100 (e.g. from ~16500 down to ~16400)
+      const int32_t drop = static_cast<int32_t>(baseline_) - static_cast<int32_t>(lastSmooth_);
+      if (drop >= static_cast<int32_t>(thresh_)) {
+        if (!swTouched_) {
+          swTouched_ = true;
+          touchStartMs_ = nowMs;
+        }
+      } else if (drop < 18) {
+        swTouched_ = false;
+      }
+
+      // Safety timeout: if held for > 5s, force release and re-baseline
+      if (swTouched_) {
+        if (nowMs - touchStartMs_ > 5000) {
+          swTouched_ = false;
+          baseline_ = lastSmooth_;
+        }
+      } else {
+        // Slow baseline adaptation when untouched to track thermal drift
+        if (nowMs - lastAdaptMs_ >= 100) {
+          lastAdaptMs_ = nowMs;
+          if (baseline_ < lastSmooth_) {
+            ++baseline_;
+          } else if (baseline_ > lastSmooth_) {
+            --baseline_;
+          }
+        }
+      }
+    }
+
+    touched_.store(swTouched_, std::memory_order_relaxed);
+  }
+#endif
   return detector_.update(touched_.load(std::memory_order_relaxed), nowMs);
 }
 

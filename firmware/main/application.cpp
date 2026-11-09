@@ -42,9 +42,23 @@ void Application::uiTask(void* context) {
   for (;;) {
     const uint64_t nowMs = esp_timer_get_time() / 1000;
     Feedback feedback{};
-    if (app.touchKey_.tick(nowMs) == ButtonEvent::kDoubleClick) {
+    const auto buttonEvent = app.touchKey_.tick(nowMs);
+    if (buttonEvent == ButtonEvent::kDoubleClick) {
       app.presentation_.dismissActiveNotification(nowMs);
     }
+    static uint64_t clickShowUntilMs = 0;
+    static uint32_t activeClick = 0;
+    if (buttonEvent == ButtonEvent::kDoubleClick) {
+      activeClick = 2;
+      clickShowUntilMs = nowMs + 600;
+    } else if (buttonEvent == ButtonEvent::kSingleClick) {
+      activeClick = 1;
+      clickShowUntilMs = nowMs + 400;
+    } else if (nowMs >= clickShowUntilMs) {
+      activeClick = 0;
+    }
+    const bool touchIndicatorChanged = app.view_.setTouchIndicator(
+        app.touchKey_.isTouched(), activeClick);
     if (!app.display_.hasPendingFrame()) {
       const auto completed = app.display_.completedGeneration();
       if (completed && completed != acknowledged && app.display_.backlightEnabled()) {
@@ -71,7 +85,7 @@ void Application::uiTask(void* context) {
       const bool contentChanged = model.generation != rendered;
       if (contentChanged) app.view_.render(model);
       const bool animated = app.display_.backlightEnabled() && app.view_.animate(nowMs);
-      if (contentChanged || animated) {
+      if (contentChanged || animated || touchIndicatorChanged) {
         // DMA identities advance for animation, while Presented tracks content.
         app.display_.present(++frameId, contentChanged);
         rendered = model.generation;

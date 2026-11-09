@@ -28,7 +28,15 @@ class TouchKey {
   ButtonEvent tick(uint64_t nowMs);
 
   /**
-   * @brief Update touched state from ISR callback or unit test.
+   * @brief Update touched state from ISR callback.
+   * @param active True when pad is active/touched.
+   */
+  void setIsrTouched(bool active) {
+    isrTouched_.store(active, std::memory_order_relaxed);
+  }
+
+  /**
+   * @brief Update touched state from unit test or manual source.
    * @param touched True when pad is active/touched.
    */
   void setTouched(bool touched) {
@@ -42,9 +50,26 @@ class TouchKey {
     return touched_.load(std::memory_order_relaxed);
   }
 
+  /** @brief Return last read smooth data count. */
+  uint32_t lastSmooth() const { return lastSmooth_; }
+  /** @brief Return last read baseline benchmark count. */
+  uint32_t lastBenchmark() const { return lastBenchmark_; }
+  /** @brief Return current software tracked baseline count. */
+  uint32_t baseline() const { return baseline_; }
+  /** @brief Return current configured active threshold. */
+  uint32_t threshold() const { return thresh_; }
+
  private:
+  std::atomic<bool> isrTouched_{false};
   std::atomic<bool> touched_{false};
+  bool swTouched_ = false;
+  uint64_t touchStartMs_ = 0;
+  uint64_t lastAdaptMs_ = 0;
   ButtonDetector detector_{};
+  uint32_t lastSmooth_ = 0;
+  uint32_t lastBenchmark_ = 0;
+  uint32_t baseline_ = 0;
+  uint32_t thresh_ = 35;
 #if defined(ESP_PLATFORM)
   void* sensHandle_ = nullptr;
   void* chanHandle_ = nullptr;

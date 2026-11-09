@@ -12,6 +12,8 @@ class ScreenView {
   void initialize();
   /** Apply one render model without reconstructing the widget tree. */
   void render(const RenderModel& model);
+  /** Update the visual touch indicator badge (brief feedback for touch and click events). */
+  bool setTouchIndicator(bool touched, uint32_t clickCount);
   /** Sample local motion; return true only when the character pixels change. */
   bool animate(uint64_t nowMs);
 
@@ -27,6 +29,7 @@ class ScreenView {
   lv_font_t smallFont_{};
   lv_obj_t* header_ = nullptr;
   lv_obj_t* headerUnit_ = nullptr;
+  lv_obj_t* touchBadge_ = nullptr;
   lv_obj_t* summary_ = nullptr;
   lv_obj_t* message_ = nullptr;
   lv_obj_t* icon_ = nullptr;
