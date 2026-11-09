@@ -230,6 +230,22 @@ Hook 是各 Agent 在执行特定生命周期事件（接收提示词、调用�
     "PreInvocation": [
       {"type": "command", "command": "<info-tv 完整路径> hook agy PreInvocation", "timeout": 3}
     ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {"type": "command", "command": "<info-tv 完整路径> hook agy PreToolUse", "timeout": 3}
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {"type": "command", "command": "<info-tv 完整路径> hook agy PostToolUse", "timeout": 3}
+        ]
+      }
+    ],
     "Stop": [
       {"type": "command", "command": "<info-tv 完整路径> hook agy Stop", "timeout": 3}
     ]

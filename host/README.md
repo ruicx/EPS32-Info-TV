@@ -75,6 +75,8 @@ Use `C:\info-tv\info-tv.exe hook <source>` in agent hook configurations:
 ```text
 info-tv.exe hook codex
 info-tv.exe hook agy PreInvocation
+info-tv.exe hook agy PreToolUse
+info-tv.exe hook agy PostToolUse
 info-tv.exe hook agy Stop
 info-tv.exe hook zcode
 ```

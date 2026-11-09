@@ -25,7 +25,7 @@ use crate::{
 pub struct HookArgs {
     #[arg(value_parser = ["codex", "agy", "zcode"])]
     pub source: String,
-    #[arg(value_parser = ["PreInvocation", "Stop"])]
+    #[arg(value_parser = ["PreInvocation", "PreToolUse", "PostToolUse", "Stop"])]
     pub event: Option<String>,
     #[arg(long, default_value = "http://127.0.0.1:8765")]
     pub url: String,
@@ -93,6 +93,12 @@ struct TurnHook {
     last_assistant_message: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct AgyToolCall {
+    #[serde(default)]
+    name: String,
+}
+
 /// The native agy callback uses invocation counters instead of a turn identity.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -109,6 +115,8 @@ struct AgyHook {
     fully_idle: Option<bool>,
     #[serde(default)]
     termination_reason: Option<String>,
+    #[serde(default)]
+    tool_call: Option<AgyToolCall>,
 }
 
 /// Persisted per-execution ordering data, matching existing Python columns.
@@ -209,7 +217,7 @@ pub fn capture(
     let submission = if source == "agy" {
         capture_agy(
             &transaction,
-            event_name.context("agy requires PreInvocation or Stop")?,
+            event_name.context("agy requires PreInvocation, PreToolUse, PostToolUse, or Stop")?,
             payload,
         )?
     } else {
@@ -384,8 +392,42 @@ fn capture_agy(
             if invocation != 0 {
                 return Ok(None);
             }
-            (TaskState::Running, "Working")
+            (TaskState::Running, "Working".to_string())
         }
+        "PreToolUse" => {
+            let tool_name = hook
+                .tool_call
+                .as_ref()
+                .map(|t| t.name.as_str())
+                .unwrap_or("");
+            if matches!(
+                tool_name,
+                "read_file"
+                    | "view_file"
+                    | "search_web"
+                    | "manage_task"
+                    | "manage_subagents"
+                    | "schedule"
+                    | "send_message"
+            ) {
+                return Ok(None);
+            }
+            (
+                TaskState::WaitingInput,
+                display_text(
+                    &format!(
+                        "Approval requested: {}",
+                        if tool_name.is_empty() {
+                            "tool"
+                        } else {
+                            tool_name
+                        }
+                    ),
+                    160,
+                ),
+            )
+        }
+        "PostToolUse" => (TaskState::Running, "Working".to_string()),
         "Stop" => {
             anyhow::ensure!(
                 hook.fully_idle.is_some() && hook.termination_reason.is_some(),
@@ -395,12 +437,16 @@ fn capture_agy(
                 return Ok(None);
             }
             match reason {
-                "NO_TOOL_CALL" => (TaskState::Completed, "Turn ended"),
-                "ERROR" => (TaskState::Failed, "Execution error"),
-                "MAX_INVOCATIONS" => (TaskState::Failed, "Invocation limit reached"),
-                "MAX_FORCED_INVOCATIONS" => (TaskState::Failed, "Continuation limit reached"),
-                "MAX_TOKEN_BUDGET_EXCEEDED" => (TaskState::Failed, "Token budget exceeded"),
-                "USER_CANCELED" => (TaskState::Interrupted, "Turn interrupted"),
+                "NO_TOOL_CALL" => (TaskState::Completed, "Turn ended".to_string()),
+                "ERROR" => (TaskState::Failed, "Execution error".to_string()),
+                "MAX_INVOCATIONS" => (TaskState::Failed, "Invocation limit reached".to_string()),
+                "MAX_FORCED_INVOCATIONS" => {
+                    (TaskState::Failed, "Continuation limit reached".to_string())
+                }
+                "MAX_TOKEN_BUDGET_EXCEEDED" => {
+                    (TaskState::Failed, "Token budget exceeded".to_string())
+                }
+                "USER_CANCELED" => (TaskState::Interrupted, "Turn interrupted".to_string()),
                 _ => return Ok(None),
             }
         }
@@ -452,7 +498,10 @@ fn capture_agy(
         let Some((step, run, previous_hash)) = old else {
             return Ok(None);
         };
-        if run.state != "running" || previous_hash != hash {
+        if (run.state != "running" && run.state != "waiting_input")
+            || run.state == state.as_str()
+            || previous_hash != hash
+        {
             return Ok(None);
         }
         (step, run)
@@ -473,7 +522,7 @@ fn capture_agy(
             .context("Hook sequence exhausted")?,
         state,
         title: run.title,
-        detail: detail.into(),
+        detail,
         progress_percent: None,
         conversation_id: Some(hook.conversation_id.clone()),
         conversation_title: run.conversation_title,

@@ -230,6 +230,22 @@ Create or edit `.agents/hooks.json` in the root of any workspace you want to mon
     "PreInvocation": [
       {"type": "command", "command": "<full-path-to-info-tv> hook agy PreInvocation", "timeout": 3}
     ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {"type": "command", "command": "<full-path-to-info-tv> hook agy PreToolUse", "timeout": 3}
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {"type": "command", "command": "<full-path-to-info-tv> hook agy PostToolUse", "timeout": 3}
+        ]
+      }
+    ],
     "Stop": [
       {"type": "command", "command": "<full-path-to-info-tv> hook agy Stop", "timeout": 3}
     ]

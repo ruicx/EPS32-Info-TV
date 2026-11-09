@@ -1,6 +1,6 @@
 //! Language-independent adapter fixtures and concurrent SQLite ledger regressions.
 
-use info_tv::hooks;
+use info_tv::{hooks, tasks::TaskState};
 use serde_json::{Value, json};
 use tempfile::TempDir;
 
@@ -94,4 +94,99 @@ fn zcode_aliases_and_invalid_capture_preserve_ledger() {
     assert_eq!(complete.task_id, first.task_id);
     assert_eq!(complete.sequence, 2);
     assert_eq!(complete.detail, "Done");
+}
+
+#[test]
+fn agy_tool_use_transitions_to_waiting_input_and_back_to_running() {
+    let directory = TempDir::new().expect("temp");
+    let path = directory.path().join("agy.sqlite3");
+    let start = hooks::capture(
+        &path,
+        "agy",
+        Some("PreInvocation"),
+        json!({
+            "conversationId": "conv-1",
+            "lastUserInput": "Run cargo test",
+            "workspacePaths": ["D:\\project\\info_tv"],
+            "invocationNum": 0,
+            "initialNumSteps": 1
+        }),
+    )
+    .expect("capture")
+    .expect("event");
+    assert_eq!(start.state, TaskState::Running);
+    assert_eq!(start.sequence, 1);
+
+    // Readonly tools are ignored
+    let readonly = hooks::capture(
+        &path,
+        "agy",
+        Some("PreToolUse"),
+        json!({
+            "conversationId": "conv-1",
+            "lastUserInput": "Run cargo test",
+            "workspacePaths": ["D:\\project\\info_tv"],
+            "toolCall": {
+                "name": "read_file"
+            }
+        }),
+    )
+    .expect("capture");
+    assert!(readonly.is_none());
+
+    let waiting = hooks::capture(
+        &path,
+        "agy",
+        Some("PreToolUse"),
+        json!({
+            "conversationId": "conv-1",
+            "lastUserInput": "Run cargo test",
+            "workspacePaths": ["D:\\project\\info_tv"],
+            "toolCall": {
+                "name": "run_command"
+            }
+        }),
+    )
+    .expect("capture")
+    .expect("event");
+    assert_eq!(waiting.state, TaskState::WaitingInput);
+    assert_eq!(waiting.sequence, 2);
+    assert_eq!(waiting.detail, "Approval requested: run_command");
+
+    let running = hooks::capture(
+        &path,
+        "agy",
+        Some("PostToolUse"),
+        json!({
+            "conversationId": "conv-1",
+            "lastUserInput": "Run cargo test",
+            "workspacePaths": ["D:\\project\\info_tv"],
+            "toolCall": {
+                "name": "run_command"
+            }
+        }),
+    )
+    .expect("capture")
+    .expect("event");
+    assert_eq!(running.state, TaskState::Running);
+    assert_eq!(running.sequence, 3);
+    assert_eq!(running.detail, "Working");
+
+    let completed = hooks::capture(
+        &path,
+        "agy",
+        Some("Stop"),
+        json!({
+            "conversationId": "conv-1",
+            "lastUserInput": "Run cargo test",
+            "workspacePaths": ["D:\\project\\info_tv"],
+            "fullyIdle": true,
+            "terminationReason": "NO_TOOL_CALL"
+        }),
+    )
+    .expect("capture")
+    .expect("event");
+    assert_eq!(completed.state, TaskState::Completed);
+    assert_eq!(completed.sequence, 4);
+    assert_eq!(completed.detail, "Turn ended");
 }
