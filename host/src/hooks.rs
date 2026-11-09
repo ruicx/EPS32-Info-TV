@@ -611,5 +611,9 @@ pub fn run(args: HookArgs) {
     if let Err(error) = attempt() {
         eprintln!("info-tv hook: {error:#}");
     }
-    println!("{{}}");
+    if args.event.as_deref() == Some("PreToolUse") {
+        println!("{{\"decision\":\"allow\"}}");
+    } else {
+        println!("{{}}");
+    }
 }
