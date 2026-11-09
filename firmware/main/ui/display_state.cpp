@@ -7,7 +7,7 @@
 #include "protocol/codec.h"
 
 namespace info_tv {
-void DisplayState::applySnapshot(const Envelope& envelope) {
+void DisplayState::applySnapshot(const Envelope& envelope, uint64_t receivedAtMs) {
   if (std::strcmp(sessionId_, envelope.session_id)) {
     accepted_ = {};
     events_ = {};
@@ -18,6 +18,7 @@ void DisplayState::applySnapshot(const Envelope& envelope) {
   cardCount_ = envelope.body.snapshot.cards_count;
   for (size_t index = 0; index < cardCount_; ++index) {
     cards_[index].card = envelope.body.snapshot.cards[index];
+    cards_[index].questionUntilMs = receivedAtMs + 1000 * cards_[index].card.view.content.status.recent_question_seconds;
     std::strcpy(cards_[index].messageId, envelope.message_id);
   }
   size_t retained = 0;
@@ -36,7 +37,7 @@ bool DisplayState::hasCard(const char* cardId) const {
   return false;
 }
 
-bool DisplayState::upsertCard(const Card& card, const char* messageId) {
+bool DisplayState::upsertCard(const Card& card, const char* messageId, uint64_t receivedAtMs) {
   for (size_t index = 0; index < cardCount_; ++index) {
     auto& existing = cards_[index];
     if (std::strcmp(existing.card.card_id, card.card_id)) continue;
@@ -44,12 +45,14 @@ bool DisplayState::upsertCard(const Card& card, const char* messageId) {
     if (card.revision == existing.card.revision) return sameCard(existing.card, card);
     existing = CardSlot{};
     existing.card = card;
+    existing.questionUntilMs = receivedAtMs + 1000 * card.view.content.status.recent_question_seconds;
     std::strcpy(existing.messageId, messageId);
     return true;
   }
   if (cardCount_ == cards_.size()) return false;
   auto& created = cards_[cardCount_++];
   created.card = card;
+  created.questionUntilMs = receivedAtMs + 1000 * card.view.content.status.recent_question_seconds;
   std::strcpy(created.messageId, messageId);
   return true;
 }

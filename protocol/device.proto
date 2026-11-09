@@ -52,6 +52,8 @@ message StatusView {
   Tone tone = 2;
   string detail = 3;
   optional uint32 progress_percent = 4;
+  // Remaining lifetime of a recent-question hint; zero hides it without changing state.
+  uint32 recent_question_seconds = 5;
 }
 enum TaskIcon {
   TASK_ICON_TASK = 0;

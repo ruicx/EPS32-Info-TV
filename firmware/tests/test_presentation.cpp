@@ -377,8 +377,53 @@ void testManualDismissal() {
   CHECK(model.kind == info_tv::RenderModel::Kind::kOverview);
 }
 
+/** Expire question hints locally; retries do not restart them and new questions do. */
+void testRecentQuestionHint() {
+  info_tv::DisplayState state;
+  info_tv::PresentationController controller(state);
+  info_tv::Feedback feedback{};
+  auto snapshot = makeSnapshot();
+  snapshot.receivedAtMs = 100;
+  snapshot.envelope.body.snapshot.cards[0].view.content.status.recent_question_seconds = 30;
+  CHECK(controller.handleCommand(snapshot, 100, feedback));
+  auto model = controller.tick(100);
+  CHECK(model.rows[0].recentQuestion);
+  CHECK(!std::strcmp(model.rows[0].card.view.content.status.text, "running"));
+  CHECK(controller.handleCommand(snapshot, 10000, feedback));
+  auto update = makeCommand("ordinary-activity");
+  update.receivedAtMs = 10100;
+  update.envelope.which_body = info_tv_v1_Envelope_card_upsert_tag;
+  update.envelope.body.card_upsert.has_card = true;
+  update.envelope.body.card_upsert.card = makeCard("card", 2);
+  update.envelope.body.card_upsert.card.view.content.status.recent_question_seconds = 20;
+  CHECK(controller.handleCommand(update, 10100, feedback));
+  CHECK(controller.tick(30099).rows[0].recentQuestion);
+  const auto generation = controller.tick(30099).generation;
+  CHECK(!controller.tick(30100).rows[0].recentQuestion);
+  CHECK(controller.tick(30100).generation > generation);
+  CHECK(controller.onFramePresented(controller.tick(30100).generation, 30100, feedback));
+  CHECK(controller.handleCommand(update, 30101, feedback));
+  CHECK(!controller.tick(30101).rows[0].recentQuestion);
+  std::strcpy(update.envelope.message_id, "new-question");
+  update.receivedAtMs = 31000;
+  update.envelope.body.card_upsert.card.revision = 3;
+  update.envelope.body.card_upsert.card.view.content.status.recent_question_seconds = 30;
+  CHECK(controller.handleCommand(update, 31000, feedback));
+  CHECK(controller.tick(31000).rows[0].recentQuestion);
+  std::strcpy(update.envelope.message_id, "end-task");
+  update.receivedAtMs = 32000;
+  update.envelope.body.card_upsert.card.revision = 4;
+  auto& status = update.envelope.body.card_upsert.card.view.content.status;
+  std::strcpy(status.text, "completed");
+  status.tone = info_tv_v1_Tone_TONE_POSITIVE;
+  status.recent_question_seconds = 0;
+  CHECK(controller.handleCommand(update, 32000, feedback));
+  CHECK(!controller.tick(32000).rows[0].recentQuestion);
+}
+
 /** Verify UI admission, actual visibility, interruption, restoration, and expiry. */
 int main() {
+  testRecentQuestionHint();
   testApprovalAutoDismiss();
   testManualDismissal();
   testInterruptedOverview();

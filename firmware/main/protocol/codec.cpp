@@ -17,7 +17,8 @@ bool validView(const View& view) {
   const auto& status = view.content.status;
   return status.text[0] && status.tone >= info_tv_v1_Tone_TONE_NEUTRAL &&
          status.tone <= info_tv_v1_Tone_TONE_NEGATIVE &&
-         (!status.has_progress_percent || status.progress_percent <= 100);
+         (!status.has_progress_percent || status.progress_percent <= 100) &&
+         status.recent_question_seconds <= 30;
 }
 
 /** Check card identity, revision, and supported view content. */
@@ -116,6 +117,7 @@ bool sameCard(const Card& left, const Card& right) {
          !std::strcmp(left.view.title, right.view.title) && !std::strcmp(a.text, b.text) &&
          !std::strcmp(a.detail, b.detail) && a.tone == b.tone &&
          a.has_progress_percent == b.has_progress_percent &&
-         (!a.has_progress_percent || a.progress_percent == b.progress_percent);
+         (!a.has_progress_percent || a.progress_percent == b.progress_percent) &&
+         a.recent_question_seconds == b.recent_question_seconds;
 }
 }  // namespace info_tv

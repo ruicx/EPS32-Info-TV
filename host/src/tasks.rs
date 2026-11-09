@@ -42,6 +42,7 @@ pub enum TaskState {
     Completed,
     Failed,
     Interrupted,
+    Closed,
 }
 
 impl TaskState {
@@ -58,6 +59,7 @@ impl TaskState {
             Self::Completed => "completed",
             Self::Failed => "failed",
             Self::Interrupted => "interrupted",
+            Self::Closed => "closed",
         }
     }
 }
@@ -99,6 +101,8 @@ pub struct TaskEvent {
     pub run_sequence: Option<i64>,
     #[serde(default)]
     pub icon: TaskIcon,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub question_id: Option<String>,
 }
 
 /// Check text at its encoded wire boundary, preserving permitted whitespace.
@@ -150,6 +154,9 @@ impl TaskEvent {
             validate_text(text, 64, required)?;
         }
         validate_text(&self.detail, 160, false)?;
+        if let Some(id) = &self.question_id {
+            validate_text(id, 64, true)?;
+        }
         if let Some(id) = &self.conversation_id {
             validate_text(id, 64, true)?;
         }
@@ -176,6 +183,8 @@ pub struct TaskRecord {
     pub revision: u64,
     pub completion_notified: bool,
     pub completed_at_ms: Option<i64>,
+    #[serde(default)]
+    pub question_expires_at_ms: Option<i64>,
 }
 
 /// Result of evaluating an event before persistence or publication.
@@ -277,7 +286,7 @@ impl TaskStore {
                 return unchanged("closed");
             }
         }
-        if active.is_none() && self.tasks.len() >= MAX_TASKS {
+        if active.is_none() && self.tasks.len() >= MAX_TASKS && event.state != TaskState::Closed {
             return Err(AdmissionError::new(503, "Task capacity reached"));
         }
         let completed = previous.is_some_and(|r| same_run && r.completion_notified);
@@ -302,6 +311,20 @@ impl TaskStore {
             } else {
                 None
             },
+            question_expires_at_ms: if matches!(
+                event.state,
+                TaskState::Running | TaskState::WaitingInput
+            ) {
+                if event.question_id.is_some() {
+                    Some(now_ms.saturating_add(30_000))
+                } else {
+                    previous
+                        .filter(|_| same_run)
+                        .and_then(|r| r.question_expires_at_ms)
+                }
+            } else {
+                None
+            },
         };
         Ok(TaskUpdate {
             outcome: "accepted",
@@ -322,6 +345,9 @@ impl TaskStore {
         self.events.push_back(event.clone());
         if self.events.len() > EVENT_CACHE_CAPACITY {
             self.events.pop_front();
+        }
+        if event.state == TaskState::Closed {
+            self.close(&update.record.card_id);
         }
     }
 

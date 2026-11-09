@@ -83,7 +83,9 @@ SQLite transactions.
 
 Each conversation keeps one display card across turns. The first prompt supplies
 the stable conversation title; each prompt supplies the current task title.
-The workspace basename supplies context, and the icon is `code`. Titles/context
+The workspace basename supplies context, and the wire icon is `code`.
+Updated firmware uses the `Z` source badge for ZCode, distinguishing it from
+Codex (`C`) and AGY (`A`) in both overview rows and notifications. Titles/context
 are limited to 64 UTF-8 bytes and details to 160, with controls and repeated
 whitespace removed. Progress is unknown; the adapter does not fabricate it.
 It never opens transcripts or forwards raw tool inputs, results, or errors.

@@ -59,6 +59,81 @@ fn concurrent_callbacks_do_not_duplicate_a_transition() {
 }
 
 #[test]
+fn codex_async_question_emits_one_running_hint_per_accepted_call() {
+    let directory = TempDir::new().expect("temp");
+    let path = directory.path().join("codex.sqlite3");
+    let callback = |name: &str, id: &str, response: Value| {
+        hooks::capture(
+            &path,
+            "codex",
+            None,
+            json!({
+                "hook_event_name":name,"session_id":"session","turn_id":"turn",
+                "prompt":"Build","tool_name":"request_user_input_async",
+                "tool_use_id":id,"tool_response":response
+            }),
+        )
+        .expect("capture")
+    };
+    callback("UserPromptSubmit", "", Value::Null).expect("start");
+    assert!(callback("PreToolUse", "question-1", Value::Null).is_none());
+    let question = callback("PostToolUse", "question-1", json!("{\"accepted\":true}"))
+        .expect("accepted question hint");
+    assert_eq!(question.state, TaskState::Running);
+    assert_eq!(question.sequence, 2);
+    assert_eq!(
+        serde_json::to_value(&question).expect("event")["question_id"],
+        "question-1"
+    );
+    assert!(callback("PostToolUse", "question-1", json!("{\"accepted\":true}")).is_none());
+    assert!(callback("PostToolUse", "rejected", json!({"accepted":false})).is_none());
+    let next =
+        callback("PostToolUse", "question-2", json!({"accepted":true})).expect("next question");
+    assert_eq!(next.sequence, 3);
+    callback("Stop", "", Value::Null).expect("stop");
+    assert!(callback("PostToolUse", "late", json!({"accepted":true})).is_none());
+}
+
+#[test]
+fn codex_session_end_closes_latest_turn_once_and_allows_a_new_turn() {
+    let directory = TempDir::new().expect("temp");
+    let path = directory.path().join("codex.sqlite3");
+    let callback = |name: &str, turn: Option<&str>| {
+        hooks::capture(
+            &path,
+            "codex",
+            None,
+            json!({
+                "hook_event_name":name,"session_id":"session","turn_id":turn,"prompt":"Build"
+            }),
+        )
+        .expect("capture")
+    };
+    assert!(callback("SessionEnd", None).is_none());
+    let first = callback("UserPromptSubmit", Some("first")).expect("start");
+    callback("Stop", Some("first")).expect("stop");
+    let second = callback("UserPromptSubmit", Some("second")).expect("start");
+    let close = callback("SessionEnd", None).expect("close");
+    assert_eq!(close.task_id, second.task_id);
+    assert_eq!(close.run_sequence, Some(2));
+    assert_eq!(close.state, TaskState::Closed);
+    assert_eq!(close.sequence, 2);
+    assert!(callback("SessionEnd", None).is_none());
+    for turn in ["first", "second"] {
+        assert!(callback("UserPromptSubmit", Some(turn)).is_none());
+        assert!(callback("PreToolUse", Some(turn)).is_none());
+        assert!(callback("Stop", Some(turn)).is_none());
+    }
+    let resumed = callback("UserPromptSubmit", Some("resumed")).expect("resume");
+    assert_eq!(resumed.run_sequence, Some(3));
+    assert_ne!(resumed.task_id, first.task_id);
+    callback("Stop", Some("resumed")).expect("stop");
+    let close = callback("SessionEnd", None).expect("close completed turn");
+    assert_eq!(close.sequence, 3);
+    assert_eq!(close.state, TaskState::Closed);
+}
+
+#[test]
 fn zcode_aliases_and_invalid_capture_preserve_ledger() {
     let directory = TempDir::new().expect("temp");
     let path = directory.path().join("zcode.sqlite3");

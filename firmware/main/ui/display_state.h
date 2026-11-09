@@ -13,6 +13,7 @@ struct CardSlot {
   Card card{};
   char messageId[37]{};
   bool presented = false;
+  uint64_t questionUntilMs = 0;
 };
 
 /** Own a pending notification, original identity, and local validity deadline. */
@@ -29,11 +30,11 @@ struct NotificationSlot {
 class DisplayState {
  public:
   /** Atomically replace an already-validated overview, resetting a new session. */
-  void applySnapshot(const Envelope& envelope);
+  void applySnapshot(const Envelope& envelope, uint64_t receivedAtMs);
   /** Return whether a related task card remains in the current overview. */
   bool hasCard(const char* cardId) const;
   /** Apply a newer card; return false for conflicts, stale data, or capacity. */
-  bool upsertCard(const Card& card, const char* messageId);
+  bool upsertCard(const Card& card, const char* messageId, uint64_t receivedAtMs);
   /** Admit a notification or recognize its original event as already known. */
   bool enqueueNotification(const Envelope& envelope, uint64_t receivedAtMs, uint64_t nowMs);
   /** Select by priority, preferring weather then oldest task notice, consuming it. */

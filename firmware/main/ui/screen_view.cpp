@@ -35,9 +35,12 @@ uint32_t badgeColor(info_tv_v1_Tone tone) {
   }
 }
 
-/** Resolve the fixed icon catalog using bundled LVGL symbol glyphs. */
-const char* iconSymbol(info_tv_v1_TaskIcon icon) {
-  switch (icon) {
+/** Identify agent sources, retaining purpose icons for other producers. */
+const char* iconSymbol(const View& view) {
+  if (!std::strcmp(view.source, "codex")) return "C";
+  if (!std::strcmp(view.source, "zcode")) return "Z";
+  if (!std::strcmp(view.source, "agy")) return "A";
+  switch (view.icon) {
     case info_tv_v1_TaskIcon_TASK_ICON_CODE: return LV_SYMBOL_EDIT;
     case info_tv_v1_TaskIcon_TASK_ICON_TEST: return LV_SYMBOL_OK;
     case info_tv_v1_TaskIcon_TASK_ICON_BUILD: return LV_SYMBOL_SETTINGS;
@@ -356,9 +359,11 @@ void ScreenView::render(const RenderModel& model) {
       const auto& view = model.rows[row].card.view;
       const auto& status = view.content.status;
       lv_obj_remove_flag(rowBubbles_[row], LV_OBJ_FLAG_HIDDEN);
-      lv_label_set_text(rowIcons_[row], iconSymbol(view.icon));
+      lv_label_set_text(rowIcons_[row], iconSymbol(view));
       lv_label_set_text(rowTitles_[row], view.title);
-      lv_label_set_text(rowDetails_[row], compactState(status.text));
+      std::snprintf(text, sizeof(text), "%s%s", model.rows[row].recentQuestion ? "? " : "",
+                    compactState(status.text));
+      lv_label_set_text(rowDetails_[row], text);
       const auto color = lv_color_hex(model.connected ? toneColor(status.tone) : 0xb1bdcb);
       lv_obj_set_style_text_color(rowDetails_[row], color, 0);
       lv_obj_set_style_text_color(rowIcons_[row], color, 0);
@@ -385,7 +390,7 @@ void ScreenView::render(const RenderModel& model) {
       std::snprintf(text, sizeof(text), "%s #%.4s%s%s", model.view.source, model.cardId,
                     model.view.context[0] ? " | " : "", model.view.context);
     lv_label_set_text(sender_, text);
-    lv_label_set_text(icon_, model.weatherNotification ? LV_SYMBOL_WARNING : iconSymbol(model.view.icon));
+    lv_label_set_text(icon_, model.weatherNotification ? LV_SYMBOL_WARNING : iconSymbol(model.view));
     lv_label_set_text(title_, model.view.title);
     std::snprintf(text, sizeof(text), "%s%s", model.connected ? "" : "last: ", status.text);
     if (status.has_progress_percent && model.connected)

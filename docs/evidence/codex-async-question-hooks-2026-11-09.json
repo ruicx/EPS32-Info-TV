@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-09",
+  "codex_version": "0.167.0",
+  "environment": "Windows, isolated CODEX_HOME and synchronous recorder hooks",
+  "method": "Real codex exec process driven by deterministic loopback Responses API fixtures; no upstream model request or login copy",
+  "observations": [
+    {"hook_event_name": "UserPromptSubmit"},
+    {"hook_event_name": "PreToolUse", "tool_name": "request_user_input_async", "tool_use_id": "probe_question"},
+    {"hook_event_name": "PostToolUse", "tool_name": "request_user_input_async", "tool_use_id": "probe_question", "tool_response": "{\"accepted\":true}"},
+    {"hook_event_name": "PreToolUse", "tool_name": "Bash"},
+    {"hook_event_name": "Stop"}
+  ],
+  "release_adapter_replay": [
+    {"state": "running"},
+    {"state": "running", "question_id": "probe_question"},
+    {"state": "completed"}
+  ],
+  "limits": [
+    "The noninteractive CLI printed the question; interactive answer delivery was not exercised.",
+    "The ordinary shell control reached PreToolUse and was rejected by the read-only execution policy.",
+    "This evidence verifies native hook dispatch, not physical display rendering."
+  ]
+}

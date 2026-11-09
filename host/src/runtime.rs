@@ -207,7 +207,11 @@ impl Coordinator {
                             "skipped_offline"
                         };
                     }
-                    self.device.publish(&update.record, update.notify, now);
+                    if event.state == crate::tasks::TaskState::Closed {
+                        self.device.remove(&update.record.card_id);
+                    } else {
+                        self.device.publish(&update.record, update.notify, now);
+                    }
                 }
                 Ok(
                     json!({"outcome":update.outcome,"card_id":update.record.card_id,

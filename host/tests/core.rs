@@ -137,6 +137,54 @@ fn yaml_discovery_strictness_and_precedence() {
     }
 }
 
+#[tokio::test]
+async fn session_closure_retires_durably_without_a_notification() {
+    let directory = TempDir::new().expect("temp");
+    let settings = Settings::default();
+    let host = Host::open(directory.path(), settings.clone()).await;
+    let mut start = event("turn", 1, "running");
+    start["conversation_id"] = json!("session");
+    start["run_sequence"] = json!(1);
+    let (_, admitted) = host
+        .request("POST", "/v1/task-events", Some(start.clone()))
+        .await;
+    let mut close = start.clone();
+    close["event_id"] = json!(Uuid::new_v4().simple().to_string());
+    close["sequence"] = json!(2);
+    close["state"] = json!("closed");
+    let (status, result) = host
+        .request("POST", "/v1/task-events", Some(close.clone()))
+        .await;
+    assert_eq!(status, 202);
+    assert_eq!(result["card_id"], admitted["card_id"]);
+    assert_eq!(result["notification"], "none");
+    assert_eq!(host.request("GET", "/v1/tasks", None).await.1, json!([]));
+    host.finish().await;
+
+    let host = Host::open(directory.path(), settings).await;
+    assert_eq!(host.request("GET", "/v1/tasks", None).await.1, json!([]));
+    assert_eq!(
+        host.request("POST", "/v1/task-events", Some(close)).await.1["outcome"],
+        "duplicate"
+    );
+    start["event_id"] = json!(Uuid::new_v4().simple().to_string());
+    start["sequence"] = json!(3);
+    assert_eq!(
+        host.request("POST", "/v1/task-events", Some(start.clone()))
+            .await
+            .1["outcome"],
+        "closed"
+    );
+    start["event_id"] = json!(Uuid::new_v4().simple().to_string());
+    start["task_id"] = json!("next-turn");
+    start["run_sequence"] = json!(2);
+    assert_eq!(
+        host.request("POST", "/v1/task-events", Some(start)).await.1["outcome"],
+        "accepted"
+    );
+    host.finish().await;
+}
+
 #[test]
 fn protocol_vectors_corruption_and_bounds() {
     let hex = include_str!("../../protocol/test_vectors/status_frame.hex").trim();
@@ -171,6 +219,56 @@ fn protocol_vectors_corruption_and_bounds() {
     }
     assert!(protocol::encode_frame(&[]).is_err());
     assert!(protocol::encode_frame(&[1u8; 4097]).is_err());
+}
+
+#[test]
+fn recent_question_hint_survives_activity_without_renewing_and_clears_at_end() {
+    let mut store = TaskStore::default();
+    let mut value = event("question-run", 1, "running");
+    value["question_id"] = json!("question-1");
+    let first: TaskEvent = serde_json::from_value(value.clone()).expect("question event");
+    let update = store.prepare(&first, 1000).expect("admit question");
+    assert!(!update.notify);
+    let status = info_tv::views::card(&update.record, 2000)
+        .view
+        .expect("view")
+        .content
+        .expect("status");
+    let pb::view::Content::Status(status) = status;
+    assert_eq!(status.recent_question_seconds, 29);
+    let pb::view::Content::Status(expired) = info_tv::views::card(&update.record, 31_000)
+        .view
+        .expect("view")
+        .content
+        .expect("status");
+    assert_eq!(expired.recent_question_seconds, 0);
+    assert_eq!(
+        serde_json::to_value(&update.record).expect("record")["question_expires_at_ms"],
+        31_000
+    );
+    store.commit(&update);
+    let duplicate = store.prepare(&first, 5000).expect("duplicate");
+    assert_eq!(
+        serde_json::to_value(&duplicate.record).expect("record")["question_expires_at_ms"],
+        31_000
+    );
+    for (sequence, state, question, expected) in [
+        (2, "running", Value::Null, json!(31_000)),
+        (3, "running", json!("question-2"), json!(33_000)),
+        (4, "completed", Value::Null, Value::Null),
+    ] {
+        value["event_id"] = json!(Uuid::new_v4().simple().to_string());
+        value["sequence"] = json!(sequence);
+        value["state"] = json!(state);
+        value["question_id"] = question;
+        let incoming: TaskEvent = serde_json::from_value(value.clone()).expect("event");
+        let update = store.prepare(&incoming, sequence * 1000).expect("update");
+        assert_eq!(
+            serde_json::to_value(&update.record).expect("record")["question_expires_at_ms"],
+            expected
+        );
+        store.commit(&update);
+    }
 }
 
 #[test]
@@ -274,6 +372,41 @@ async fn http_validation_capacity_and_independent_weather() {
         .await
         .0,
         503
+    );
+    assert_eq!(
+        host.request(
+            "POST",
+            "/v1/task-events",
+            Some(event("unseen-closed", 1, "closed"))
+        )
+        .await
+        .0,
+        202
+    );
+    assert_eq!(
+        host.request("GET", "/v1/tasks", None)
+            .await
+            .1
+            .as_array()
+            .expect("cards")
+            .len(),
+        8
+    );
+    assert_eq!(
+        host.request("POST", "/v1/task-events", Some(event("run0", 2, "closed")))
+            .await
+            .0,
+        202
+    );
+    assert_eq!(
+        host.request(
+            "POST",
+            "/v1/task-events",
+            Some(event("replacement", 1, "running"))
+        )
+        .await
+        .0,
+        202
     );
     assert_eq!(host.request("PUT", "/v1/weather", Some(json!({"location":"Harbin","temperature_c":0,"condition":"snow","daily_low_c":-10,"daily_high_c":0}))).await.0, 202);
     for invalid in [
@@ -591,7 +724,8 @@ async fn rust_http_to_cpp_firmware_core() {
         v["settings"]["applied_brightness_percent"] == 0
     })
     .await;
-    let running = event("cpp-build", 1, "running");
+    let mut running = event("cpp-build", 1, "running");
+    running["question_id"] = json!("cpp-question");
     let (_, response) = host
         .request("POST", "/v1/task-events", Some(running.clone()))
         .await;

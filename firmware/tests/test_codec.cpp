@@ -29,11 +29,16 @@ int main(int argc, char** argv) {
   CHECK(envelope.body.card_upsert.card.view.content.status.progress_percent == 42);
   CHECK(envelope.body.card_upsert.card.view.icon == info_tv_v1_TaskIcon_TASK_ICON_TASK);
   envelope.body.card_upsert.card.view.icon = info_tv_v1_TaskIcon_TASK_ICON_TEST;
+  envelope.body.card_upsert.card.view.content.status.recent_question_seconds = 30;
   std::array<uint8_t, 4096> encoded{};
   const auto size = info_tv::encodeEnvelope(envelope, encoded.data(), encoded.size());
   info_tv::Envelope roundtrip{};
   CHECK(info_tv::decodeEnvelope(encoded.data(), size, roundtrip));
   CHECK(info_tv::sameCard(envelope.body.card_upsert.card, roundtrip.body.card_upsert.card));
+  envelope.body.card_upsert.card.view.content.status.recent_question_seconds = 31;
+  CHECK(info_tv::validateCommand(envelope));
+  CHECK(!info_tv::sameCard(envelope.body.card_upsert.card, roundtrip.body.card_upsert.card));
+  envelope.body.card_upsert.card.view.content.status.recent_question_seconds = 30;
   envelope.body.card_upsert.card.view.content.status.progress_percent = 101;
   CHECK(info_tv::validateCommand(envelope));
   auto invalid = makeSnapshot();
@@ -70,6 +75,8 @@ int main(int argc, char** argv) {
     std::memset(view.context, 'c', sizeof(view.context) - 1);
     std::memset(view.content.status.text, 'x', sizeof(view.content.status.text) - 1);
     std::memset(view.content.status.detail, 'd', sizeof(view.content.status.detail) - 1);
+    view.content.status.progress_percent = 100;
+    view.content.status.recent_question_seconds = 30;
   }
   static_assert(info_tv_v1_Envelope_size <= 4096);
   const auto maximumSize = info_tv::encodeEnvelope(maximum.envelope, encoded.data(), encoded.size());

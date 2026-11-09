@@ -500,6 +500,11 @@
           "icon": {
             "$ref": "#/components/schemas/TaskIcon",
             "default": "task"
+          },
+          "question_id": {
+            "anyOf": [{"type": "string", "minLength": 1, "maxLength": 64}, {"type": "null"}],
+            "title": "Question Id",
+            "description": "A newly submitted question's tool-call identity. Triggers a 30-second card hint without changing execution state. Omit on ordinary activity."
           }
         },
         "additionalProperties": false,
@@ -535,7 +540,8 @@
           "waiting_input",
           "completed",
           "failed",
-          "interrupted"
+          "interrupted",
+          "closed"
         ],
         "title": "TaskState",
         "description": "Supported source-independent execution states."

@@ -61,6 +61,10 @@ The accepted default policy is:
   do not reset the timer.
 - `running`, `waiting_input`, and `failed`: retain until explicitly closed or
   replaced by a source update. Silence does not establish failure or completion.
+- `closed`: retire immediately without a notification. Producers submit it
+  with the current execution identity and a greater event sequence, allowing
+  durable retries and removal after the agent exits. It is retained only for
+  bounded replay protection, never as a displayed card.
 - All current cards can be closed manually with `DELETE /v1/tasks/{card_id}`.
   Obtain the service-assigned identity from `GET /v1/tasks`. A repeated close
   returns `removed: false`; successful admission returns `removed: true`.

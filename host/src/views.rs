@@ -7,10 +7,10 @@ use crate::{
 };
 
 /// Build one source-independent card without layout coordinates.
-pub fn card(record: &TaskRecord) -> pb::Card {
+pub fn card(record: &TaskRecord, now_ms: i64) -> pb::Card {
     let event = &record.event;
     let tone = match event.state {
-        TaskState::Running | TaskState::Interrupted => 1,
+        TaskState::Running | TaskState::Interrupted | TaskState::Closed => 1,
         TaskState::WaitingInput => 2,
         TaskState::Completed => 3,
         TaskState::Failed => 4,
@@ -44,19 +44,22 @@ pub fn card(record: &TaskRecord) -> pb::Card {
                     event.detail.clone()
                 },
                 progress_percent: event.progress_percent,
+                recent_question_seconds: record.question_expires_at_ms.map_or(0, |expiry| {
+                    (expiry.saturating_sub(now_ms).clamp(0, 30_000) as u32).div_ceil(1000)
+                }),
             })),
         }),
     }
 }
 
 /// Build a transient notification for one admitted state transition.
-pub fn notification(record: &TaskRecord) -> pb::Notification {
+pub fn notification(record: &TaskRecord, now_ms: i64) -> pb::Notification {
     pb::Notification {
         notification_id: record.event.event_id.clone(),
         priority: if record.event.state.terminal() { 1 } else { 2 },
         display_duration_ms: None,
         valid_for_ms: 30_000,
-        view: card(record).view,
+        view: card(record, now_ms).view,
         card_id: record.card_id.clone(),
     }
 }
@@ -115,7 +118,12 @@ pub fn alert(state: &StoredState, now_ms: i64, notify: bool) -> pb::WeatherAlert
 /// Rebuild the authoritative overview for connection or card-removal synchronization.
 pub fn snapshot(state: &StoredState, now_ms: i64) -> pb::Snapshot {
     pb::Snapshot {
-        cards: state.tasks.tasks.iter().map(card).collect(),
+        cards: state
+            .tasks
+            .tasks
+            .iter()
+            .map(|record| card(record, now_ms))
+            .collect(),
         weather: Some(weather(state, now_ms)),
     }
 }

@@ -87,7 +87,7 @@ pub struct TaskSubmit {
     task_id: String,
     #[arg(long)]
     sequence: i64,
-    #[arg(long, value_parser = ["running", "waiting_input", "completed", "failed", "interrupted"])]
+    #[arg(long, value_parser = ["running", "waiting_input", "completed", "failed", "interrupted", "closed"])]
     state: String,
     #[arg(long)]
     title: String,

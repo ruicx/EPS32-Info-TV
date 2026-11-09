@@ -118,7 +118,7 @@ impl DeviceSession {
 
     /// Coalesce unsent content for the same card without accumulating revisions.
     pub fn publish(&mut self, record: &TaskRecord, notify: bool, now_ms: i64) {
-        let value = views::card(record);
+        let value = views::card(record, now_ms);
         if let Some(old) = self.dirty.iter_mut().find(|c| c.card_id == value.card_id) {
             *old = value;
         } else {
@@ -126,7 +126,7 @@ impl DeviceSession {
         }
         if notify && self.online() {
             self.notifications
-                .push_back((views::notification(record), now_ms + 30_000));
+                .push_back((views::notification(record, now_ms), now_ms + 30_000));
         }
     }
 
@@ -406,7 +406,15 @@ impl DeviceSession {
                 return Some((Body::Notification(note), Some(expiry)));
             }
         }
-        if let Some(card) = self.dirty.pop_front() {
+        if let Some(mut card) = self.dirty.pop_front() {
+            if let Some(record) = stored
+                .tasks
+                .tasks
+                .iter()
+                .find(|r| r.card_id == card.card_id)
+            {
+                card = views::card(record, now_ms);
+            }
             self.card_sent_since_notice = true;
             return Some((Body::CardUpsert(pb::CardUpsert { card: Some(card) }), None));
         }

@@ -83,7 +83,9 @@ Completed and interrupted cards also expire according to the configured retentio
 
 `--source` defaults to `cli`. Use a unique `--task-id` for each execution and
 increasing positive `--sequence` values for its updates. States are `running`,
-`waiting_input`, `completed`, `failed`, and `interrupted`. Optional display arguments include
+`waiting_input`, `completed`, `failed`, `interrupted`, and `closed`. Submitting
+`closed` retires the card immediately without a completion notification.
+Optional display arguments include
 `--detail`, `--progress-percent`, `--icon`, and `--context`.
 
 For a conversation, supply `--conversation-id` and `--run-sequence` together,

@@ -101,7 +101,9 @@ typedef struct _info_tv_v1_StatusView {
     info_tv_v1_Tone tone;
     char detail[161];
     bool has_progress_percent;
-    uint32_t progress_percent;
+    uint8_t progress_percent;
+    /* Remaining lifetime of a recent-question hint; zero hides it without changing state. */
+    uint8_t recent_question_seconds;
 } info_tv_v1_StatusView;
 
 typedef struct _info_tv_v1_View {
@@ -273,7 +275,7 @@ extern "C" {
 #define info_tv_v1_Ping_init_default             {0}
 #define info_tv_v1_Pong_init_default             {0}
 #define info_tv_v1_DeviceSettings_init_default   {false, 0}
-#define info_tv_v1_StatusView_init_default       {"", _info_tv_v1_Tone_MIN, "", false, 0}
+#define info_tv_v1_StatusView_init_default       {"", _info_tv_v1_Tone_MIN, "", false, 0, 0}
 #define info_tv_v1_View_init_default             {"", "", "", _info_tv_v1_TaskIcon_MIN, 0, {info_tv_v1_StatusView_init_default}}
 #define info_tv_v1_Card_init_default             {"", 0, false, info_tv_v1_View_init_default}
 #define info_tv_v1_Weather_init_default          {"", false, 0, _info_tv_v1_WeatherCondition_MIN, 0, false, 0, false, 0}
@@ -288,7 +290,7 @@ extern "C" {
 #define info_tv_v1_Ping_init_zero                {0}
 #define info_tv_v1_Pong_init_zero                {0}
 #define info_tv_v1_DeviceSettings_init_zero      {false, 0}
-#define info_tv_v1_StatusView_init_zero          {"", _info_tv_v1_Tone_MIN, "", false, 0}
+#define info_tv_v1_StatusView_init_zero          {"", _info_tv_v1_Tone_MIN, "", false, 0, 0}
 #define info_tv_v1_View_init_zero                {"", "", "", _info_tv_v1_TaskIcon_MIN, 0, {info_tv_v1_StatusView_init_zero}}
 #define info_tv_v1_Card_init_zero                {"", 0, false, info_tv_v1_View_init_zero}
 #define info_tv_v1_Weather_init_zero             {"", false, 0, _info_tv_v1_WeatherCondition_MIN, 0, false, 0, false, 0}
@@ -311,6 +313,7 @@ extern "C" {
 #define info_tv_v1_StatusView_tone_tag           2
 #define info_tv_v1_StatusView_detail_tag         3
 #define info_tv_v1_StatusView_progress_percent_tag 4
+#define info_tv_v1_StatusView_recent_question_seconds_tag 5
 #define info_tv_v1_View_title_tag                1
 #define info_tv_v1_View_source_tag               2
 #define info_tv_v1_View_context_tag              3
@@ -424,7 +427,8 @@ X(a, STATIC,   OPTIONAL, UINT32,   brightness_percent,   1)
 X(a, STATIC,   SINGULAR, STRING,   text,              1) \
 X(a, STATIC,   SINGULAR, UENUM,    tone,              2) \
 X(a, STATIC,   SINGULAR, STRING,   detail,            3) \
-X(a, STATIC,   OPTIONAL, UINT32,   progress_percent,   4)
+X(a, STATIC,   OPTIONAL, UINT32,   progress_percent,   4) \
+X(a, STATIC,   SINGULAR, UINT32,   recent_question_seconds,   5)
 #define info_tv_v1_StatusView_CALLBACK NULL
 #define info_tv_v1_StatusView_DEFAULT NULL
 

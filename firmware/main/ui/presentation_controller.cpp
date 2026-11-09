@@ -51,7 +51,7 @@ bool PresentationController::handleCommand(const DisplayCommand& command, uint64
         weatherAlert_ = {};
         alertExpiresAtMs_ = 0;
       }
-      state_.applySnapshot(envelope);
+      state_.applySnapshot(envelope, command.receivedAtMs);
       if (hasActive_ && !active_.weatherAlert && active_.notification.card_id[0] &&
           !state_.hasCard(active_.notification.card_id)) {
         hasActive_ = false;
@@ -64,7 +64,7 @@ bool PresentationController::handleCommand(const DisplayCommand& command, uint64
       break;
     case info_tv_v1_Envelope_card_upsert_tag: {
       const auto& card = envelope.body.card_upsert.card;
-      accepted = state_.upsertCard(card, envelope.message_id);
+      accepted = state_.upsertCard(card, envelope.message_id, command.receivedAtMs);
       if (accepted && card.view.content.status.tone != info_tv_v1_Tone_TONE_ATTENTION) {
         state_.clearCardAttentionNotifications(card.card_id);
         if (hasActive_ && !active_.weatherAlert &&
@@ -204,6 +204,8 @@ const RenderModel& PresentationController::tick(uint64_t nowMs) {
     for (size_t row = 0; row < candidate.rowCount; ++row) {
       const auto& slot = state_.card(order_[first + row]);
       candidate.rows[row].card = slot.card;
+      candidate.rows[row].recentQuestion = nowMs < slot.questionUntilMs &&
+          slot.card.view.content.status.recent_question_seconds != 0;
       std::strcpy(candidate.rows[row].messageId, slot.messageId);
     }
   }
@@ -227,6 +229,7 @@ const RenderModel& PresentationController::tick(uint64_t nowMs) {
       std::strcmp(candidate.weather.location, render_.weather.location);
   for (size_t row = 0; row < candidate.rowCount && !changed; ++row) {
     changed = !sameCard(candidate.rows[row].card, render_.rows[row].card) ||
+        candidate.rows[row].recentQuestion != render_.rows[row].recentQuestion ||
         std::strcmp(candidate.rows[row].messageId, render_.rows[row].messageId);
   }
   candidate.generation = render_.generation + (changed ? 1 : 0);

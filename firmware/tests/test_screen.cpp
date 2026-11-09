@@ -276,7 +276,7 @@ int main(int argc, char** argv) {
     model.rows[row].card = makeCard();
     auto& card = model.rows[row].card;
     std::snprintf(card.card_id, sizeof(card.card_id), "a%03u", static_cast<unsigned>(row));
-    std::strcpy(card.view.source, row == 1 ? "agy" : "codex");
+    std::strcpy(card.view.source, "demo");
     std::strcpy(card.view.context, "info_tv");
     std::strcpy(card.view.title, titles[row]);
     card.view.icon = icons[row];
@@ -301,6 +301,41 @@ int main(int argc, char** argv) {
   CHECK(visibleBars() == 1 && visibleBars(42) == 1);
   lv_refr_now(display);
   save(capture, std::string(argv[1]) + "-overview.ppm");
+  auto agents = model;
+  const char* sources[] = {"codex", "zcode", "agy"};
+  for (size_t row = 0; row < agents.rowCount; ++row) {
+    std::strcpy(agents.rows[row].card.view.source, sources[row]);
+    agents.rows[row].card.view.icon = info_tv_v1_TaskIcon_TASK_ICON_CODE;
+  }
+  screen.render(agents);
+  checkBounds();
+  CHECK(hasLabel("C") && hasLabel("Z") && hasLabel("A"));
+  lv_refr_now(display);
+  save(capture, std::string(argv[1]) + "-agents.ppm");
+  auto question = agents;
+  std::strcpy(question.rows[0].card.view.content.status.text, "running");
+  question.rows[0].card.view.content.status.tone = info_tv_v1_Tone_TONE_NEUTRAL;
+  question.rows[0].recentQuestion = true;
+  screen.render(question);
+  checkBounds();
+  CHECK(hasLabel("? RUN"));
+  lv_refr_now(display);
+  save(capture, std::string(argv[1]) + "-recent-question.ppm");
+  question.rows[0].recentQuestion = false;
+  screen.render(question);
+  CHECK(!hasLabel("? RUN") && hasLabel("RUN"));
+  auto agentNotification = agents;
+  agentNotification.kind = info_tv::RenderModel::Kind::kNotification;
+  for (const auto& row : agents.rows) {
+    agentNotification.view = row.card.view;
+    screen.render(agentNotification);
+    checkBounds();
+    const char* badge = !std::strcmp(row.card.view.source, "codex") ? "C" :
+        !std::strcmp(row.card.view.source, "zcode") ? "Z" : "A";
+    CHECK(hasLabel(badge));
+  }
+  screen.render(model);
+  lv_refr_now(display);
   const auto overviewPixels = capture.pixels;
   checkAnimationTiming(screen, model);
   lv_refr_now(display);

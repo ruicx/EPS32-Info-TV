@@ -5,6 +5,9 @@ info_tv.v1.View.source max_size:65
 info_tv.v1.View.context max_size:65
 info_tv.v1.StatusView.text max_size:65
 info_tv.v1.StatusView.detail max_size:161
+# Bounded scalars keep the eight-card envelope within the existing 4096-byte frame.
+info_tv.v1.StatusView.progress_percent int_size:IS_8
+info_tv.v1.StatusView.recent_question_seconds int_size:IS_8
 info_tv.v1.Card.card_id max_size:37
 info_tv.v1.Snapshot.cards max_count:8
 info_tv.v1.Notification.notification_id max_size:37

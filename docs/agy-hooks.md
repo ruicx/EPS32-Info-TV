@@ -85,7 +85,9 @@ conversations. A SQLite transaction assigns an increasing
 The first captured prompt supplies the stable conversation title; each new
 turn supplies its task title. The first workspace's basename supplies `context`.
 Labels collapse controls/whitespace and fit 64 UTF-8 bytes. The adapter uses
-the built-in `code` icon. It does not read transcripts/artifacts, forward tool
+the built-in `code` wire icon. Updated firmware displays an `A` source badge
+for AGY, alongside `C` for Codex and `Z` for ZCode, in rows and notifications.
+It does not read transcripts/artifacts, forward tool
 arguments or output, or invent a progress percentage.
 
 The persistent cursor rejects duplicate/older starts. A new start supersedes

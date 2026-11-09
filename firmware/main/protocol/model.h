@@ -38,6 +38,7 @@ struct Feedback {
 struct RenderRow {
   Card card{};
   char messageId[37]{};
+  bool recentQuestion = false;
 };
 
 /** Describe a complete render request without LVGL or hardware pointers. */

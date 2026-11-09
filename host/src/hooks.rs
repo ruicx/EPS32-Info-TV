@@ -74,6 +74,52 @@ fn labels(prompt: &str, cwd: &str, fallback: &str) -> (String, String) {
     (title, context)
 }
 
+/// Read a stored user-facing name, then fall back to the append-only title index.
+fn codex_title(index: &Path, session_id: &str) -> Option<String> {
+    let database_title = Connection::open_with_flags(
+        index.with_file_name("state_5.sqlite"),
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+    )
+    .ok()
+    .and_then(|connection| {
+        connection.busy_timeout(Duration::from_millis(50)).ok()?;
+        connection
+            .query_row(
+                "SELECT name FROM threads WHERE id=?1",
+                [session_id],
+                |row| row.get::<_, Option<String>>(0),
+            )
+            .ok()
+            .flatten()
+    })
+    .map(|title| display_text(&title, 64))
+    .filter(|title| !title.is_empty());
+    if database_title.is_some() {
+        return database_title;
+    }
+    let text = std::fs::read_to_string(index).ok()?;
+    text.lines().rev().find_map(|line| {
+        let entry: Value = serde_json::from_str(line).ok()?;
+        if entry["id"].as_str() != Some(session_id) {
+            return None;
+        }
+        let title = display_text(entry["thread_name"].as_str()?, 64);
+        (!title.is_empty()).then_some(title)
+    })
+}
+
+/// Locate local Codex metadata without reading conversation transcripts.
+fn codex_index() -> Option<PathBuf> {
+    std::env::var_os("CODEX_HOME")
+        .map(PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("USERPROFILE")
+                .or_else(|| std::env::var_os("HOME"))
+                .map(|home| PathBuf::from(home).join(".codex"))
+        })
+        .map(|home| home.join("session_index.jsonl"))
+}
+
 /// Native callback fields shared by Codex and ZCode, with public ZCode aliases.
 #[derive(Deserialize)]
 struct TurnHook {
@@ -89,6 +135,10 @@ struct TurnHook {
     cwd: String,
     #[serde(default, alias = "toolName")]
     tool_name: String,
+    #[serde(default)]
+    tool_use_id: String,
+    #[serde(default)]
+    tool_response: Value,
     #[serde(default, alias = "responseText")]
     last_assistant_message: Option<String>,
 }
@@ -136,6 +186,7 @@ fn turn_state(source: &str, event: &str) -> Option<TaskState> {
         "PermissionRequest" => Some(TaskState::WaitingInput),
         "Stop" => Some(TaskState::Completed),
         "Interrupt" if source == "codex" => Some(TaskState::Interrupted),
+        "SessionEnd" if source == "codex" => Some(TaskState::Closed),
         _ => None,
     }
 }
@@ -166,6 +217,21 @@ fn turn_detail(hook: &TurnHook) -> String {
     }
 }
 
+/// Recognize a successfully submitted async question, including native string output.
+fn accepted_question(hook: &TurnHook) -> bool {
+    if hook.hook_event_name != "PostToolUse"
+        || hook.tool_name != "request_user_input_async"
+        || hook.tool_use_id.is_empty()
+    {
+        return false;
+    }
+    let response = hook
+        .tool_response
+        .as_str()
+        .and_then(|text| serde_json::from_str::<Value>(text).ok());
+    response.as_ref().unwrap_or(&hook.tool_response)["accepted"] == true
+}
+
 /// Open a source ledger while retaining the schema used by the Python hooks.
 fn open(path: &Path, source: &str) -> Result<Connection> {
     if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
@@ -187,6 +253,13 @@ fn open(path: &Path, source: &str) -> Result<Connection> {
             conversation_id TEXT PRIMARY KEY,start_step INTEGER NOT NULL,run_sequence INTEGER NOT NULL,sequence INTEGER NOT NULL,
             title TEXT NOT NULL,conversation_title TEXT NOT NULL,context TEXT NOT NULL,state TEXT NOT NULL,prompt_hash TEXT NOT NULL);")?,
         _ => bail!("Unknown hook source"),
+    }
+    if source == "codex" {
+        connection.execute_batch(
+            "CREATE TABLE IF NOT EXISTS question_notices (
+            session_id TEXT NOT NULL,turn_id TEXT NOT NULL,tool_use_id TEXT NOT NULL,
+            PRIMARY KEY(session_id,turn_id,tool_use_id));",
+        )?;
     }
     Ok(connection)
 }
@@ -225,7 +298,7 @@ pub fn capture(
             event_name.is_none(),
             "This source reads its event name from stdin"
         );
-        capture_turn(&transaction, source, payload)?
+        capture_turn(&transaction, source, payload, codex_index().as_deref())?
     };
     transaction.commit()?;
     Ok(submission)
@@ -235,23 +308,46 @@ fn capture_turn(
     connection: &Connection,
     source: &str,
     payload: Value,
+    index: Option<&Path>,
 ) -> Result<Option<TaskEvent>> {
     let hook: TurnHook = serde_json::from_value(payload)?;
+    let question = source == "codex" && accepted_question(&hook);
+    if question && connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM question_notices WHERE session_id=?1 AND turn_id=?2 AND tool_use_id=?3)",
+        params![hook.session_id, hook.turn_id, hook.tool_use_id], |row| row.get::<_, bool>(0),
+    )? {
+        return Ok(None);
+    }
     validate_label(&hook.session_id, 64, true)?;
     if let Some(id) = &hook.turn_id {
         validate_label(id, 64, true)?;
     }
+    let closing = hook.hook_event_name == "SessionEnd";
     let Some(state) = turn_state(source, &hook.hook_event_name) else {
         return Ok(None);
     };
-    let turn = hook
-        .turn_id
-        .as_deref()
-        .context("A supported callback requires turn_id")?;
     let table = if source == "codex" {
         "runs"
     } else {
         "zcode_runs"
+    };
+    // SessionEnd has no turn_id. Close the latest execution, including a completed one.
+    let latest: Option<String> = if closing {
+        connection.query_row(
+            &format!("SELECT turn_id FROM {table} WHERE session_id=?1 AND run_sequence>0 ORDER BY run_sequence DESC LIMIT 1"),
+            [&hook.session_id], |row| row.get(0),
+        ).optional()?
+    } else {
+        hook.turn_id.clone()
+    };
+    let Some(turn) = latest.as_deref() else {
+        anyhow::ensure!(closing, "A supported callback requires turn_id");
+        return Ok(None);
+    };
+    let current_title = if source == "codex" {
+        index.and_then(|path| codex_title(path, &hook.session_id))
+    } else {
+        None
     };
     let mut run = connection
         .query_row(
@@ -296,16 +392,18 @@ fn capture_turn(
                 "ZCode task"
             },
         );
-        let conversation_title = connection
-            .query_row(
-                &format!(
-                    "SELECT conversation_title FROM {table}
-            WHERE session_id=?1 AND run_sequence>0 ORDER BY run_sequence LIMIT 1"
-                ),
-                [&hook.session_id],
-                |r| r.get(0),
-            )
-            .optional()?
+        let conversation_title = current_title
+            .clone()
+            .or(connection
+                .query_row(
+                    &format!(
+                        "SELECT conversation_title FROM {table}
+            WHERE session_id=?1 AND run_sequence>0 ORDER BY run_sequence DESC LIMIT 1"
+                    ),
+                    [&hook.session_id],
+                    |r| r.get(0),
+                )
+                .optional()?)
             .unwrap_or_else(|| title.clone());
         connection.execute(
             &format!("INSERT INTO {table} VALUES(?1,?2,?3,0,?4,?5,?6,'')"),
@@ -328,14 +426,21 @@ fn capture_turn(
         });
     } else if hook.hook_event_name == "UserPromptSubmit"
         || run.as_ref().is_some_and(|r| {
-            r.state == state.as_str()
-                || r.state == "completed"
-                || (source == "codex" && r.state == "interrupted")
+            r.state == "closed"
+                || (!closing && (r.state == "completed" || r.state == "interrupted"))
+                || (!question
+                    && r.state == state.as_str()
+                    && current_title
+                        .as_ref()
+                        .is_none_or(|title| title == &r.conversation_title))
         })
     {
         return Ok(None);
     }
-    let run = run.context("Execution ledger was not initialized")?;
+    let mut run = run.context("Execution ledger was not initialized")?;
+    if let Some(title) = current_title {
+        run.conversation_title = title;
+    }
     let task_id = if source == "codex" {
         turn.into()
     } else {
@@ -356,18 +461,35 @@ fn capture_turn(
             .context("Hook sequence exhausted")?,
         state,
         title: run.title,
-        detail: turn_detail(&hook),
+        detail: if closing {
+            "Session closed".into()
+        } else {
+            turn_detail(&hook)
+        },
         progress_percent: None,
         conversation_id: Some(hook.session_id.clone()),
         conversation_title: run.conversation_title,
         context: run.context,
         run_sequence: Some(run.ordinal),
         icon: TaskIcon::Code,
+        question_id: question.then(|| hook.tool_use_id.clone()),
     };
+    if question {
+        connection.execute(
+            "INSERT INTO question_notices VALUES(?1,?2,?3)",
+            params![hook.session_id, turn, hook.tool_use_id],
+        )?;
+    }
     connection.execute(
-        &format!("UPDATE {table} SET sequence=?1,state=?2 WHERE session_id=?3 AND turn_id=?4"),
-        params![event.sequence, state.as_str(), hook.session_id, turn],
+        &format!("UPDATE {table} SET sequence=?1,state=?2,conversation_title=?5 WHERE session_id=?3 AND turn_id=?4"),
+        params![event.sequence, state.as_str(), hook.session_id, turn, event.conversation_title],
     )?;
+    if closing {
+        connection.execute(
+            &format!("UPDATE {table} SET state='closed' WHERE session_id=?1"),
+            [&hook.session_id],
+        )?;
+    }
     enqueue(connection, &mut event)?;
     Ok(Some(event))
 }
@@ -529,6 +651,7 @@ fn capture_agy(
         context: run.context,
         run_sequence: Some(run.ordinal),
         icon: TaskIcon::Code,
+        question_id: None,
     };
     connection.execute(
         "UPDATE agy_conversations SET sequence=?1,state=?2 WHERE conversation_id=?3",
@@ -615,5 +738,101 @@ pub fn run(args: HookArgs) {
         println!("{{\"decision\":\"allow\"}}");
     } else {
         println!("{{}}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    use tempfile::TempDir;
+
+    #[test]
+    fn codex_database_name_precedes_index_and_metadata_failure_falls_back() {
+        let directory = TempDir::new().expect("temp");
+        let index = directory.path().join("session_index.jsonl");
+        let database = directory.path().join("state_5.sqlite");
+        assert!(codex_title(&index, "session").is_none());
+        assert!(!database.exists());
+        std::fs::write(
+            &index,
+            "{\"id\":\"session\",\"thread_name\":\"Indexed title\"}",
+        )
+        .expect("index");
+        let connection = Connection::open(&database).expect("metadata");
+        connection.execute_batch("CREATE TABLE threads(id TEXT, name TEXT); INSERT INTO threads VALUES('session',' Real name ');").expect("name");
+        assert_eq!(codex_title(&index, "session").as_deref(), Some("Real name"));
+        connection
+            .execute("UPDATE threads SET name=NULL", [])
+            .expect("clear name");
+        assert_eq!(
+            codex_title(&index, "session").as_deref(),
+            Some("Indexed title")
+        );
+        connection
+            .execute_batch("DROP TABLE threads;")
+            .expect("changed schema");
+        assert_eq!(
+            codex_title(&index, "session").as_deref(),
+            Some("Indexed title")
+        );
+        assert!(codex_title(&index, "another-session").is_none());
+    }
+
+    #[test]
+    fn codex_name_overrides_prompt_and_refreshes_during_unchanged_activity() {
+        let directory = TempDir::new().expect("temp");
+        let index = directory.path().join("session_index.jsonl");
+        let connection = open(&directory.path().join("hooks.sqlite3"), "codex").expect("ledger");
+        let callback = |name: &str, turn: &str| {
+            capture_turn(
+                &connection,
+                "codex",
+                json!({
+                    "hook_event_name":name,"session_id":"named-session","turn_id":turn,
+                    "prompt":"This prompt is not the conversation title"
+                }),
+                Some(&index),
+            )
+            .expect("capture")
+        };
+        let first = callback("UserPromptSubmit", "one").expect("start without metadata");
+        assert_eq!(first.conversation_title, first.title);
+        std::fs::write(
+            &index,
+            "{\"id\":\"named-session\",\"thread_name\":\"Display fixes\"}\n{partial",
+        )
+        .expect("index");
+        let named = callback("PreToolUse", "one").expect("name update while running");
+        assert_eq!(named.conversation_title, "Display fixes");
+        assert_eq!(named.title, first.title);
+        assert_eq!(named.sequence, 2);
+        assert!(callback("PostToolUse", "one").is_none());
+        let rows = [
+            json!({"id":"named-session","thread_name":"Display fixes"}),
+            json!({"id":"named-session","thread_name":"  屏幕\n修复  ".repeat(20)}),
+            json!({"id":"another-session","thread_name":"Unrelated title"}),
+        ];
+        std::fs::write(&index, rows.map(|v| v.to_string()).join("\n")).expect("rename");
+        let renamed = callback("PermissionRequest", "one").expect("renamed");
+        assert!(renamed.conversation_title.starts_with("屏幕 修复"));
+        assert!(renamed.conversation_title.len() <= 64);
+        assert!(!renamed.conversation_title.contains('\n'));
+        std::fs::remove_file(&index).expect("remove metadata");
+        let stop = callback("Stop", "one").expect("stop");
+        assert_eq!(stop.conversation_title, renamed.conversation_title);
+        let next = callback("UserPromptSubmit", "two").expect("next turn");
+        assert_eq!(next.conversation_title, renamed.conversation_title);
+        let original: String = connection
+            .query_row(
+                "SELECT payload FROM outbox ORDER BY position LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .expect("immutable retry");
+        assert_eq!(
+            serde_json::from_str::<TaskEvent>(&original).expect("payload"),
+            first
+        );
     }
 }
