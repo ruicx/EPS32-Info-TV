@@ -90,6 +90,18 @@ void DisplayState::clearWeatherNotification() {
   notificationCount_ = retained;
 }
 
+void DisplayState::clearCardAttentionNotifications(const char* cardId) {
+  size_t retained = 0;
+  for (size_t index = 0; index < notificationCount_; ++index) {
+    const auto& note = notifications_[index];
+    if (note.weatherAlert || std::strcmp(note.notification.card_id, cardId) ||
+        note.notification.view.content.status.tone != info_tv_v1_Tone_TONE_ATTENTION) {
+      notifications_[retained++] = note;
+    }
+  }
+  notificationCount_ = retained;
+}
+
 void DisplayState::notifyWeatherAlert(const Envelope& envelope, uint64_t receivedAtMs) {
   clearWeatherNotification();
   const auto& alert = envelope.body.weather_alert;

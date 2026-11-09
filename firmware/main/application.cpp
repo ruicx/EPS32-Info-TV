@@ -35,12 +35,16 @@ void Application::uiTask(void* context) {
   auto& app = *static_cast<Application*>(context);
   app.display_.initialize();
   app.view_.initialize();
+  app.touchKey_.initialize();
   uint32_t rendered = 0;
   uint32_t frameId = 0;
   uint32_t acknowledged = 0;
   for (;;) {
     const uint64_t nowMs = esp_timer_get_time() / 1000;
     Feedback feedback{};
+    if (app.touchKey_.tick(nowMs) == ButtonEvent::kDoubleClick) {
+      app.presentation_.dismissActiveNotification(nowMs);
+    }
     if (!app.display_.hasPendingFrame()) {
       const auto completed = app.display_.completedGeneration();
       if (completed && completed != acknowledged && app.display_.backlightEnabled()) {

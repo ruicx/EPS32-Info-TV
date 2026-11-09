@@ -40,6 +40,8 @@ class DisplayState {
   bool popNotification(uint64_t nowMs, NotificationSlot& output, bool importantOnly = false);
   /** Remove a withdrawn/replaced weather notification without touching task notices. */
   void clearWeatherNotification();
+  /** Remove queued attention notifications for the specified card. */
+  void clearCardAttentionNotifications(const char* cardId);
   /** Replace the reserved weather notification using an already-validated alert. */
   void notifyWeatherAlert(const Envelope& envelope, uint64_t receivedAtMs);
   /** Return whether an operation already reached UI acceptance. */

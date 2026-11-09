@@ -62,9 +62,20 @@ bool PresentationController::handleCommand(const DisplayCommand& command, uint64
       pageIndex_ = 0;
       nextRotationMs_ = nowMs + policy::kRotationMs;
       break;
-    case info_tv_v1_Envelope_card_upsert_tag:
-      accepted = state_.upsertCard(envelope.body.card_upsert.card, envelope.message_id);
+    case info_tv_v1_Envelope_card_upsert_tag: {
+      const auto& card = envelope.body.card_upsert.card;
+      accepted = state_.upsertCard(card, envelope.message_id);
+      if (accepted && card.view.content.status.tone != info_tv_v1_Tone_TONE_ATTENTION) {
+        state_.clearCardAttentionNotifications(card.card_id);
+        if (hasActive_ && !active_.weatherAlert &&
+            !std::strcmp(active_.notification.card_id, card.card_id) &&
+            active_.notification.view.content.status.tone == info_tv_v1_Tone_TONE_ATTENTION) {
+          hasActive_ = false;
+          restoreOverview(nowMs);
+        }
+      }
       break;
+    }
     case info_tv_v1_Envelope_notification_tag:
       accepted = state_.enqueueNotification(envelope, command.receivedAtMs, nowMs);
       break;
@@ -125,6 +136,13 @@ void PresentationController::restoreOverview(uint64_t nowMs) {
     }
   }
   nextRotationMs_ = nowMs + policy::kRotationMs;
+}
+
+bool PresentationController::dismissActiveNotification(uint64_t nowMs) {
+  if (!hasActive_) return false;
+  hasActive_ = false;
+  restoreOverview(nowMs);
+  return true;
 }
 
 const RenderModel& PresentationController::tick(uint64_t nowMs) {

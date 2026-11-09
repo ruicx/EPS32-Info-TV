@@ -7,6 +7,7 @@
 #include "freertos/task.h"
 
 #include "board/display_driver.h"
+#include "board/touch_key.h"
 #include "communication/device_session.h"
 #include "communication/usb_transport.h"
 #include "ui/display_state.h"
@@ -29,6 +30,7 @@ class Application {
   void queueFeedback(const Feedback& feedback);
   UsbTransport usb_;
   DisplayDriver display_;
+  TouchKey touchKey_;
   DisplayState state_;
   PresentationController presentation_{state_};
   ScreenView view_;

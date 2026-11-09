@@ -15,6 +15,8 @@ class PresentationController {
   bool handleCommand(const DisplayCommand& command, uint64_t nowMs, Feedback& feedback);
   /** Advance local timers and return the current render request. */
   const RenderModel& tick(uint64_t nowMs);
+  /** Dismiss the currently active notification, restoring overview immediately. */
+  bool dismissActiveNotification(uint64_t nowMs);
   /** Report actual first-frame completion for a still-current render generation. */
   bool onFramePresented(uint32_t generation, uint64_t nowMs, Feedback& feedback);
 

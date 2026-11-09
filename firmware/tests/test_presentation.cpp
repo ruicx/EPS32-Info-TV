@@ -292,8 +292,95 @@ void testInterruptedOverview() {
   CHECK(model.rows[1].card.view.content.status.tone == info_tv_v1_Tone_TONE_NEUTRAL);
 }
 
+/** Verify auto-dismissal of approval popups when card transitions out of attention. */
+void testApprovalAutoDismiss() {
+  info_tv::DisplayState state;
+  info_tv::PresentationController controller(state);
+  info_tv::Feedback feedback{};
+  auto snapshot = makeSnapshot();
+  snapshot.envelope.body.snapshot.cards[0] = makeCard("task-1");
+  snapshot.envelope.body.snapshot.cards[0].view.content.status.tone = info_tv_v1_Tone_TONE_ATTENTION;
+  CHECK(controller.handleCommand(snapshot, 0, feedback));
+
+  auto approvalNote = makeNotification("approval-prompt", true);
+  std::strcpy(approvalNote.envelope.body.notification.card_id, "task-1");
+  approvalNote.envelope.body.notification.view.content.status.tone = info_tv_v1_Tone_TONE_ATTENTION;
+  CHECK(controller.handleCommand(approvalNote, 10, feedback));
+
+  auto model = controller.tick(10);
+  CHECK(model.kind == info_tv::RenderModel::Kind::kNotification);
+  CHECK(!std::strcmp(model.messageId, "approval-prompt"));
+  CHECK(controller.onFramePresented(model.generation, 10, feedback));
+
+  // User approves in CLI -> card upsert arrives with TONE_NEUTRAL (running)
+  auto runningUpsert = makeCommand("approved-running");
+  runningUpsert.envelope.which_body = info_tv_v1_Envelope_card_upsert_tag;
+  runningUpsert.envelope.body.card_upsert.has_card = true;
+  runningUpsert.envelope.body.card_upsert.card = makeCard("task-1", 2);
+  runningUpsert.envelope.body.card_upsert.card.view.content.status.tone = info_tv_v1_Tone_TONE_NEUTRAL;
+  CHECK(controller.handleCommand(runningUpsert, 50, feedback));
+
+  // The popup must be dismissed immediately on next tick
+  model = controller.tick(51);
+  CHECK(model.kind == info_tv::RenderModel::Kind::kOverview);
+  CHECK(!std::strcmp(model.rows[0].card.card_id, "task-1"));
+  CHECK(model.rows[0].card.revision == 2);
+
+  // Completed notification with TONE_POSITIVE should NOT be dismissed by a neutral upsert
+  auto doneNote = makeNotification("done-note", false);
+  std::strcpy(doneNote.envelope.body.notification.card_id, "task-1");
+  doneNote.envelope.body.notification.view.content.status.tone = info_tv_v1_Tone_TONE_POSITIVE;
+  CHECK(controller.handleCommand(doneNote, 60, feedback));
+  model = controller.tick(60);
+  CHECK(model.kind == info_tv::RenderModel::Kind::kNotification);
+  CHECK(!std::strcmp(model.messageId, "done-note"));
+
+  auto anotherUpsert = runningUpsert;
+  std::strcpy(anotherUpsert.envelope.message_id, "keep-done");
+  anotherUpsert.envelope.body.card_upsert.card.revision = 3;
+  CHECK(controller.handleCommand(anotherUpsert, 70, feedback));
+  // Notification remains active because it was not an attention prompt
+  CHECK(controller.tick(70).kind == info_tv::RenderModel::Kind::kNotification);
+}
+
+/** Verify manual double-click dismissal of active notifications and weather alerts. */
+void testManualDismissal() {
+  info_tv::DisplayState state;
+  info_tv::PresentationController controller(state);
+  info_tv::Feedback feedback{};
+  auto snapshot = makeSnapshot();
+  CHECK(controller.handleCommand(snapshot, 0, feedback));
+
+  // No active notification to dismiss initially
+  CHECK(!controller.dismissActiveNotification(10));
+
+  // Show a task notification
+  auto note = makeNotification("task-done");
+  CHECK(controller.handleCommand(note, 20, feedback));
+  auto model = controller.tick(20);
+  CHECK(model.kind == info_tv::RenderModel::Kind::kNotification);
+
+  // Dismiss via touch button
+  CHECK(controller.dismissActiveNotification(30));
+  model = controller.tick(31);
+  CHECK(model.kind == info_tv::RenderModel::Kind::kOverview);
+
+  // Weather alert dismissal
+  auto alert = makeWeatherAlert("storm");
+  CHECK(controller.handleCommand(alert, 40, feedback));
+  model = controller.tick(40);
+  CHECK(model.kind == info_tv::RenderModel::Kind::kNotification);
+  CHECK(model.weatherNotification);
+
+  CHECK(controller.dismissActiveNotification(50));
+  model = controller.tick(51);
+  CHECK(model.kind == info_tv::RenderModel::Kind::kOverview);
+}
+
 /** Verify UI admission, actual visibility, interruption, restoration, and expiry. */
 int main() {
+  testApprovalAutoDismiss();
+  testManualDismissal();
   testInterruptedOverview();
   testSnapshotRemovesTaskNotifications();
   testPagedOverview();
