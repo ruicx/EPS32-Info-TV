@@ -23,7 +23,7 @@ fi
 
 bash "$script_directory/build_firmware.sh" --action build
 
-binary_name="info_tv-firmware-$version-esp32s3.bin"
+binary_name="info-tv-firmware-$version-esp32s3.bin"
 cd -- "$repository"
 idf.py -C firmware merge-bin -o "$binary_name"
 

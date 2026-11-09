@@ -78,7 +78,7 @@ flowchart LR
 1. **Rust Host 预编译压缩包**：
    - Windows: 如 `info-tv-<version>-x86_64-pc-windows-msvc.zip`
    - Linux: 如 `info-tv-<version>-x86_64-unknown-linux-musl.tar.gz`
-2. **完整固件镜像**：如 `info_tv-firmware-<version>-esp32s3.bin`
+2. **完整固件镜像**：如 `info-tv-firmware-<version>-esp32s3.bin`
 
 解压至您常用的任意本地目录（建议可将解压目录加入系统环境变量 PATH，或直接在目录内运行）：
 

@@ -78,7 +78,7 @@ Visit the [GitHub Releases](https://github.com/ruicx/ESP32-Info-TV/releases) pag
 1. **Rust Host Prebuilt Archive**:
    - Windows: e.g. `info-tv-<version>-x86_64-pc-windows-msvc.zip`
    - Linux: e.g. `info-tv-<version>-x86_64-unknown-linux-musl.tar.gz`
-2. **Merged Firmware Binary**: e.g. `info_tv-firmware-<version>-esp32s3.bin`
+2. **Merged Firmware Binary**: e.g. `info-tv-firmware-<version>-esp32s3.bin`
 
 Extract the archive into your preferred directory (optionally add it to your system `PATH`, or run directly from the folder):
 

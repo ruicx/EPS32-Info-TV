@@ -24,7 +24,7 @@ if ($manifestContent -match '(?m)^version\s*=\s*"([^"]+)"') {
 }
 
 $firmwareDirectory = Join-Path $repository 'firmware'
-$binaryName = "info_tv-firmware-$version-esp32s3.bin"
+$binaryName = "info-tv-firmware-$version-esp32s3.bin"
 $output = Join-Path $repository 'build/firmware-dist'
 
 Push-Location $repository
