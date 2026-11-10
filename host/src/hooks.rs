@@ -120,62 +120,6 @@ fn codex_index() -> Option<PathBuf> {
         .map(|home| home.join("session_index.jsonl"))
 }
 
-/// Locate the Antigravity presence lock file for an active conversation.
-pub fn agy_presence_path_in(base: Option<&Path>, conversation_id: &str) -> Option<PathBuf> {
-    base.map(Path::to_path_buf)
-        .or_else(|| std::env::var_os("ANTIGRAVITY_APP_DATA_DIR").map(PathBuf::from))
-        .or_else(|| {
-            std::env::var_os("USERPROFILE")
-                .or_else(|| std::env::var_os("HOME"))
-                .map(|home| PathBuf::from(home).join(".gemini").join("antigravity-cli"))
-        })
-        .map(|dir| dir.join("presence").join(format!("{conversation_id}.lock")))
-}
-
-pub fn agy_presence_path(conversation_id: &str) -> Option<PathBuf> {
-    agy_presence_path_in(None, conversation_id)
-}
-
-/// Determine whether the agent producer conversation is still active.
-#[cfg(windows)]
-pub fn is_conversation_active_in(base: Option<&Path>, source: &str, conversation_id: &str) -> bool {
-    if source != "agy" {
-        return true;
-    }
-    use std::os::windows::fs::OpenOptionsExt;
-    let Some(path) = agy_presence_path_in(base, conversation_id) else {
-        return false;
-    };
-    if !path.exists() {
-        return false;
-    }
-    match std::fs::OpenOptions::new()
-        .read(true)
-        .share_mode(0)
-        .open(&path)
-    {
-        Ok(_) => false,
-        Err(err) if err.raw_os_error() == Some(32) => true,
-        Err(_) => false,
-    }
-}
-
-/// Determine whether the agent producer conversation is still active.
-#[cfg(not(windows))]
-pub fn is_conversation_active_in(base: Option<&Path>, source: &str, conversation_id: &str) -> bool {
-    if source != "agy" {
-        return true;
-    }
-    let Some(path) = agy_presence_path_in(base, conversation_id) else {
-        return false;
-    };
-    path.exists()
-}
-
-pub fn is_conversation_active(source: &str, conversation_id: &str) -> bool {
-    is_conversation_active_in(None, source, conversation_id)
-}
-
 /// Native callback fields shared by Codex and ZCode, with public ZCode aliases.
 #[derive(Deserialize)]
 struct TurnHook {
@@ -341,6 +285,17 @@ pub fn capture(
     event_name: Option<&str>,
     payload: Value,
 ) -> Result<Option<TaskEvent>> {
+    capture_with_process(path, source, event_name, payload, None)
+}
+
+/// Persist producer ownership in the same immutable outbox event as its task update.
+fn capture_with_process(
+    path: &Path,
+    source: &str,
+    event_name: Option<&str>,
+    payload: Value,
+    producer_process: Option<crate::process::ProcessIdentity>,
+) -> Result<Option<TaskEvent>> {
     let mut connection = open(path, source)?;
     let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
     let submission = if source == "agy" {
@@ -348,6 +303,7 @@ pub fn capture(
             &transaction,
             event_name.context("agy requires PreInvocation, PreToolUse, PostToolUse, or Stop")?,
             payload,
+            producer_process,
         )?
     } else {
         anyhow::ensure!(
@@ -529,6 +485,7 @@ fn capture_turn(
         run_sequence: Some(run.ordinal),
         icon: TaskIcon::Code,
         question_id: question.then(|| hook.tool_use_id.clone()),
+        producer_process: None,
     };
     if question {
         connection.execute(
@@ -554,6 +511,7 @@ fn capture_agy(
     connection: &Connection,
     event_name: &str,
     payload: Value,
+    producer_process: Option<crate::process::ProcessIdentity>,
 ) -> Result<Option<TaskEvent>> {
     let hook: AgyHook = serde_json::from_value(payload)?;
     validate_label(&hook.conversation_id, 64, true)?;
@@ -708,6 +666,7 @@ fn capture_agy(
         run_sequence: Some(run.ordinal),
         icon: TaskIcon::Code,
         question_id: None,
+        producer_process,
     };
     connection.execute(
         "UPDATE agy_conversations SET sequence=?1,state=?2 WHERE conversation_id=?3",
@@ -778,11 +737,23 @@ pub fn run(args: HookArgs) {
             let mut bytes = Vec::new();
             std::io::stdin().take(1_048_577).read_to_end(&mut bytes)?;
             anyhow::ensure!(bytes.len() <= 1_048_576, "Hook input exceeds 1 MiB");
-            capture(
+            let producer_process = if args.source == "agy" {
+                let identity = crate::process::agy_ancestor();
+                if identity.is_none() {
+                    eprintln!(
+                        "info-tv hook: Cannot identify AGY ancestor; exit tracking unavailable"
+                    );
+                }
+                identity
+            } else {
+                None
+            };
+            capture_with_process(
                 &path,
                 &args.source,
                 args.event.as_deref(),
                 serde_json::from_slice(&bytes)?,
+                producer_process,
             )?;
         }
         flush(&path, &args.source, &args.url, args.timeout)

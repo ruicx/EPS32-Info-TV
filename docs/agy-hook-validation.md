@@ -86,3 +86,66 @@ delivery.
 
 The [native hook adapter](agy-hooks.md) implements the supported sequential
 invocation/stop mapping and documents these source limitations.
+
+## Local process ownership revision, 2026-11-10
+
+A user-started Windows AGY session in a disposable workspace invoked recording
+`SessionStart`, `PreInvocation`, and `Stop` hooks. All three had the process chain
+`python.exe -> cmd.exe -> agy.exe`, with the same AGY PID, 42248, and conversation
+identity. After the user exited normally, opening PID 42248 returned Windows
+error 87, confirming that the recorded process no longer existed. This establishes
+native hook ancestry for this installed AGY version, 1.5.4; it does not establish
+remote-agent or shared-server ownership.
+
+The Rust implementation now records the owning PID and process creation time in
+the immutable hook outbox event and retains the last confirmed owner of each
+execution separately from its event. Windows unit and integration checks passed:
+49 tests, with one ignored subprocess helper explicitly invoked by the lifecycle
+tests. Coverage includes real hook child processes, outbox flush from a different
+process, normal exit, forced termination, maintenance cleanup without HTTP reads,
+exit during service downtime, startup cleanup before the coordinator runs,
+late-event rejection, new executions, unavailable ownership metadata, and PID
+creation-time comparison. Formatting, Clippy with warnings denied, and the native
+protocol bridge build also passed.
+
+A second user-started native AGY session validated the new Rust hook and service
+end to end, using a separate host instance and private state without a serial
+device. The service recorded PID 21344 with creation time 1794318194, independently
+matched through Windows process metadata. The first turn became completed and
+remained visible while AGY was alive. A second turn was still running when the
+user exited AGY, without a matching `Stop` callback. The one-second maintenance
+cycle retired that card durably. Its retained record still had state `running`
+and no completion timestamp, ruling out completed-card expiry.
+
+The observer queried SQLite read-only rather than invoking HTTP reads that could
+trigger cleanup. Both the AGY process and the private service were confirmed
+absent after the test, and the hook outbox was empty. The copied service binary
+matched the tested workspace executable by SHA-256. See the
+[sanitized lifecycle evidence](evidence/agy-process-lifecycle-2026-11-10.json).
+No physical display or Linux execution evidence is claimed by these Windows checks.
+
+### Installed Windows release
+
+The release was built with `scripts/host/build_host_release.ps1` and installed at
+`C:\h\info-tv\info-tv.exe`, shared by the service and existing native hook commands.
+The complete previous installation and four SQLite databases were backed up;
+database integrity checks passed both before and after stopping the old service.
+The YAML configuration and state directory were preserved.
+
+After restart, the device was online in a new connection session, and all three
+existing cards received Accepted and Presented feedback. Brightness remained 20%,
+the lock action remained `deep_sleep`, and automatic unlock polling remained five
+seconds. The installed binary matched the release build by SHA-256.
+
+A synthetic `agy.exe` parent then invoked the installed native hook with private
+ledger state. Its temporary card received Accepted and Presented feedback from
+the physical device. Closing the parent without a Stop callback retired the
+running card through maintenance; the read-only SQLite observer detected retirement
+0.494 seconds after process exit. A subsequent device message was accepted, and
+the device remained online. The temporary card was absent afterwards.
+
+This installed-release check is distinct from the real native AGY session above:
+the former verifies deployment, hook registration, maintenance and device feedback;
+the latter verifies actual AGY callback ancestry and exit. Presented feedback is
+not a visual screen inspection. No firmware flashing or Linux execution was
+performed. See the [sanitized deployment evidence](evidence/agy-process-deployment-2026-11-10.json).

@@ -103,6 +103,8 @@ pub struct TaskEvent {
     pub icon: TaskIcon,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub question_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub producer_process: Option<crate::process::ProcessIdentity>,
 }
 
 /// Check text at its encoded wire boundary, preserving permitted whitespace.
@@ -160,6 +162,17 @@ impl TaskEvent {
         if let Some(id) = &self.conversation_id {
             validate_text(id, 64, true)?;
         }
+        if let Some(process) = self.producer_process
+            && (process.pid == 0
+                || process.started_at == 0
+                || self.source != "agy"
+                || self.conversation_id.is_none())
+        {
+            return Err(AdmissionError::new(
+                422,
+                "Invalid producer process identity",
+            ));
+        }
         if self.sequence <= 0
             || self.run_sequence.is_some_and(|n| n <= 0)
             || self.progress_percent.is_some_and(|n| n > 100)
@@ -179,6 +192,9 @@ impl TaskEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskRecord {
     pub event: TaskEvent,
+    /// Last confirmed owner of this execution, separate from immutable event data.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub producer_process: Option<crate::process::ProcessIdentity>,
     pub card_id: String,
     pub revision: u64,
     pub completion_notified: bool,
@@ -296,6 +312,11 @@ impl TaskStore {
                 && (!same_run || previous.is_none_or(|r| r.event.state != event.state)));
         let record = TaskRecord {
             event: event.clone(),
+            producer_process: event.producer_process.or_else(|| {
+                previous
+                    .filter(|_| same_run)
+                    .and_then(|r| r.producer_process)
+            }),
             card_id: active
                 .map(|r| r.card_id.clone())
                 .unwrap_or_else(|| Uuid::new_v4().simple().to_string()),

@@ -1,11 +1,13 @@
 //! Real executable tests for crash recovery, YAML lookup, and hook outbox delivery.
 
 use std::{
+    io::{Read, Write},
     path::Path,
     process::{Child, Command, Stdio},
     time::{Duration, Instant},
 };
 
+use info_tv::{process as producer, tasks::TaskEvent};
 use serde_json::{Value, json};
 use tempfile::TempDir;
 use uuid::Uuid;
@@ -58,6 +60,234 @@ fn free_port() -> u16 {
         .local_addr()
         .expect("address")
         .port()
+}
+
+/// Run only as a copied AGY-named child, preserving a real hook ancestry chain.
+#[test]
+#[ignore = "subprocess helper invoked by producer lifecycle tests"]
+fn agy_parent_process() {
+    let directory = std::env::var_os("INFO_TV_TEST_PRODUCER").expect("producer directory");
+    let directory = Path::new(&directory);
+    let payload = json!({
+        "conversationId":"producer-session", "lastUserInput":"Lifecycle regression",
+        "invocationNum":0, "initialNumSteps":1
+    });
+    let mut hook = Command::new(env!("CARGO_BIN_EXE_info-tv"))
+        .args(["hook", "agy", "PreInvocation", "--state-file"])
+        .arg(directory.join("hooks.sqlite3"))
+        .args(["--url", "http://127.0.0.1:1"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("native hook child");
+    hook.stdin
+        .take()
+        .expect("stdin")
+        .write_all(payload.to_string().as_bytes())
+        .expect("payload");
+    assert!(hook.wait().expect("hook exit").success());
+    std::fs::write(directory.join("ready"), "ready").expect("ready");
+    // Closing our parent's stdin permits normal process exit without a timer.
+    let _ = std::io::stdin().read(&mut [0]);
+}
+
+/// Start a live producer with an offline hook event already persisted in its outbox.
+fn start_producer(directory: &Path) -> (Process, TaskEvent) {
+    let executable = directory.join(if cfg!(windows) { "agy.exe" } else { "agy" });
+    std::fs::copy(
+        std::env::current_exe().expect("test executable"),
+        &executable,
+    )
+    .expect("copy producer");
+    let mut command = Command::new(executable);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+    let mut process = Process(
+        command
+            .args(["--exact", "agy_parent_process", "--ignored"])
+            .env("INFO_TV_TEST_PRODUCER", directory)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("producer"),
+    );
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while !directory.join("ready").exists() {
+        assert!(process.0.try_wait().expect("producer status").is_none());
+        assert!(Instant::now() < deadline, "producer hook startup timeout");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let connection = rusqlite::Connection::open(directory.join("hooks.sqlite3")).expect("ledger");
+    let payload: String = connection
+        .query_row("SELECT payload FROM outbox", [], |row| row.get(0))
+        .expect("outbox");
+    let event: TaskEvent = serde_json::from_str(&payload).expect("immutable task event");
+    assert_eq!(event.producer_process, producer::identify(process.0.id()));
+    assert!(event.producer_process.is_some());
+    (process, event)
+}
+
+/// Retry from a different process without replacing the captured producer identity.
+fn flush_producer(directory: &Path, url: &str) {
+    let output = Command::new(env!("CARGO_BIN_EXE_info-tv"))
+        .args(["hook", "agy", "--flush", "--state-file"])
+        .arg(directory.join("hooks.sqlite3"))
+        .args(["--url", url])
+        .output()
+        .expect("flush");
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty(), "flush error: {:?}", output.stderr);
+}
+
+#[test]
+fn agy_owner_exit_retires_cards_and_preserves_a_new_execution() {
+    let directory = TempDir::new().expect("temp");
+    let port = free_port();
+    std::fs::write(
+        directory.path().join("info-tv.yaml"),
+        format!("serial_port: info-tv-absent-test-port\nhttp_port: {port}\n"),
+    )
+    .expect("config");
+    let state = directory.path().join("state");
+    let url = format!("http://127.0.0.1:{port}");
+    let client = reqwest::blocking::Client::builder()
+        .no_proxy()
+        .timeout(Duration::from_secs(3))
+        .build()
+        .expect("client");
+    let (mut owner, event) = start_producer(directory.path());
+    let identity = event.producer_process.expect("owner");
+    assert!(producer::exited(&[identity]).is_empty());
+    let mut host = start(directory.path(), &state);
+    wait_online(&client, &url, &mut host);
+    flush_producer(directory.path(), &url);
+    drop(host);
+    let mut host = start(directory.path(), &state);
+    wait_online(&client, &url, &mut host);
+    let tasks: Value = client
+        .get(format!("{url}/v1/tasks"))
+        .send()
+        .expect("tasks")
+        .json()
+        .expect("JSON");
+    assert_eq!(
+        tasks[0]["producer_process"],
+        serde_json::to_value(identity).expect("identity")
+    );
+
+    // The old process also owns an independent card, which must disappear on exit.
+    let mut other = event.clone();
+    other.event_id = Uuid::new_v4().simple().to_string();
+    other.task_id = "other-turn".into();
+    other.conversation_id = Some("other-session".into());
+    client
+        .post(format!("{url}/v1/task-events"))
+        .json(&other)
+        .send()
+        .expect("other")
+        .error_for_status()
+        .expect("admit other");
+
+    // A transiently unreadable callback must preserve the registered owner.
+    other.event_id = Uuid::new_v4().simple().to_string();
+    other.sequence = 2;
+    other.producer_process = None;
+    client
+        .post(format!("{url}/v1/task-events"))
+        .json(&other)
+        .send()
+        .expect("unreadable owner update")
+        .error_for_status()
+        .expect("admit update");
+
+    let mut resumed = event.clone();
+    resumed.event_id = Uuid::new_v4().simple().to_string();
+    resumed.task_id = "new-turn".into();
+    resumed.run_sequence = Some(2);
+    resumed.producer_process = producer::identify(std::process::id());
+    client
+        .post(format!("{url}/v1/task-events"))
+        .json(&resumed)
+        .send()
+        .expect("resume")
+        .error_for_status()
+        .expect("admit resume");
+
+    // Forced termination has no exit callback and leaves any producer files intact.
+    owner.0.kill().expect("terminate producer");
+    owner.0.wait().expect("reap producer");
+    assert_eq!(producer::exited(&[identity]), vec![identity]);
+    // Observe the durable database, rather than triggering cleanup through a GET.
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        let connection = rusqlite::Connection::open(state.join("host.sqlite3")).expect("database");
+        let payload: String = connection
+            .query_row("SELECT payload FROM host_state WHERE id=1", [], |row| {
+                row.get(0)
+            })
+            .expect("state");
+        let stored: Value = serde_json::from_str(&payload).expect("stored state");
+        if stored["tasks"]["tasks"].as_array().expect("cards").len() == 1 {
+            assert_eq!(stored["tasks"]["tasks"][0]["event"]["task_id"], "new-turn");
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "maintenance did not retire exited producer"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    other.event_id = Uuid::new_v4().simple().to_string();
+    other.sequence = 3;
+    let late: Value = client
+        .post(format!("{url}/v1/task-events"))
+        .json(&other)
+        .send()
+        .expect("late event")
+        .json()
+        .expect("JSON");
+    assert_eq!(late["outcome"], "closed");
+    drop(host);
+}
+
+#[test]
+fn agy_normal_exit_during_service_downtime_is_retired_on_restart() {
+    let directory = TempDir::new().expect("temp");
+    let port = free_port();
+    std::fs::write(
+        directory.path().join("info-tv.yaml"),
+        format!("serial_port: info-tv-absent-test-port\nhttp_port: {port}\n"),
+    )
+    .expect("config");
+    let state = directory.path().join("state");
+    let url = format!("http://127.0.0.1:{port}");
+    let client = reqwest::blocking::Client::builder()
+        .no_proxy()
+        .timeout(Duration::from_secs(3))
+        .build()
+        .expect("client");
+    let (mut owner, _) = start_producer(directory.path());
+    let mut host = start(directory.path(), &state);
+    wait_online(&client, &url, &mut host);
+    flush_producer(directory.path(), &url);
+    drop(host);
+    drop(owner.0.stdin.take());
+    assert!(owner.0.wait().expect("normal producer exit").success());
+    let mut host = start(directory.path(), &state);
+    wait_online(&client, &url, &mut host);
+    let tasks: Value = client
+        .get(format!("{url}/v1/tasks"))
+        .send()
+        .expect("tasks")
+        .json()
+        .expect("JSON");
+    assert_eq!(tasks, json!([]));
+    drop(host);
 }
 
 #[test]

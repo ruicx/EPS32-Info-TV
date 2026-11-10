@@ -505,6 +505,10 @@
             "anyOf": [{"type": "string", "minLength": 1, "maxLength": 64}, {"type": "null"}],
             "title": "Question Id",
             "description": "A newly submitted question's tool-call identity. Triggers a 30-second card hint without changing execution state. Omit on ordinary activity."
+          },
+          "producer_process": {
+            "anyOf": [{"$ref": "#/components/schemas/ProducerProcess"}, {"type": "null"}],
+            "description": "Optional local AGY process ownership, captured by the native hook and preserved across retries. Requires source agy and a conversation_id. Confirmed process exit retires the current card without a notification."
           }
         },
         "additionalProperties": false,
@@ -519,6 +523,19 @@
         ],
         "title": "TaskEventRequest",
         "description": "Accept a task run update without device addresses or layout fields."
+      },
+      "ProducerProcess": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pid", "started_at"],
+        "properties": {
+          "pid": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+          "started_at": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Process start time in seconds since the Unix epoch, used with pid to detect PID reuse."
+          }
+        }
       },
       "TaskIcon": {
         "type": "string",

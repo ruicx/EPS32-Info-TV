@@ -1,0 +1,53 @@
+{
+  "verified_at_utc": "2026-11-10T14:00:10.590127+00:00",
+  "platform": "Windows",
+  "build_command": "scripts/host/build_host_release.ps1",
+  "installed_executable": "C:/h/info-tv/info-tv.exe",
+  "shared_hook_executable": true,
+  "release_sha256": "4f97625c6d08a562b24f5f9e2243ff898c932985dfad615807dee5b1a848e58f",
+  "archive_sha256": "7212b8713b16e84b02aeb94fb8a53223a57b787a39870b5e54a9819a76d956e9",
+  "backup_directory": ".local/agy-deploy-20261110-215424",
+  "backup_scope": "Full prior installation plus host, AGY, Codex and ZCode SQLite backups before and after stopping the service",
+  "database_integrity": {
+    "host.sqlite3": "ok",
+    "agy-hooks.sqlite3": "ok",
+    "codex-hooks.sqlite3": "ok",
+    "zcode-hooks.sqlite3": "ok"
+  },
+  "service_verification": {
+    "device_state": "online",
+    "new_device_session": true,
+    "original_card_count": 3,
+    "restored_card_count": 3,
+    "original_cards_retained": true,
+    "all_cards_accepted": true,
+    "all_cards_presented": true,
+    "brightness_percent": 20,
+    "lock_action": "deep_sleep",
+    "unlock_poll_seconds": 5,
+    "weather_updater_enabled": true,
+    "installed_matches_release": true,
+    "configuration_preserved": true
+  },
+  "installed_lifecycle_smoke": {
+    "synthetic_ancestor_name": "agy.exe",
+    "installed_hook_owner_matches_process": true,
+    "owner": {
+      "pid": 202040,
+      "started_at": 1794319143
+    },
+    "card_accepted": true,
+    "card_presented": true,
+    "no_stop_callback_sent": true,
+    "automatic_retirement_without_http_reads": true,
+    "retirement_observed_after_exit_seconds": 0.494,
+    "retired_last_event_state": "running",
+    "new_device_message_accepted_after_retirement": true,
+    "device_state_after": "online"
+  },
+  "scope_notes": [
+    "Installed release and real device feedback were exercised using a synthetic AGY-named parent and the installed native hook.",
+    "Real native AGY ancestry and exit behavior were validated separately in agy-process-lifecycle-2026-11-10.json.",
+    "Presented is firmware feedback, not a visual screen inspection. No Linux execution or firmware flashing was performed."
+  ]
+}

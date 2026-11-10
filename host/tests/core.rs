@@ -320,7 +320,7 @@ async fn session_closure_retires_durably_without_a_notification() {
 }
 
 #[tokio::test]
-async fn agy_session_exit_retires_task_and_removes_from_device() {
+async fn agy_without_process_registration_is_not_guessed_dead() {
     let directory = TempDir::new().expect("temp");
     let settings = Settings::default();
     let host = Host::open(directory.path(), settings.clone()).await;
@@ -341,16 +341,178 @@ async fn agy_session_exit_retires_task_and_removes_from_device() {
     assert_eq!(status, 202);
     assert!(admitted["card_id"].is_string());
 
-    // Upon the next query or expiration tick, inactive agy conversation is retired
     let (_, tasks) = host.request("GET", "/v1/tasks", None).await;
-    assert_eq!(tasks, json!([]));
+    assert_eq!(tasks.as_array().expect("tasks").len(), 1);
 
     host.finish().await;
 
-    // After restart, it remains cleanly closed
     let host = Host::open(directory.path(), settings).await;
+    assert_eq!(
+        host.request("GET", "/v1/tasks", None).await.1[0]["card_id"],
+        admitted["card_id"]
+    );
+    host.finish().await;
+}
+
+#[tokio::test]
+async fn exited_producer_backlog_is_closed_without_notification_and_allows_resumption() {
+    let directory = TempDir::new().expect("temp");
+    let settings = Settings::default();
+    let host = Host::open(directory.path(), settings.clone()).await;
+    let mut start = event("old-turn", 1, "completed");
+    start["source"] = json!("agy");
+    start["conversation_id"] = json!("session");
+    start["run_sequence"] = json!(1);
+    start["producer_process"] = json!({"pid": u32::MAX, "started_at": 1});
+    let (status, admitted) = host
+        .request("POST", "/v1/task-events", Some(start.clone()))
+        .await;
+    assert_eq!(status, 202);
+    assert_eq!(admitted["outcome"], "accepted");
+    assert_eq!(admitted["notification"], "none");
     assert_eq!(host.request("GET", "/v1/tasks", None).await.1, json!([]));
     host.finish().await;
+
+    let host = Host::open(directory.path(), settings).await;
+    start["event_id"] = json!(Uuid::new_v4().simple().to_string());
+    start["sequence"] = json!(2);
+    assert_eq!(
+        host.request("POST", "/v1/task-events", Some(start.clone()))
+            .await
+            .1["outcome"],
+        "closed"
+    );
+    start["event_id"] = json!(Uuid::new_v4().simple().to_string());
+    start["task_id"] = json!("new-turn");
+    start["state"] = json!("running");
+    start["run_sequence"] = json!(2);
+    start["producer_process"] =
+        serde_json::to_value(info_tv::process::identify(std::process::id()).expect("own identity"))
+            .expect("identity");
+    assert_eq!(
+        host.request("POST", "/v1/task-events", Some(start)).await.1["outcome"],
+        "accepted"
+    );
+    assert_eq!(
+        host.request("GET", "/v1/tasks", None)
+            .await
+            .1
+            .as_array()
+            .expect("tasks")
+            .len(),
+        1
+    );
+    host.finish().await;
+}
+
+#[tokio::test]
+async fn startup_retires_exited_producers_before_the_coordinator_runs() {
+    let directory = TempDir::new().expect("temp");
+    let mut start = event("old-turn", 1, "running");
+    start["source"] = json!("agy");
+    start["conversation_id"] = json!("session");
+    start["run_sequence"] = json!(1);
+    start["producer_process"] = json!({"pid": u32::MAX, "started_at": 1});
+    let event: TaskEvent = serde_json::from_value(start).expect("event");
+    let mut stored = info_tv::storage::StoredState::default();
+    let update = stored.tasks.prepare(&event, 0).expect("admission");
+    stored.tasks.commit(&update);
+    {
+        let mut database = Database::open(directory.path()).expect("database");
+        database.save(&stored).expect("save active producer");
+    }
+
+    let (coordinator, handle, worker) = Coordinator::open(Settings::default(), directory.path())
+        .await
+        .expect("open without running actor");
+    let connection =
+        rusqlite::Connection::open(directory.path().join("host.sqlite3")).expect("reader");
+    let payload: String = connection
+        .query_row("SELECT payload FROM host_state WHERE id=1", [], |row| {
+            row.get(0)
+        })
+        .expect("state");
+    let restored: info_tv::storage::StoredState = serde_json::from_str(&payload).expect("restored");
+    assert!(restored.tasks.tasks.is_empty());
+    assert_eq!(restored.tasks.retired[0].card_id, update.record.card_id);
+    drop(connection);
+    drop(coordinator);
+    drop(handle);
+    tokio::task::spawn_blocking(move || worker.join())
+        .await
+        .expect("join task")
+        .expect("worker");
+}
+
+#[tokio::test]
+async fn producer_identity_requires_an_agy_conversation_and_nonzero_identity() {
+    let directory = TempDir::new().expect("temp");
+    let host = Host::open(directory.path(), Settings::default()).await;
+    let mut start = event("turn", 1, "running");
+    start["producer_process"] = json!({"pid": 1, "started_at": 1});
+    assert_eq!(
+        host.request("POST", "/v1/task-events", Some(start.clone()))
+            .await
+            .0,
+        422
+    );
+    start["source"] = json!("agy");
+    assert_eq!(
+        host.request("POST", "/v1/task-events", Some(start.clone()))
+            .await
+            .0,
+        422
+    );
+    start["conversation_id"] = json!("session");
+    start["run_sequence"] = json!(1);
+    for identity in [
+        json!({"pid": 0, "started_at": 1}),
+        json!({"pid": 1, "started_at": 0}),
+    ] {
+        start["producer_process"] = identity;
+        assert_eq!(
+            host.request("POST", "/v1/task-events", Some(start.clone()))
+                .await
+                .0,
+            422
+        );
+    }
+    host.finish().await;
+}
+
+#[test]
+fn unavailable_owner_metadata_preserves_only_the_same_execution_and_event_identity() {
+    let mut start = event("turn", 1, "running");
+    start["source"] = json!("agy");
+    start["conversation_id"] = json!("session");
+    start["run_sequence"] = json!(1);
+    start["producer_process"] = json!({"pid": 100, "started_at": 123});
+    let mut start: TaskEvent = serde_json::from_value(start).expect("event");
+    let mut store = TaskStore::default();
+    store.commit(&store.prepare(&start, 0).expect("start"));
+    let owner = start.producer_process;
+    start.event_id = Uuid::new_v4().simple().to_string();
+    start.sequence = 2;
+    start.producer_process = None;
+    let update = store.prepare(&start, 1).expect("unavailable metadata");
+    assert_eq!(update.record.producer_process, owner);
+    assert_eq!(update.record.event, start);
+    store.commit(&update);
+    assert_eq!(
+        store.prepare(&start, 2).expect("retry").outcome,
+        "duplicate"
+    );
+    start.event_id = Uuid::new_v4().simple().to_string();
+    start.task_id = "new-turn".into();
+    start.run_sequence = Some(2);
+    assert_eq!(
+        store
+            .prepare(&start, 3)
+            .expect("new execution")
+            .record
+            .producer_process,
+        None
+    );
 }
 
 #[test]

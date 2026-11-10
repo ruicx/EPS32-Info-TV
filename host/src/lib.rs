@@ -6,6 +6,7 @@ pub mod config;
 pub mod device;
 pub mod hooks;
 pub mod http;
+pub mod process;
 pub mod protocol;
 pub mod runtime;
 pub mod session_lock;

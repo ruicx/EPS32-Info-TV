@@ -1,0 +1,121 @@
+{
+  "date": "2026-11-10",
+  "platform": "Windows",
+  "agent_version": "1.5.4",
+  "scope": "Native AGY and an isolated local host with no serial device",
+  "startup": "agy",
+  "host_binary_sha256": "34818651e0565ed208eb85da9ab02dbd573db38a8c6452daa988ec6b794de755",
+  "conversation_id": "71d97c8e-0849-4901-8197-d61500d53b68",
+  "producer_process": {
+    "pid": 21344,
+    "started_at": 1794318194
+  },
+  "process_creation_time_independently_matched": true,
+  "observer": "Read-only SQLite queries; no HTTP reads after native task admission",
+  "completed_retention_seconds": 3600,
+  "native_hooks": [
+    {
+      "event": "SessionStart",
+      "process_chain": [
+        "python.exe",
+        "cmd.exe",
+        "agy.exe"
+      ],
+      "owner_pid": 21344
+    },
+    {
+      "event": "PreInvocation",
+      "process_chain": [
+        "python.exe",
+        "cmd.exe",
+        "agy.exe"
+      ],
+      "owner_pid": 21344
+    },
+    {
+      "event": "Stop",
+      "process_chain": [
+        "python.exe",
+        "cmd.exe",
+        "agy.exe"
+      ],
+      "owner_pid": 21344
+    },
+    {
+      "event": "PreInvocation",
+      "process_chain": [
+        "python.exe",
+        "cmd.exe",
+        "agy.exe"
+      ],
+      "owner_pid": 21344
+    }
+  ],
+  "durable_card_observations": [
+    {
+      "observed_at_utc": "2026-11-10T13:43:23.725138+00:00",
+      "cards": [
+        {
+          "card_id": "ea61a8cfeca74f5b88190350d63096a7",
+          "conversation_id": "71d97c8e-0849-4901-8197-d61500d53b68",
+          "state": "running",
+          "producer_process": {
+            "pid": 21344,
+            "started_at": 1794318194
+          }
+        }
+      ]
+    },
+    {
+      "observed_at_utc": "2026-11-10T13:43:29.392650+00:00",
+      "cards": [
+        {
+          "card_id": "ea61a8cfeca74f5b88190350d63096a7",
+          "conversation_id": "71d97c8e-0849-4901-8197-d61500d53b68",
+          "state": "completed",
+          "producer_process": {
+            "pid": 21344,
+            "started_at": 1794318194
+          }
+        }
+      ]
+    },
+    {
+      "observed_at_utc": "2026-11-10T13:45:25.538810+00:00",
+      "cards": [
+        {
+          "card_id": "ea61a8cfeca74f5b88190350d63096a7",
+          "conversation_id": "71d97c8e-0849-4901-8197-d61500d53b68",
+          "state": "running",
+          "producer_process": {
+            "pid": 21344,
+            "started_at": 1794318194
+          }
+        }
+      ]
+    },
+    {
+      "observed_at_utc": "2026-11-10T13:45:29.798643+00:00",
+      "cards": []
+    }
+  ],
+  "result": {
+    "active_cards": 0,
+    "retired_card_id": "ea61a8cfeca74f5b88190350d63096a7",
+    "retired_last_event_state": "running",
+    "retired_run_sequence": 2,
+    "retired_completed_at_ms": null,
+    "agy_pid_absent_windows_error": 87,
+    "private_service_stopped": true,
+    "hook_outbox_remaining": 0,
+    "physical_device_validation": false,
+    "linux_execution_validation": false
+  },
+  "automated_checks": {
+    "rust_tests_passed": 49,
+    "subprocess_helper_invoked_by_integration_tests": true,
+    "formatting": "passed",
+    "clippy_warnings_denied": "passed",
+    "protocol_bridge_build": "passed"
+  }
+}

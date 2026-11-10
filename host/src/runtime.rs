@@ -10,7 +10,7 @@ use crate::{
     config::{LockAction, Settings},
     device::DeviceSession,
     storage::{Database, Storage, StoredState, Timed},
-    tasks::{AdmissionError, TaskEvent, normalize_uuid},
+    tasks::{AdmissionError, TaskEvent, TaskStore, normalize_uuid},
     transport,
     weather::{self, AlertRequest, WeatherRequest},
 };
@@ -88,6 +88,36 @@ impl Clock {
     }
 }
 
+/// Retire registered producers off the executor; an inconclusive query retains cards.
+async fn retire_exited(tasks: &mut TaskStore) -> Vec<String> {
+    let identities: Vec<_> = tasks
+        .tasks
+        .iter()
+        .filter_map(|r| r.producer_process)
+        .collect();
+    if identities.is_empty() {
+        return Vec::new();
+    }
+    let exited =
+        match tokio::task::spawn_blocking(move || crate::process::exited(&identities)).await {
+            Ok(exited) => exited,
+            Err(error) => {
+                tracing::warn!(%error, "Producer process observation failed");
+                return Vec::new();
+            }
+        };
+    let cards: Vec<_> = tasks
+        .tasks
+        .iter()
+        .filter(|r| r.producer_process.is_some_and(|id| exited.contains(&id)))
+        .map(|r| r.card_id.clone())
+        .collect();
+    for id in &cards {
+        tasks.close(id);
+    }
+    cards
+}
+
 /// Coordinator owns all accepted business state and protocol scheduling state.
 pub struct Coordinator {
     settings: Settings,
@@ -142,21 +172,7 @@ impl Coordinator {
         stored
             .tasks
             .expire(now, settings.completed_retention_seconds);
-        let inactive: Vec<String> = stored
-            .tasks
-            .tasks
-            .iter()
-            .filter(|r| {
-                r.event
-                    .conversation_id
-                    .as_deref()
-                    .is_some_and(|cid| !crate::hooks::is_conversation_active(&r.event.source, cid))
-            })
-            .map(|r| r.card_id.clone())
-            .collect();
-        for id in &inactive {
-            stored.tasks.close(id);
-        }
+        retire_exited(&mut stored.tasks).await;
         stored.saved_at_ms = now;
         let (storage, worker) = Storage::start(database);
         storage.save(stored.clone()).await?;
@@ -198,22 +214,7 @@ impl Coordinator {
         let mut expired = candidate
             .tasks
             .expire(now, self.settings.completed_retention_seconds);
-        let inactive: Vec<String> = candidate
-            .tasks
-            .tasks
-            .iter()
-            .filter(|r| {
-                r.event
-                    .conversation_id
-                    .as_deref()
-                    .is_some_and(|cid| !crate::hooks::is_conversation_active(&r.event.source, cid))
-            })
-            .map(|r| r.card_id.clone())
-            .collect();
-        for id in &inactive {
-            candidate.tasks.close(id);
-        }
-        expired.extend(inactive);
+        expired.extend(retire_exited(&mut candidate.tasks).await);
         if !expired.is_empty() {
             self.save(candidate).await?;
             for id in expired {
@@ -232,26 +233,33 @@ impl Coordinator {
                 let update = self.stored.tasks.prepare(&event, now)?;
                 let mut notification = "none";
                 if update.outcome == "accepted" {
-                    if update.notify && self.device.online() && !self.device.can_notify(now) {
+                    let mut candidate = self.stored.clone();
+                    candidate.tasks.commit(&update);
+                    let retired = retire_exited(&mut candidate.tasks).await;
+                    let closed = event.state == crate::tasks::TaskState::Closed
+                        || retired.contains(&update.record.card_id);
+                    let notify = update.notify && !closed;
+                    if notify && self.device.online() && !self.device.can_notify(now) {
                         return Err(AdmissionError::new(
                             503,
                             "Notification queue is full; retry the event",
                         ));
                     }
-                    let mut candidate = self.stored.clone();
-                    candidate.tasks.commit(&update);
                     self.save(candidate).await?;
-                    if update.notify {
+                    for id in retired {
+                        self.device.remove(&id);
+                    }
+                    if notify {
                         notification = if self.device.online() {
                             "queued"
                         } else {
                             "skipped_offline"
                         };
                     }
-                    if event.state == crate::tasks::TaskState::Closed {
+                    if closed {
                         self.device.remove(&update.record.card_id);
                     } else {
-                        self.device.publish(&update.record, update.notify, now);
+                        self.device.publish(&update.record, notify, now);
                     }
                 }
                 Ok(
@@ -272,6 +280,9 @@ impl Coordinator {
                             .expect("Task event is an object")
                             .remove("event_id");
                         value["revision"] = json!(record.revision);
+                        if let Some(owner) = record.producer_process {
+                            value["producer_process"] = json!(owner);
+                        }
                         value["card_id"] = json!(record.card_id);
                         value["delivery"] = self.device.card_status(&record.card_id);
                         value

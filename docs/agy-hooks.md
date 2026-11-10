@@ -126,16 +126,49 @@ while conversations may resume: deleting it can reuse ordinals already known
 by the host. The Rust host restores accepted task state from SQLite after
 restart, obtains new device feedback, and does not replay old pop-up notices.
 
+## Process exit and card retirement
+
+Continue to start Antigravity with `agy`; no launcher or ACP wrapper is needed.
+During each accepted native callback, the hook finds its nearest `agy` process
+ancestor (`agy.exe` on Windows), including through intermediary shells. It adds
+`producer_process: {"pid": ..., "started_at": ...}` to the task event. The start
+time is measured in seconds since the Unix epoch. This identity is committed in
+the same immutable outbox payload as the task update, so flushing from a later
+shell retains the original producer identity.
+
+The service checks registered processes at startup, during its one-second
+maintenance cycle, and before handling requests. A confirmed exit, including
+forced termination, retires the card durably and schedules a device snapshot
+without a completion notification. An event delivered after its producer exits
+is committed directly to retirement without publishing a card or notification.
+Newer executions can replace the owning process; the old process's later exit
+does not close the newer execution.
+If a later callback cannot identify its process, the service retains that
+execution's last confirmed owner without rewriting the immutable event. A new
+execution without ownership does not inherit the previous execution's process.
+
+Process observation runs off the service's async executor. Unavailable process
+metadata is inconclusive and retains the card. No command lines, process
+environment variables, conversation transcripts, or AGY presence files are
+read for exit tracking. Custom AGY data directories therefore need no matching
+service environment configuration. Tracking applies to local AGY processes on
+Windows and Linux; remote process lifetimes are outside this contract.
+
+Cards without a registered process, including cards saved before this change,
+are retained under the existing state/retention rules. They acquire ownership
+on a subsequent accepted native update; absence of a presence file never closes
+them. Existing hook commands remain valid after updating both the service and
+hook executable.
+
 ## Native limitations
 
 - The native hooks do not include approval-request events, so this adapter
   does not report `waiting_input`. A tool call is not evidence of an approval.
 - Two real ACP cancellations returned `cancelled` without a `Stop` hook.
-  Antigravity CLI does not emit a native session-end hook on exit. To prevent
-  abandoned cards, the service monitors Antigravity's active conversation
-  presence lock (`.gemini/antigravity-cli/presence/<conversationId>.lock`),
-  automatically retiring the card from the display when the Antigravity process
-  exits.
+  Such a card remains running while its producer is alive, until a later turn
+  replaces it or the user closes it. Antigravity CLI does not emit a native
+  session-end hook on exit; the registered process lifecycle supplies exit
+  retirement as described above. Cancelling a turn is not process exit.
 - Stop lacks a native turn/message ID or matching trajectory position. The
   supported case is one sequential execution per conversation with synchronous
   callbacks. An arbitrarily delayed stop for an identical repeated prompt

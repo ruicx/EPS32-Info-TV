@@ -115,6 +115,13 @@ impl Database {
         for record in state.tasks.tasks.iter().chain(state.tasks.retired.iter()) {
             let mut event = record.event.clone();
             event.validate()?;
+            anyhow::ensure!(
+                record.producer_process.is_none_or(|owner| owner.pid > 0
+                    && owner.started_at > 0
+                    && record.event.source == "agy"
+                    && record.event.conversation_id.is_some()),
+                "Invalid stored producer identity"
+            );
             crate::tasks::normalize_uuid(&record.card_id)?;
             anyhow::ensure!(
                 record.revision > 0 && record.completed_at_ms.is_none_or(|v| v >= 0),
