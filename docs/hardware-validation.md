@@ -302,3 +302,115 @@ Evidence uses `.local/hardware-validation/before-weather-clean-flash.json`,
 and `weather-clean-deployment-tasks.json`. Backup metadata is adjacent to the
 image. Process metadata remains `.local/run/host-process.json`; current logs are
 `host-weather-clean.stdout.log` and `host-weather-clean.stderr.log` there.
+
+## 10. ULP touch wake firmware deployment
+
+Date: 2026-11-10. With explicit user authorization, the new firmware was flashed
+to the ESP32-S3 on COM6, MAC `58:e6:c5:68:6c:70`, USB VID:PID `303A:1001`.
+The chip reported revision v0.2 and USB-Serial/JTAG mode. Before writing, the
+installed host was stopped and the complete 16 MiB Flash was read successfully.
+The old and new partition tables were compared byte for byte and matched.
+
+- Flash backup: `.local/ulp-deploy-20261110-083218/device-before.bin`,
+  16,777,216 bytes, SHA-256
+  `B305D822A403ED59371D53131D20959FDA0DFA2CC48EFD43EC3295446C726317`.
+- New application: 4,710,752 bytes, SHA-256
+  `1094C6C6C142090F05EC477151D04EEA22C800B29A75FBA8103FFF8455107F44`.
+- Installed host: Windows x86-64 Release with the static MSVC runtime, SHA-256
+  `20B96A63234EE5F78C0138337AB3A72CA54DC2AFABBA289E72EB9683FD73B4E2`.
+
+Esptool v5.6.0 wrote and hash-verified the bootloader at `0x0`, partition table
+at `0x8000`, and application at `0x10000`, then reset the device. The generated
+flash arguments retained DIO, 80 MHz, and 16 MiB settings. NVS was not erased.
+Flash logs are `device-backup.log` and `device-flash.log` in the deployment
+directory; `deployment.json` records artifact identities.
+
+The installed `C:\h\info-tv\info-tv.exe` and YAML were backed up before replacing
+the executable and adding `lock_action: deep_sleep`. Existing Changsha weather
+settings, brightness 20%, and the SQLite state directory were preserved. The
+database, WAL, and SHM were copied after stopping the host. The replacement host
+was started hidden with the same configuration and state paths; PID 54648 is
+an observation, not a reusable identity. No startup registration was changed.
+
+The actual device returned `online`, brightness Applied at 20%, and correlated
+power-policy Applied for `deep_sleep` with `session_locked: false`. Both saved
+cards recovered and received device Accepted and Presented feedback. The
+completed card subsequently expired under the existing retention policy; the
+remaining active card continued receiving Presented feedback. `last_error`
+remained null. The serial library logged a stop-bit query warning, but the
+protocol handshake and the device feedback above succeeded.
+
+API evidence is saved as `before-device.json`, `before-tasks.json`,
+`after-device.json`, `after-tasks.json`, `verified-device.json`, and
+`verified-tasks.json` in the deployment directory. Host launch metadata and logs
+are `host-process.json`, `host.stdout.log`, and `host.stderr.log` there.
+
+The initial deployment established USB recovery, ULP preparation, and policy
+configuration. Physical lock/touch/unlock behavior was subsequently checked
+after the baseline fix below. Standby power consumption remains unmeasured.
+
+### Wake failure investigation and baseline fix (2026-11-10)
+
+The user subsequently confirmed that locking Windows puts the device to sleep,
+but touching the top pad does not restore the display. The host log records USB
+loss at `2026-11-10T01:12:01Z` and no later device reconnection. Port discovery
+returns no matching port. This narrows the investigation to wake/startup rather
+than confirming a backlight-only failure; the root cause is not yet established.
+
+Automatic sleep was temporarily disabled in the installed YAML (`lock_action:
+none`) and the same host restarted hidden, retaining its database and weather
+configuration. The previous YAML and failed firmware were backed up under
+`.local/ulp-wake-fix-20261110-091710`. USB power cycling has been requested from
+the user because the sleeping device's USB controller is unavailable.
+
+A temporary diagnostic build added ULP sample/error counters and a 30-second RTC
+timer wake for recovery. It was subsequently flashed after USB power cycling.
+The diagnostic image and ULP symbols are saved in that directory as
+`diagnostic-firmware.bin` and `diagnostic-ulp-symbols.ld`; image SHA-256 is
+`60852CF4DA219BB319C3360C25875B92AD5DCF6A733C45AA367F93F18F8DCD49`.
+The first no-touch RTC dump showed `sampleCount: 1437`, `readErrors: 0`,
+`baseline: 16611`, `lastSample: 16576`, and `armed: 0`. The old detector required
+a reading less than 18 counts below the pre-sleep baseline before arming. The
+35-count idle shift across the power transition therefore prevented arming even
+though the ULP was sampling normally. The recorded values were added to the
+native power test first; it failed at `shifted.armed` before the fix.
+
+The detector now calibrates three stable samples in the sleep power state
+before arming. It still requires three below-baseline samples to trigger wake.
+The regression and all six native tests passed. A second physical no-touch
+cycle yielded `sampleCount: 1436`, `readErrors: 0`, `releaseSamples: 3`,
+`baseline: 16609`, `lastSample: 16604`, `armed: 1`, and `wakeTriggered: 0`:
+the detector armed without a false wake. Two later diagnostic recovery checks
+returned a timer wake rather than retained touch-trigger evidence; those checks
+alone do not establish physical touch wake, despite the user's report of fast
+display recovery. The diagnostic window was extended to 120 seconds during
+the investigation to distinguish it from the requested 15-second preview.
+
+The timer, diagnostic ULP counters, and repository sleep-probe example were
+then removed. Probe source, raw RTC dumps, decoded counters, build output, and
+flash logs remain under the investigation directory as local evidence.
+The final touch-only application is SHA-256
+`5BFFB9ADE75360DBBC23CFD2D4A1950ADB888377404F55B69F5E50A0641690EE`.
+It was flashed and hash-verified, and the installed host was restored to
+`lock_action: deep_sleep`. Device status was `online`, brightness Applied at
+20%, power-policy Applied, and no device error. A final user-driven lock/touch/
+unlock check then passed; unlike the diagnostic builds, this image has no timer
+wakeup fallback.
+
+The user confirmed all three final checks: touch restores the locked display,
+the display sleeps again after roughly 15 seconds while Windows remains locked,
+and unlocking during a second preview keeps the display awake. The host's
+physical USB trace agrees: it disconnected on lock at `10:10:50.974 +08:00`,
+reconnected after touch at `10:10:55.029`, and disconnected again at
+`10:11:10.764`, approximately 15 seconds later. On another cycle, it returned
+online with Windows still locked at `10:12:20.664`, then received unlock at
+`10:12:24.137`. At `10:13:15`, it remained online, unlocked, at 20% brightness,
+with current power-policy Applied and no device error.
+
+The final application is 4,710,768 bytes and the ULP image is 374 bytes. The
+new hardware-derived regression, all six native tests, firmware build,
+rustfmt check, and whitespace check passed. Final API/task snapshots and
+artifact identities are saved as `final-verified-device.json`, `final-tasks.json`,
+and `final-validation.json`; session transitions are in `final-lock-trace.jsonl`
+and `final-host.stderr.log`. Long-running touch drift/noise behavior and actual
+standby current remain unqualified by this short physical test.

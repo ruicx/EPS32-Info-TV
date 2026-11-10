@@ -54,7 +54,11 @@ void DeviceSession::sendFeedback(const Feedback& feedback) {
     std::strcpy(ack.card_id, feedback.cardId);
     ack.revision = feedback.revision;
     ack.stage = feedback.stage;
-    if (feedback.stage == info_tv_v1_AckStage_ACK_STAGE_APPLIED) {
+    if (feedback.stage == info_tv_v1_AckStage_ACK_STAGE_APPLIED && feedback.powerSettings) {
+      ack.has_lock_action = ack.has_session_locked = true;
+      ack.lock_action = feedback.lockAction;
+      ack.session_locked = feedback.sessionLocked;
+    } else if (feedback.stage == info_tv_v1_AckStage_ACK_STAGE_APPLIED) {
       ack.has_brightness_percent = true;
       ack.brightness_percent = feedback.brightnessPercent;
     }
@@ -84,6 +88,7 @@ void DeviceSession::dispatch(uint64_t nowMs) {
     reply_.body.hello.brightness_control = true;
     reply_.body.hello.weather = true;
     reply_.body.hello.weather_details = true;
+    reply_.body.hello.power_control = true;
     send();
     return;
   }

@@ -5,6 +5,9 @@ usb_pid: 0x1001
 http_port: 8765
 completed_retention_seconds: 300
 
+# Windows only: none, screen_off, or deep_sleep (touch wake, 15-second locked preview).
+lock_action: none
+
 # Uncomment to enable automatic weather. The location is an explicit example.
 # weather:
 #   location: Shanghai

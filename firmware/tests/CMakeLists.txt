@@ -8,12 +8,14 @@ set(APP "${CMAKE_CURRENT_LIST_DIR}/../main")
 set(NANOPB "${CMAKE_CURRENT_LIST_DIR}/../components/nanopb/upstream")
 add_library(info_tv_core STATIC
     "${APP}/input/button_detector.cpp"
+    "${APP}/board/touch_key.cpp"
+    "${APP}/power/power_policy.cpp"
     "${APP}/protocol/framing.cpp" "${APP}/protocol/codec.cpp"
     "${APP}/protocol/generated/device.pb.c"
     "${APP}/ui/display_state.cpp" "${APP}/ui/presentation_controller.cpp"
     "${NANOPB}/pb_common.c" "${NANOPB}/pb_encode.c" "${NANOPB}/pb_decode.c")
 target_include_directories(info_tv_core PUBLIC "${APP}" "${NANOPB}")
-foreach(name framing codec presentation button_detector)
+foreach(name framing codec presentation button_detector power)
     add_executable(test_${name} test_${name}.cpp)
     target_link_libraries(test_${name} PRIVATE info_tv_core)
     add_test(NAME ${name} COMMAND test_${name} "${CMAKE_CURRENT_LIST_DIR}/../../protocol/test_vectors")

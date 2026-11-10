@@ -26,4 +26,8 @@ bool UsbTransport::write(const uint8_t* data, size_t size) {
   }
   return true;
 }
+
+void UsbTransport::flush() {
+  usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(100));
+}
 }  // namespace info_tv

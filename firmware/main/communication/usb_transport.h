@@ -13,5 +13,7 @@ class UsbTransport {
   size_t read(uint8_t* data, size_t capacity);
   /** Write a complete frame or report a bounded timeout. */
   bool write(const uint8_t* data, size_t size);
+  /** Allow queued feedback to reach USB before the controller is powered down. */
+  void flush();
 };
 }  // namespace info_tv

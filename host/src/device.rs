@@ -8,6 +8,7 @@ use serde_json::{Value, json};
 use uuid::Uuid;
 
 use crate::{
+    config::LockAction,
     protocol::{
         self,
         pb::{self, envelope::Body},
@@ -60,10 +61,16 @@ pub struct DeviceSession {
     deliveries: VecDeque<(String, Delivery)>,
     card_delivery: BTreeMap<String, (u64, String)>,
     brightness_delivery: Option<String>,
+    power_delivery: Option<String>,
     weather_delivery: Option<String>,
     alert_delivery: Option<String>,
     pub alert_notification: &'static str,
     brightness_dirty: bool,
+    session_locked: bool,
+    lock_action: LockAction,
+    power_supported: bool,
+    power_dirty: bool,
+    power_configured: bool,
     weather_dirty: bool,
     alert_dirty: bool,
     alert_notify: bool,
@@ -88,10 +95,16 @@ impl Default for DeviceSession {
             deliveries: VecDeque::new(),
             card_delivery: BTreeMap::new(),
             brightness_delivery: None,
+            power_delivery: None,
             weather_delivery: None,
             alert_delivery: None,
             alert_notification: "suppressed",
             brightness_dirty: true,
+            session_locked: false,
+            lock_action: LockAction::None,
+            power_supported: false,
+            power_dirty: false,
+            power_configured: false,
             weather_dirty: false,
             alert_dirty: true,
             alert_notify: false,
@@ -145,6 +158,41 @@ impl DeviceSession {
         self.brightness_delivery = None;
     }
 
+    /// Select the startup-only lock action before the connection handshake.
+    pub fn set_lock_action(&mut self, action: LockAction) {
+        self.lock_action = action;
+    }
+
+    /// Apply a new lock state without changing durable user brightness.
+    pub fn set_session_locked(&mut self, locked: bool) {
+        if self.session_locked == locked {
+            return;
+        }
+        self.session_locked = locked;
+        // A retry of an obsolete brightness must not undo the new lock state.
+        if self.pending.as_ref().is_some_and(|pending| {
+            matches!(
+                pending.envelope.body,
+                Some(Body::DeviceSettings(_) | Body::PowerSettings(_))
+            )
+        }) {
+            self.pending = None;
+        }
+        self.brightness_changed();
+        self.power_dirty = self.power_supported;
+        self.power_configured = false;
+        self.power_delivery = None;
+    }
+
+    /// Resolve the temporary lock override against the persisted user setting.
+    fn effective_brightness(&self, stored: &StoredState) -> u32 {
+        if self.session_locked && self.lock_action == LockAction::ScreenOff {
+            0
+        } else {
+            stored.brightness_percent
+        }
+    }
+
     /// Mark fresh or cleared weather for downstream publication.
     pub fn weather_changed(&mut self) {
         self.weather_dirty = true;
@@ -195,6 +243,10 @@ impl DeviceSession {
         self.applied_brightness = None;
         self.brightness_dirty = true;
         self.brightness_delivery = None;
+        self.power_delivery = None;
+        self.power_supported = false;
+        self.power_dirty = false;
+        self.power_configured = false;
         self.weather_delivery = None;
         self.alert_delivery = None;
         self.card_delivery.clear();
@@ -221,6 +273,12 @@ impl DeviceSession {
                         && hello.weather_details,
                     "Device firmware lacks required capabilities"
                 );
+                anyhow::ensure!(
+                    self.lock_action != LockAction::DeepSleep || hello.power_control,
+                    "Device firmware lacks ULP deep-sleep power control"
+                );
+                self.power_supported = hello.power_control;
+                self.power_dirty = hello.power_control;
                 self.state = "synchronizing";
                 self.snapshot_dirty = true;
                 self.dirty.clear();
@@ -262,6 +320,27 @@ impl DeviceSession {
             .as_ref()
             .filter(|p| p.envelope.message_id == ack.in_reply_to);
         if ack.stage == 3 {
+            if let Some(Body::PowerSettings(settings)) =
+                pending.and_then(|p| p.envelope.body.as_ref())
+            {
+                if ack.lock_action != Some(settings.lock_action)
+                    || ack.session_locked != Some(settings.session_locked)
+                {
+                    return;
+                }
+                self.power_configured = !self.power_dirty;
+                if let Some((_, delivery)) = self
+                    .deliveries
+                    .iter_mut()
+                    .find(|(key, _)| key == &ack.in_reply_to)
+                {
+                    delivery.accepted = true;
+                    delivery.applied = true;
+                }
+                self.pending = None;
+                self.finish_configuration(stored);
+                return;
+            }
             let expected = pending.and_then(|p| match &p.envelope.body {
                 Some(Body::DeviceSettings(s)) => s.brightness_percent,
                 _ => None,
@@ -277,16 +356,15 @@ impl DeviceSession {
                 }
             }
             self.pending = None;
-            if self.state == "configuring"
-                && !self.brightness_dirty
-                && expected == Some(stored.brightness_percent)
-            {
-                self.state = "online";
-                self.last_error = None;
-            }
+            self.finish_configuration(stored);
             return;
         }
-        if pending.is_some_and(|p| matches!(p.envelope.body, Some(Body::DeviceSettings(_)))) {
+        if pending.is_some_and(|p| {
+            matches!(
+                p.envelope.body,
+                Some(Body::DeviceSettings(_) | Body::PowerSettings(_))
+            )
+        }) {
             return;
         }
         if ack.stage == 1 {
@@ -320,6 +398,18 @@ impl DeviceSession {
             {
                 delivery.presented = true;
             }
+        }
+    }
+
+    /// Require current brightness and power-policy proof before reporting online.
+    fn finish_configuration(&mut self, stored: &StoredState) {
+        if self.state == "configuring"
+            && !self.brightness_dirty
+            && self.applied_brightness == Some(self.effective_brightness(stored))
+            && (!self.power_supported || self.power_configured)
+        {
+            self.state = "online";
+            self.last_error = None;
         }
     }
 
@@ -362,7 +452,16 @@ impl DeviceSession {
             self.brightness_dirty = false;
             Some((
                 Body::DeviceSettings(pb::DeviceSettings {
-                    brightness_percent: Some(stored.brightness_percent),
+                    brightness_percent: Some(self.effective_brightness(stored)),
+                }),
+                None,
+            ))
+        } else if matches!(self.state, "configuring" | "online") && self.power_dirty {
+            self.power_dirty = false;
+            Some((
+                Body::PowerSettings(pb::PowerSettings {
+                    lock_action: self.lock_action.protocol_value(),
+                    session_locked: self.session_locked,
                 }),
                 None,
             ))
@@ -432,6 +531,7 @@ impl DeviceSession {
         };
         match &envelope.body {
             Some(Body::DeviceSettings(_)) => self.brightness_delivery = Some(id.clone()),
+            Some(Body::PowerSettings(_)) => self.power_delivery = Some(id.clone()),
             Some(Body::Snapshot(_) | Body::Weather(_)) => self.weather_delivery = Some(id.clone()),
             Some(Body::WeatherAlert(_)) => self.alert_delivery = Some(id.clone()),
             _ => {}
@@ -448,6 +548,7 @@ impl DeviceSession {
                 .iter()
                 .position(|(key, _)| {
                     Some(key) != self.brightness_delivery.as_ref()
+                        && Some(key) != self.power_delivery.as_ref()
                         && Some(key) != self.weather_delivery.as_ref()
                         && Some(key) != self.alert_delivery.as_ref()
                 })
@@ -567,7 +668,12 @@ impl DeviceSession {
             json!({"state":"pending"}),
             |d| json!({"message_id":d.message_id,"applied":d.applied,"error":d.error}),
         );
-        json!({"brightness_percent":stored.brightness_percent,"applied_brightness_percent":self.applied_brightness,"delivery":delivery})
+        json!({"brightness_percent":stored.brightness_percent,
+            "effective_brightness_percent":self.effective_brightness(stored),
+            "screen_off_for_lock":self.session_locked && self.lock_action == LockAction::ScreenOff,
+            "lock_action":self.lock_action,"session_locked":self.session_locked,
+            "power_delivery":self.delivery(&self.power_delivery),
+            "applied_brightness_percent":self.applied_brightness,"delivery":delivery})
     }
 
     /// Weather content/freshness, without claiming independent LCD presentation.

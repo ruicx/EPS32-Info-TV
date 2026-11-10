@@ -12,7 +12,11 @@ namespace info_tv {
 class DisplayDriver {
  public:
   /** Initialize the board and LVGL display from the UI task. */
-  void initialize();
+  void initialize(uint32_t brightness = 100);
+  /** Stop the panel and hold the active-low backlight off across deep sleep. */
+  bool prepareSleep();
+  /** Return the actual current PWM setting for sleep recovery. */
+  uint32_t brightness() const { return brightnessPercent_; }
   /** Apply an active-low PWM level in 0..100; return false on driver failure. */
   bool setBrightness(uint32_t percent);
   /** Return whether the last successfully applied level enables the backlight. */

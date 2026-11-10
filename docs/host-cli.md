@@ -123,6 +123,14 @@ Weather conditions are `unknown`, `clear`, `cloudy`, `rain`, `snow`, `storm`, an
 Manual replacement or clearing does not disable the automatic updater; its next
 successful retrieval can publish weather again. Weather and alerts are independent.
 Brightness accepts an integer from 0 to 100; zero turns off the backlight.
+To follow Windows lock/unlock automatically, set `lock_action: screen_off` in
+the [host YAML](host-configuration.md#follow-windows-session-locking) and restart.
+While locked, brightness commands update the saved target for unlock; the
+effective target remains zero. Query output distinguishes the saved target,
+effective target, lock override, and device-applied level.
+Use `lock_action: deep_sleep` for ULP touch wake and a 15-second locked preview;
+this requires updated firmware and disconnects USB while asleep. See the same
+configuration guide for wake, offline, and unlock behavior.
 
 To publish an alert, supply its source-selected identity, sequence, severity,
 and remaining validity. This example is synthetic:

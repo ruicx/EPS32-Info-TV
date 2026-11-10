@@ -10,6 +10,13 @@
 #endif
 
 /* Enum definitions */
+/* Absolute host lock policy. Touch-wake preview timing belongs to the device. */
+typedef enum _info_tv_v1_LockAction {
+    info_tv_v1_LockAction_LOCK_ACTION_NONE = 0,
+    info_tv_v1_LockAction_LOCK_ACTION_SCREEN_OFF = 1,
+    info_tv_v1_LockAction_LOCK_ACTION_DEEP_SLEEP = 2
+} info_tv_v1_LockAction;
+
 typedef enum _info_tv_v1_Tone {
     info_tv_v1_Tone_TONE_UNSPECIFIED = 0,
     info_tv_v1_Tone_TONE_NEUTRAL = 1,
@@ -80,6 +87,7 @@ typedef struct _info_tv_v1_Hello {
     bool brightness_control;
     bool weather;
     bool weather_details;
+    bool power_control;
 } info_tv_v1_Hello;
 
 typedef struct _info_tv_v1_Ping {
@@ -95,6 +103,11 @@ typedef struct _info_tv_v1_DeviceSettings {
     bool has_brightness_percent;
     uint32_t brightness_percent;
 } info_tv_v1_DeviceSettings;
+
+typedef struct _info_tv_v1_PowerSettings {
+    info_tv_v1_LockAction lock_action;
+    bool session_locked;
+} info_tv_v1_PowerSettings;
 
 typedef struct _info_tv_v1_StatusView {
     char text[65];
@@ -183,6 +196,10 @@ typedef struct _info_tv_v1_Acknowledgment {
     uint64_t revision;
     bool has_brightness_percent;
     uint32_t brightness_percent;
+    bool has_lock_action;
+    info_tv_v1_LockAction lock_action;
+    bool has_session_locked;
+    bool session_locked;
 } info_tv_v1_Acknowledgment;
 
 typedef struct _info_tv_v1_Error {
@@ -209,6 +226,7 @@ typedef struct _info_tv_v1_Envelope {
         info_tv_v1_DeviceSettings device_settings;
         info_tv_v1_Weather weather;
         info_tv_v1_WeatherAlert weather_alert;
+        info_tv_v1_PowerSettings power_settings;
     } body;
 } info_tv_v1_Envelope;
 
@@ -218,6 +236,10 @@ extern "C" {
 #endif
 
 /* Helper constants for enums */
+#define _info_tv_v1_LockAction_MIN info_tv_v1_LockAction_LOCK_ACTION_NONE
+#define _info_tv_v1_LockAction_MAX info_tv_v1_LockAction_LOCK_ACTION_DEEP_SLEEP
+#define _info_tv_v1_LockAction_ARRAYSIZE ((info_tv_v1_LockAction)(info_tv_v1_LockAction_LOCK_ACTION_DEEP_SLEEP+1))
+
 #define _info_tv_v1_Tone_MIN info_tv_v1_Tone_TONE_UNSPECIFIED
 #define _info_tv_v1_Tone_MAX info_tv_v1_Tone_TONE_NEGATIVE
 #define _info_tv_v1_Tone_ARRAYSIZE ((info_tv_v1_Tone)(info_tv_v1_Tone_TONE_NEGATIVE+1))
@@ -251,6 +273,8 @@ extern "C" {
 
 
 
+#define info_tv_v1_PowerSettings_lock_action_ENUMTYPE info_tv_v1_LockAction
+
 #define info_tv_v1_StatusView_tone_ENUMTYPE info_tv_v1_Tone
 
 #define info_tv_v1_View_icon_ENUMTYPE info_tv_v1_TaskIcon
@@ -265,16 +289,18 @@ extern "C" {
 #define info_tv_v1_Notification_priority_ENUMTYPE info_tv_v1_Priority
 
 #define info_tv_v1_Acknowledgment_stage_ENUMTYPE info_tv_v1_AckStage
+#define info_tv_v1_Acknowledgment_lock_action_ENUMTYPE info_tv_v1_LockAction
 
 #define info_tv_v1_Error_code_ENUMTYPE info_tv_v1_ErrorCode
 
 
 /* Initializer values for message structs */
 #define info_tv_v1_Envelope_init_default         {0, "", "", 0, {info_tv_v1_Hello_init_default}}
-#define info_tv_v1_Hello_init_default            {0, 0, 0, 0, 0, 0}
+#define info_tv_v1_Hello_init_default            {0, 0, 0, 0, 0, 0, 0}
 #define info_tv_v1_Ping_init_default             {0}
 #define info_tv_v1_Pong_init_default             {0}
 #define info_tv_v1_DeviceSettings_init_default   {false, 0}
+#define info_tv_v1_PowerSettings_init_default    {_info_tv_v1_LockAction_MIN, 0}
 #define info_tv_v1_StatusView_init_default       {"", _info_tv_v1_Tone_MIN, "", false, 0, 0}
 #define info_tv_v1_View_init_default             {"", "", "", _info_tv_v1_TaskIcon_MIN, 0, {info_tv_v1_StatusView_init_default}}
 #define info_tv_v1_Card_init_default             {"", 0, false, info_tv_v1_View_init_default}
@@ -283,13 +309,14 @@ extern "C" {
 #define info_tv_v1_Snapshot_init_default         {0, {info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default, info_tv_v1_Card_init_default}, false, info_tv_v1_Weather_init_default}
 #define info_tv_v1_CardUpsert_init_default       {false, info_tv_v1_Card_init_default}
 #define info_tv_v1_Notification_init_default     {"", _info_tv_v1_Priority_MIN, false, 0, 0, false, info_tv_v1_View_init_default, ""}
-#define info_tv_v1_Acknowledgment_init_default   {"", _info_tv_v1_AckStage_MIN, "", 0, false, 0}
+#define info_tv_v1_Acknowledgment_init_default   {"", _info_tv_v1_AckStage_MIN, "", 0, false, 0, false, _info_tv_v1_LockAction_MIN, false, 0}
 #define info_tv_v1_Error_init_default            {"", _info_tv_v1_ErrorCode_MIN, ""}
 #define info_tv_v1_Envelope_init_zero            {0, "", "", 0, {info_tv_v1_Hello_init_zero}}
-#define info_tv_v1_Hello_init_zero               {0, 0, 0, 0, 0, 0}
+#define info_tv_v1_Hello_init_zero               {0, 0, 0, 0, 0, 0, 0}
 #define info_tv_v1_Ping_init_zero                {0}
 #define info_tv_v1_Pong_init_zero                {0}
 #define info_tv_v1_DeviceSettings_init_zero      {false, 0}
+#define info_tv_v1_PowerSettings_init_zero       {_info_tv_v1_LockAction_MIN, 0}
 #define info_tv_v1_StatusView_init_zero          {"", _info_tv_v1_Tone_MIN, "", false, 0, 0}
 #define info_tv_v1_View_init_zero                {"", "", "", _info_tv_v1_TaskIcon_MIN, 0, {info_tv_v1_StatusView_init_zero}}
 #define info_tv_v1_Card_init_zero                {"", 0, false, info_tv_v1_View_init_zero}
@@ -298,7 +325,7 @@ extern "C" {
 #define info_tv_v1_Snapshot_init_zero            {0, {info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero, info_tv_v1_Card_init_zero}, false, info_tv_v1_Weather_init_zero}
 #define info_tv_v1_CardUpsert_init_zero          {false, info_tv_v1_Card_init_zero}
 #define info_tv_v1_Notification_init_zero        {"", _info_tv_v1_Priority_MIN, false, 0, 0, false, info_tv_v1_View_init_zero, ""}
-#define info_tv_v1_Acknowledgment_init_zero      {"", _info_tv_v1_AckStage_MIN, "", 0, false, 0}
+#define info_tv_v1_Acknowledgment_init_zero      {"", _info_tv_v1_AckStage_MIN, "", 0, false, 0, false, _info_tv_v1_LockAction_MIN, false, 0}
 #define info_tv_v1_Error_init_zero               {"", _info_tv_v1_ErrorCode_MIN, ""}
 
 /* Field tags (for use in manual encoding/decoding) */
@@ -308,7 +335,10 @@ extern "C" {
 #define info_tv_v1_Hello_brightness_control_tag  4
 #define info_tv_v1_Hello_weather_tag             5
 #define info_tv_v1_Hello_weather_details_tag     6
+#define info_tv_v1_Hello_power_control_tag       7
 #define info_tv_v1_DeviceSettings_brightness_percent_tag 1
+#define info_tv_v1_PowerSettings_lock_action_tag 1
+#define info_tv_v1_PowerSettings_session_locked_tag 2
 #define info_tv_v1_StatusView_text_tag           1
 #define info_tv_v1_StatusView_tone_tag           2
 #define info_tv_v1_StatusView_detail_tag         3
@@ -350,6 +380,8 @@ extern "C" {
 #define info_tv_v1_Acknowledgment_card_id_tag    3
 #define info_tv_v1_Acknowledgment_revision_tag   4
 #define info_tv_v1_Acknowledgment_brightness_percent_tag 5
+#define info_tv_v1_Acknowledgment_lock_action_tag 6
+#define info_tv_v1_Acknowledgment_session_locked_tag 7
 #define info_tv_v1_Error_in_reply_to_tag         1
 #define info_tv_v1_Error_code_tag                2
 #define info_tv_v1_Error_detail_tag              3
@@ -367,6 +399,7 @@ extern "C" {
 #define info_tv_v1_Envelope_device_settings_tag  18
 #define info_tv_v1_Envelope_weather_tag          19
 #define info_tv_v1_Envelope_weather_alert_tag    20
+#define info_tv_v1_Envelope_power_settings_tag   21
 
 /* Struct field encoding specification for nanopb */
 #define info_tv_v1_Envelope_FIELDLIST(X, a) \
@@ -383,7 +416,8 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (body,ping,body.ping),  16) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (body,pong,body.pong),  17) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (body,device_settings,body.device_settings),  18) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (body,weather,body.weather),  19) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (body,weather_alert,body.weather_alert),  20)
+X(a, STATIC,   ONEOF,    MESSAGE,  (body,weather_alert,body.weather_alert),  20) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (body,power_settings,body.power_settings),  21)
 #define info_tv_v1_Envelope_CALLBACK NULL
 #define info_tv_v1_Envelope_DEFAULT NULL
 #define info_tv_v1_Envelope_body_hello_MSGTYPE info_tv_v1_Hello
@@ -397,6 +431,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (body,weather_alert,body.weather_alert),  20)
 #define info_tv_v1_Envelope_body_device_settings_MSGTYPE info_tv_v1_DeviceSettings
 #define info_tv_v1_Envelope_body_weather_MSGTYPE info_tv_v1_Weather
 #define info_tv_v1_Envelope_body_weather_alert_MSGTYPE info_tv_v1_WeatherAlert
+#define info_tv_v1_Envelope_body_power_settings_MSGTYPE info_tv_v1_PowerSettings
 
 #define info_tv_v1_Hello_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UINT64,   boot_id,           1) \
@@ -404,7 +439,8 @@ X(a, STATIC,   SINGULAR, UINT32,   max_cards,         2) \
 X(a, STATIC,   SINGULAR, BOOL,     task_icons,        3) \
 X(a, STATIC,   SINGULAR, BOOL,     brightness_control,   4) \
 X(a, STATIC,   SINGULAR, BOOL,     weather,           5) \
-X(a, STATIC,   SINGULAR, BOOL,     weather_details,   6)
+X(a, STATIC,   SINGULAR, BOOL,     weather_details,   6) \
+X(a, STATIC,   SINGULAR, BOOL,     power_control,     7)
 #define info_tv_v1_Hello_CALLBACK NULL
 #define info_tv_v1_Hello_DEFAULT NULL
 
@@ -422,6 +458,12 @@ X(a, STATIC,   SINGULAR, BOOL,     weather_details,   6)
 X(a, STATIC,   OPTIONAL, UINT32,   brightness_percent,   1)
 #define info_tv_v1_DeviceSettings_CALLBACK NULL
 #define info_tv_v1_DeviceSettings_DEFAULT NULL
+
+#define info_tv_v1_PowerSettings_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UENUM,    lock_action,       1) \
+X(a, STATIC,   SINGULAR, BOOL,     session_locked,    2)
+#define info_tv_v1_PowerSettings_CALLBACK NULL
+#define info_tv_v1_PowerSettings_DEFAULT NULL
 
 #define info_tv_v1_StatusView_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, STRING,   text,              1) \
@@ -502,7 +544,9 @@ X(a, STATIC,   SINGULAR, STRING,   in_reply_to,       1) \
 X(a, STATIC,   SINGULAR, UENUM,    stage,             2) \
 X(a, STATIC,   SINGULAR, STRING,   card_id,           3) \
 X(a, STATIC,   SINGULAR, UINT64,   revision,          4) \
-X(a, STATIC,   OPTIONAL, UINT32,   brightness_percent,   5)
+X(a, STATIC,   OPTIONAL, UINT32,   brightness_percent,   5) \
+X(a, STATIC,   OPTIONAL, UENUM,    lock_action,       6) \
+X(a, STATIC,   OPTIONAL, BOOL,     session_locked,    7)
 #define info_tv_v1_Acknowledgment_CALLBACK NULL
 #define info_tv_v1_Acknowledgment_DEFAULT NULL
 
@@ -518,6 +562,7 @@ extern const pb_msgdesc_t info_tv_v1_Hello_msg;
 extern const pb_msgdesc_t info_tv_v1_Ping_msg;
 extern const pb_msgdesc_t info_tv_v1_Pong_msg;
 extern const pb_msgdesc_t info_tv_v1_DeviceSettings_msg;
+extern const pb_msgdesc_t info_tv_v1_PowerSettings_msg;
 extern const pb_msgdesc_t info_tv_v1_StatusView_msg;
 extern const pb_msgdesc_t info_tv_v1_View_msg;
 extern const pb_msgdesc_t info_tv_v1_Card_msg;
@@ -535,6 +580,7 @@ extern const pb_msgdesc_t info_tv_v1_Error_msg;
 #define info_tv_v1_Ping_fields &info_tv_v1_Ping_msg
 #define info_tv_v1_Pong_fields &info_tv_v1_Pong_msg
 #define info_tv_v1_DeviceSettings_fields &info_tv_v1_DeviceSettings_msg
+#define info_tv_v1_PowerSettings_fields &info_tv_v1_PowerSettings_msg
 #define info_tv_v1_StatusView_fields &info_tv_v1_StatusView_msg
 #define info_tv_v1_View_fields &info_tv_v1_View_msg
 #define info_tv_v1_Card_fields &info_tv_v1_Card_msg
@@ -548,16 +594,17 @@ extern const pb_msgdesc_t info_tv_v1_Error_msg;
 
 /* Maximum encoded size of messages (where known) */
 #define INFO_TV_V1_DEVICE_PB_H_MAX_SIZE          info_tv_v1_Envelope_size
-#define info_tv_v1_Acknowledgment_size           95
+#define info_tv_v1_Acknowledgment_size           99
 #define info_tv_v1_CardUpsert_size               495
 #define info_tv_v1_Card_size                     492
 #define info_tv_v1_DeviceSettings_size           6
 #define info_tv_v1_Envelope_size                 4093
 #define info_tv_v1_Error_size                    138
-#define info_tv_v1_Hello_size                    25
+#define info_tv_v1_Hello_size                    27
 #define info_tv_v1_Notification_size             533
 #define info_tv_v1_Ping_size                     0
 #define info_tv_v1_Pong_size                     0
+#define info_tv_v1_PowerSettings_size            4
 #define info_tv_v1_Snapshot_size                 4008
 #define info_tv_v1_StatusView_size               237
 #define info_tv_v1_View_size                     440

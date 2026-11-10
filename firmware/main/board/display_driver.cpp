@@ -17,12 +17,14 @@ uint32_t DisplayDriver::tickMs() {
   return static_cast<uint32_t>(esp_timer_get_time() / 1000);
 }
 
-void DisplayDriver::initialize() {
+void DisplayDriver::initialize(uint32_t brightness) {
   gpio_config_t backlight{};
   backlight.pin_bit_mask = 1ULL << board::kBacklight;
   backlight.mode = GPIO_MODE_OUTPUT;
   ESP_ERROR_CHECK(gpio_config(&backlight));
   ESP_ERROR_CHECK(gpio_set_level(static_cast<gpio_num_t>(board::kBacklight), 1));
+  ESP_ERROR_CHECK(gpio_hold_dis(static_cast<gpio_num_t>(board::kBacklight)));
+  gpio_deep_sleep_hold_dis();
   ledc_timer_config_t backlightTimer{};
   backlightTimer.speed_mode = LEDC_LOW_SPEED_MODE;
   backlightTimer.duty_resolution = LEDC_TIMER_8_BIT;
@@ -77,7 +79,15 @@ void DisplayDriver::initialize() {
   esp_lcd_panel_io_callbacks_t callbacks{};
   callbacks.on_color_trans_done = transferDone;
   ESP_ERROR_CHECK(esp_lcd_panel_io_register_event_callbacks(io_, &callbacks, this));
-  ESP_ERROR_CHECK(setBrightness(100) ? ESP_OK : ESP_FAIL);
+  ESP_ERROR_CHECK(setBrightness(brightness) ? ESP_OK : ESP_FAIL);
+}
+
+bool DisplayDriver::prepareSleep() {
+  if (!setBrightness(0) || esp_lcd_panel_disp_on_off(panel_, false) != ESP_OK ||
+      ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 1) != ESP_OK ||
+      gpio_hold_en(static_cast<gpio_num_t>(board::kBacklight)) != ESP_OK) return false;
+  gpio_deep_sleep_hold_en();
+  return true;
 }
 
 bool DisplayDriver::setBrightness(uint32_t percent) {

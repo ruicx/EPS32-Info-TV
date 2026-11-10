@@ -39,6 +39,7 @@ and a boot-local sequence. Feedback explicitly refers to the original command.
 | CardUpsert | Host to device | Create or replace a card by identity/revision |
 | Notification | Host to device | Independently admit a temporary presentation |
 | DeviceSettings | Host to device | Apply an absolute device brightness setting |
+| PowerSettings | Host to device | Configure the Windows lock action independently of brightness |
 | Weather | Host to device | Replace or clear independently retained weather |
 | WeatherAlert | Host to device | Replace or clear one independent hazard alert, optionally notifying |
 | Acknowledgment | Device to host | UI Accepted, first-refresh Presented, or settings Applied |
@@ -93,6 +94,10 @@ paired update explicit while keeping field numbers and protocol version stable.
 The icon revision also requires `Hello.task_icons = true`; a missing/false value
 identifies firmware that needs updating before this host synchronizes content.
 Brightness control additionally requires `Hello.brightness_control = true`.
+Deep-sleep policy additionally requires `Hello.power_control = true`. Hosts
+retain backlight-only compatibility with firmware without that capability.
+Capable firmware also receives PowerSettings during synchronization, including
+`none`, so changing configuration clears a previous touch-wake preview.
 Persistent weather additionally requires `Hello.weather = true`. A snapshot can
 include bounded weather values with remaining freshness, separate from cards.
 Weather updates require a location, presence-aware integer temperature -100..100,
@@ -205,5 +210,30 @@ or mismatched-value feedback as proof of application.
 
 The host coalesces unsent settings to the latest target, keeps the target across
 reconnections, and resynchronizes it after each snapshot. The default target is
-100. Targets and feedback are retained only for the current service process;
-there is no disk/NVS persistence. Applied brightness is unknown while disconnected.
+100. The Rust host persists user targets in SQLite. Device Applied feedback is
+unknown while disconnected; firmware does not persist user targets in NVS.
+
+## 8. Device Power Policy
+
+`PowerSettings` uses envelope body tag 21 and contains `lock_action` (`none = 0`,
+`screen_off = 1`, `deep_sleep = 2`) and `session_locked`. It requires the current
+snapshot session. Unknown actions are invalid. Brightness and power are separate
+operations so a temporary preview can use the user target while Windows is locked.
+
+The UI owner checks ULP/touch readiness for deep sleep and configures its local
+policy before replying with Applied. That reply has present, echoed
+`lock_action` and `session_locked` fields and no brightness echo. The host
+requires matching operation identity and both values; Accepted or a brightness
+acknowledgment cannot complete power configuration. Capable devices become
+online only after snapshot, brightness, and power-policy configuration complete.
+Applied means policy configured, not proof that deep sleep was entered.
+
+An initial locked deep-sleep policy sleeps immediately. A boot identified by
+the ULP touch detector instead permits one preview, lasting 15 seconds from
+the first completed visible frame. Repeated absolute policies do not restart
+that deadline. A confirmed unlock or disabled sleep policy cancels the preview;
+the next deep-sleep lock sleeps immediately. The firmware's timer runs without
+host connectivity and consumes the waking press until release. Before sleep,
+the UI quiesces rendering and requests the communication owner to drain feedback,
+then checks final commands again before powering down USB. RTC context retains
+brightness and touch baseline; it does not persist cards or notifications.

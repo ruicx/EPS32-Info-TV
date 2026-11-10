@@ -39,6 +39,14 @@ bool PresentationController::handleCommand(const DisplayCommand& command, uint64
     feedback.brightnessPercent = envelope.body.device_settings.brightness_percent;
     return true;
   }
+  if (envelope.which_body == info_tv_v1_Envelope_power_settings_tag) {
+    // The UI owner configures power policy before reporting Applied.
+    feedback.powerSettings = true;
+    feedback.lockAction = envelope.body.power_settings.lock_action;
+    feedback.sessionLocked = envelope.body.power_settings.session_locked;
+    feedback.stage = info_tv_v1_AckStage_ACK_STAGE_ACCEPTED;
+    return true;
+  }
   if (sameSession && state_.accepted(envelope.message_id)) {
     feedback.stage = info_tv_v1_AckStage_ACK_STAGE_ACCEPTED;
     return true;

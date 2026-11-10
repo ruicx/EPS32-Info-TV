@@ -153,6 +153,54 @@ ledger state was `completed` at sequence 2, the outbox was still empty, and the
 device had reported a second completion notification as `Presented`. This also
 confirms the native `Stop` path after the initial synthetic smoke notification.
 
+## Windows Session Lock Following and ULP Touch Wake (2026-11-10)
+
+The final startup-only setting is `lock_action: none | screen_off | deep_sleep`,
+defaulting to `none`. It replaces the earlier uncommitted `screen_off_on_lock`
+boolean. Screen-off preserves USB and restores user brightness on unlock.
+Deep-sleep uses the approved ULP detector for the board's decreasing touch
+readings and allows a 15-second visible preview after touch wake while locked.
+Firmware owns the nonrenewable deadline; a confirmed unlock cancels it.
+
+On Windows x86-64, all 38 Rust tests passed, including deep-sleep policy
+configuration and lock/unlock through the actual native C++ codec/presentation
+bridge. Clippy with `-D warnings` and rustfmt passed. New regressions cover strict
+YAML actions, enabled and disabled policy, durable brightness, manual zero,
+stale/missing/mismatched Applied proof, capability rejection, and reconnection.
+All six native CTest cases passed. The power case exercises the same touch
+detector compiled into the ULP, release-before-rearming, wake-press consumption,
+visible-time deadlines, repeated settings/refreshes, and unlock/relock.
+
+The actual embedded Windows PowerShell helper successfully queried the current
+WTS session, forwarded a sample to the production coordinator, and terminated
+on shutdown. That check did not lock Windows or open a physical serial port.
+Actual lock/unlock transitions with the display, suspend/resume, and optical
+confirmation of backlight off/on remain unverified.
+
+ESP-IDF v6.1 compiled and linked the firmware and embedded ULP RISC-V program.
+The ULP image is 350 bytes with 4096 bytes of RTC memory reserved. The isolated
+build at `build/firmware-sleep` produced an app of `0x47e120` bytes, within the
+existing 6 MiB application partition. Both ULP options and reservation are in
+`firmware/sdkconfig.defaults`. Existing local sdkconfig files must also enable
+`CONFIG_ULP_COPROC_ENABLED=y`, `CONFIG_ULP_COPROC_TYPE_RISCV=y`, and
+`CONFIG_ULP_COPROC_RESERVE_MEM=4096`; the local ignored sdkconfig was updated.
+The standard `firmware/build` build also passed after the final functional
+changes, producing `info_tv.bin` of `0x47e160` bytes (4,710,752 bytes), with 25%
+of the 6 MiB application partition free. Build output is recorded locally in
+`build/firmware-sleep-final.log`. The protocol generation check, Ruff, ty, and
+`git diff --check` passed; generated bindings normalize trailing newlines.
+
+Firmware was subsequently flashed with user authorization on 2026-11-10; see
+[deployment evidence](hardware-validation.md#10-ulp-touch-wake-firmware-deployment).
+The updated installed host and actual device completed brightness and power-policy
+configuration, and restored task presentation. The first user lock test exposed
+an idle-baseline shift that prevented the ULP detector from arming. The
+[hardware-derived fix and final physical checks](hardware-validation.md#wake-failure-investigation-and-baseline-fix-2026-11-10)
+subsequently verified touch wake without a timer fallback, USB re-enumeration,
+roughly 15 seconds of visible preview while locked, and continued display after
+unlock. Long-running touch drift/noise behavior and standby current remain
+hardware qualification items.
+
 ## Remaining Qualification
 
 - Actual unplug/replug, port changes, powered host restart, and user visual

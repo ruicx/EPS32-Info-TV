@@ -338,6 +338,13 @@ cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnin
 cargo test --manifest-path host/Cargo.toml --locked
 ```
 
+On Windows, set `lock_action: deep_sleep` in `info-tv.yaml` and restart the host
+to sleep the ESP32 when the current Windows session locks. Touch the top pad to
+wake it; while Windows stays locked, the visible preview lasts 15 seconds before
+sleeping again. Unlock during the preview keeps it awake. Update host and firmware
+together. The default is `none`; `screen_off` keeps USB connected and only disables
+the backlight. See [YAML configuration](docs/host-configuration.md#follow-windows-session-locking).
+
 ### ESP32 Firmware Build
 
 Prerequisites:

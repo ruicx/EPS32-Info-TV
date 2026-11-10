@@ -3,7 +3,28 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+
+/// Action applied when the current Windows session locks.
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LockAction {
+    #[default]
+    None,
+    ScreenOff,
+    DeepSleep,
+}
+
+impl LockAction {
+    /// Return the matching shared-protocol enum value.
+    pub fn protocol_value(self) -> i32 {
+        match self {
+            Self::None => 0,
+            Self::ScreenOff => 1,
+            Self::DeepSleep => 2,
+        }
+    }
+}
 
 /// Optional Open-Meteo location and retrieval policy.
 #[derive(Debug, Clone, Deserialize)]
@@ -60,6 +81,8 @@ pub struct Settings {
     #[serde(default = "retention_default")]
     pub completed_retention_seconds: u64,
     #[serde(default)]
+    pub lock_action: LockAction,
+    #[serde(default)]
     pub weather: Option<WeatherSettings>,
 }
 
@@ -71,6 +94,7 @@ impl Default for Settings {
             usb_pid: pid_default(),
             http_port: http_default(),
             completed_retention_seconds: retention_default(),
+            lock_action: LockAction::None,
             weather: None,
         }
     }

@@ -21,6 +21,9 @@ PB_BIND(info_tv_v1_Pong, info_tv_v1_Pong, AUTO)
 PB_BIND(info_tv_v1_DeviceSettings, info_tv_v1_DeviceSettings, AUTO)
 
 
+PB_BIND(info_tv_v1_PowerSettings, info_tv_v1_PowerSettings, AUTO)
+
+
 PB_BIND(info_tv_v1_StatusView, info_tv_v1_StatusView, AUTO)
 
 
@@ -49,20 +52,3 @@ PB_BIND(info_tv_v1_Acknowledgment, info_tv_v1_Acknowledgment, AUTO)
 
 
 PB_BIND(info_tv_v1_Error, info_tv_v1_Error, AUTO)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

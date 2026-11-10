@@ -19,6 +19,8 @@ class TouchKey {
    * @return True if initialized successfully or in mock mode; false on hardware error.
    */
   bool initialize();
+  /** Restore the pre-sleep baseline and consume the waking press until release. */
+  void restoreAfterWake(uint32_t baseline) { baseline_ = baseline; consumeWakeTouch_ = true; }
 
   /**
    * @brief Process current touch state and return detected button events.
@@ -60,6 +62,8 @@ class TouchKey {
   uint32_t threshold() const { return thresh_; }
 
  private:
+  /** Consume the waking contact until a stable 100 ms release has been observed. */
+  bool filterWakeTouch(bool released, uint64_t nowMs);
   std::atomic<bool> isrTouched_{false};
   std::atomic<bool> touched_{false};
   bool swTouched_ = false;
@@ -70,6 +74,8 @@ class TouchKey {
   uint32_t lastBenchmark_ = 0;
   uint32_t baseline_ = 0;
   uint32_t thresh_ = 35;
+  bool consumeWakeTouch_ = false;
+  uint64_t wakeReleaseSinceMs_ = 0;
 #if defined(ESP_PLATFORM)
   void* sensHandle_ = nullptr;
   void* chanHandle_ = nullptr;

@@ -18,6 +18,7 @@ message Envelope {
     DeviceSettings device_settings = 18;
     Weather weather = 19;
     WeatherAlert weather_alert = 20;
+    PowerSettings power_settings = 21;
   }
 }
 
@@ -31,6 +32,7 @@ message Hello {
   bool brightness_control = 4;
   bool weather = 5;
   bool weather_details = 6;
+  bool power_control = 7;
 }
 message Ping {}
 message Pong {}
@@ -38,6 +40,17 @@ message Pong {}
 // Absolute device settings; presence distinguishes off (0) from missing input.
 message DeviceSettings {
   optional uint32 brightness_percent = 1;
+}
+
+// Absolute host lock policy. Touch-wake preview timing belongs to the device.
+enum LockAction {
+  LOCK_ACTION_NONE = 0;
+  LOCK_ACTION_SCREEN_OFF = 1;
+  LOCK_ACTION_DEEP_SLEEP = 2;
+}
+message PowerSettings {
+  LockAction lock_action = 1;
+  bool session_locked = 2;
 }
 
 enum Tone {
@@ -148,6 +161,8 @@ message Acknowledgment {
   string card_id = 3;
   uint64 revision = 4;
   optional uint32 brightness_percent = 5;
+  optional LockAction lock_action = 6;
+  optional bool session_locked = 7;
 }
 enum ErrorCode {
   ERROR_CODE_UNSPECIFIED = 0;

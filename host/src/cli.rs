@@ -300,8 +300,24 @@ pub async fn serve(args: ServeArgs, settings: Settings, path: Option<PathBuf>) -
         )
         .try_init()?;
     tracing::info!(configuration = ?path, state_directory = %directory.display(), "Starting info-tv");
-    let (coordinator, handle, storage_worker) =
+    #[cfg(not(windows))]
+    anyhow::ensure!(
+        settings.lock_action == crate::config::LockAction::None,
+        "lock_action currently supports Windows only"
+    );
+    #[cfg(windows)]
+    let monitor = if settings.lock_action != crate::config::LockAction::None {
+        Some(crate::session_lock::Monitor::start().await?)
+    } else {
+        None
+    };
+    #[cfg(windows)]
+    let initial_locked = monitor.as_ref().is_some_and(|monitor| monitor.locked);
+    #[cfg(not(windows))]
+    let initial_locked = false;
+    let (mut coordinator, handle, storage_worker) =
         crate::runtime::Coordinator::open(settings.clone(), &directory).await?;
+    coordinator.set_session_locked(initial_locked);
     let listener =
         tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, settings.http_port)).await?;
     let (stop, stop_receive) = tokio::sync::watch::channel(false);
@@ -315,6 +331,10 @@ pub async fn serve(args: ServeArgs, settings: Settings, path: Option<PathBuf>) -
         receive_commands,
         stop_receive.clone(),
     ));
+    #[cfg(windows)]
+    if let Some(monitor) = monitor {
+        tasks.spawn(monitor.run(handle.clone(), stop_receive.clone()));
+    }
     if let Some(weather) = settings.weather {
         tasks.spawn(crate::runtime::run_weather(
             weather,

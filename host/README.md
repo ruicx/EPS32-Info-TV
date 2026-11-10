@@ -40,6 +40,15 @@ missing file or an invalid selected file is an error. CLI settings override YAML
 The included YAML leaves automatic weather disabled; uncomment its example to
 enable it. Restart after changing configuration.
 
+On Windows, set `lock_action: deep_sleep` in YAML to sleep the ESP32 when the
+current session locks. Touch the top pad to wake; while Windows stays locked,
+the visible preview lasts 15 seconds, then the device sleeps again. Unlocking
+during the preview keeps it awake; unlocking while asleep does not wake it.
+Update host and firmware together. The default `none` disables lock following;
+`screen_off` only turns off the backlight and restores brightness on unlock.
+The host samples session state once per second through a hidden Windows
+PowerShell helper, requiring `Add-Type`. Keep the host running to confirm unlock.
+
 The service saves accepted tasks, recent replay/closure protection, target
 brightness, and weather/alert expiry in `%LOCALAPPDATA%\info_tv\host.sqlite3`.
 Logs rotate daily under `logs`, retaining seven files. `serve --state-dir <path>`

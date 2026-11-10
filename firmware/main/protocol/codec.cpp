@@ -70,6 +70,10 @@ const char* validateCommand(const Envelope& envelope) {
   if (envelope.protocol_version != 1) return "Unsupported protocol version";
   if (!envelope.session_id[0] || !envelope.message_id[0]) return "Missing operation identity";
   switch (envelope.which_body) {
+    case info_tv_v1_Envelope_power_settings_tag:
+      return envelope.body.power_settings.lock_action >= info_tv_v1_LockAction_LOCK_ACTION_NONE &&
+          envelope.body.power_settings.lock_action <= info_tv_v1_LockAction_LOCK_ACTION_DEEP_SLEEP
+          ? nullptr : "Invalid lock action";
     case info_tv_v1_Envelope_weather_alert_tag:
       return validWeatherAlert(envelope.body.weather_alert) ? nullptr : "Invalid weather alert";
     case info_tv_v1_Envelope_weather_tag:

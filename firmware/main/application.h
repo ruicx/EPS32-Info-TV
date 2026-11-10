@@ -7,9 +7,11 @@
 #include "freertos/task.h"
 
 #include "board/display_driver.h"
+#include "board/sleep_driver.h"
 #include "board/touch_key.h"
 #include "communication/device_session.h"
 #include "communication/usb_transport.h"
+#include "power/power_policy.h"
 #include "ui/display_state.h"
 #include "ui/presentation_controller.h"
 #include "ui/screen_view.h"
@@ -31,6 +33,8 @@ class Application {
   UsbTransport usb_;
   DisplayDriver display_;
   TouchKey touchKey_;
+  SleepDriver sleep_;
+  PowerPolicy power_;
   DisplayState state_;
   PresentationController presentation_{state_};
   ScreenView view_;
@@ -38,5 +42,7 @@ class Application {
   QueueHandle_t commands_ = nullptr;
   QueueHandle_t feedback_ = nullptr;
   std::atomic<bool> feedbackOverflow_{false};
+  std::atomic<bool> sleepRequested_{false};
+  std::atomic<bool> sleepReady_{false};
 };
 }  // namespace info_tv

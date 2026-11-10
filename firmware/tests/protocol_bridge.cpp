@@ -42,7 +42,11 @@ void reply(const info_tv::Feedback& feedback, uint64_t& sequence) {
     std::strcpy(ack.card_id, feedback.cardId);
     ack.revision = feedback.revision;
     ack.stage = feedback.stage;
-    if (feedback.stage == info_tv_v1_AckStage_ACK_STAGE_APPLIED) {
+    if (feedback.stage == info_tv_v1_AckStage_ACK_STAGE_APPLIED && feedback.powerSettings) {
+      ack.has_lock_action = ack.has_session_locked = true;
+      ack.lock_action = feedback.lockAction;
+      ack.session_locked = feedback.sessionLocked;
+    } else if (feedback.stage == info_tv_v1_AckStage_ACK_STAGE_APPLIED) {
       ack.has_brightness_percent = true;
       ack.brightness_percent = feedback.brightnessPercent;
     }
@@ -82,6 +86,7 @@ int main() {
       response.body.hello.brightness_control = true;
       response.body.hello.weather = true;
       response.body.hello.weather_details = true;
+      response.body.hello.power_control = true;
       send(response, sequence);
     } else if (command.envelope.which_body == info_tv_v1_Envelope_ping_tag) {
       response.which_body = info_tv_v1_Envelope_pong_tag;
@@ -95,6 +100,8 @@ int main() {
           feedback.stage = info_tv_v1_AckStage_ACK_STAGE_APPLIED;
           brightnessPercent = feedback.brightnessPercent;
         }
+        if (feedback.powerSettings && feedback.error == info_tv_v1_ErrorCode_ERROR_CODE_UNSPECIFIED)
+          feedback.stage = info_tv_v1_AckStage_ACK_STAGE_APPLIED;
         reply(feedback, sequence);
       }
     }

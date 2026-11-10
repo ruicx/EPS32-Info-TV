@@ -8,6 +8,7 @@ pub mod hooks;
 pub mod http;
 pub mod protocol;
 pub mod runtime;
+pub mod session_lock;
 pub mod storage;
 pub mod tasks;
 pub mod transport;

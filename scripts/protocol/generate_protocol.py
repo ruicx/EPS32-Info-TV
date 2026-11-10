@@ -45,12 +45,13 @@ def main() -> None:
         for filename, destination in targets.items():
             source = output / filename
             target = destination / filename
+            generated = source.read_bytes().rstrip(b"\r\n") + b"\n"
             if args.check:
-                if not target.exists() or target.read_bytes() != source.read_bytes():
+                if not target.exists() or target.read_bytes() != generated:
                     raise RuntimeError(f"Outdated generated file: {target}")
             else:
                 destination.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(source.read_bytes())
+                target.write_bytes(generated)
 
 
 if __name__ == "__main__":

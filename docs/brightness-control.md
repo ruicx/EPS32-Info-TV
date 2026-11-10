@@ -32,6 +32,8 @@ Example while offline:
 ```json
 {
   "brightness_percent": 30,
+  "effective_brightness_percent": 30,
+  "screen_off_for_lock": false,
   "applied_brightness_percent": null,
   "delivery": {"state": "pending"}
 }
@@ -42,6 +44,8 @@ Example after correlated device feedback:
 ```json
 {
   "brightness_percent": 30,
+  "effective_brightness_percent": 30,
+  "screen_off_for_lock": false,
   "applied_brightness_percent": 30,
   "delivery": {
     "message_id": "example-operation-id",
@@ -51,7 +55,14 @@ Example after correlated device feedback:
 }
 ```
 
-`brightness_percent` is the latest target. `applied_brightness_percent` is the
+`brightness_percent` is the latest saved user target. `effective_brightness_percent`
+is the target after applying the optional Windows lock override, and
+`screen_off_for_lock` indicates whether that override is active. Enable it with
+[`lock_action: screen_off`](host-configuration.md#follow-windows-session-locking)
+in the host YAML. Unlock restores the latest saved target, including manual zero.
+`lock_action: deep_sleep` uses a separate power-policy command and retains the
+user's brightness as the preview target; it does not force that target to zero.
+`applied_brightness_percent` is the
 last device-reported applied setting, which can differ while a newer request is
 pending. Disconnection clears the reported value to unknown. A failed command
 has `applied: false` and an error; the previous reported setting remains separate.

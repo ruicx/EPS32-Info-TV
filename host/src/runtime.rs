@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use tokio::sync::{mpsc, oneshot, watch};
 
 use crate::{
-    config::Settings,
+    config::{LockAction, Settings},
     device::DeviceSession,
     storage::{Database, Storage, StoredState, Timed},
     tasks::{AdmissionError, TaskEvent, normalize_uuid},
@@ -23,6 +23,7 @@ pub enum Operation {
     Status,
     Settings,
     Brightness(u32),
+    SessionLocked(bool),
     Weather,
     SetWeather(Option<WeatherRequest>),
     Alert,
@@ -99,6 +100,12 @@ pub struct Coordinator {
 }
 
 impl Coordinator {
+    /// Apply the current session state only when lock following is configured.
+    pub fn set_session_locked(&mut self, locked: bool) {
+        self.device
+            .set_session_locked(self.settings.lock_action != LockAction::None && locked);
+    }
+
     /// Open durable state off the executor and reconstruct only still-valid content.
     pub async fn open(
         settings: Settings,
@@ -140,12 +147,14 @@ impl Coordinator {
         storage.save(stored.clone()).await?;
         let (send, requests) = mpsc::channel(64);
         let updater = weather::updater_status(settings.weather.as_ref());
+        let mut device = DeviceSession::default();
+        device.set_lock_action(settings.lock_action);
         Ok((
             Self {
                 settings,
                 stored,
                 storage,
-                device: DeviceSession::default(),
+                device,
                 requests,
                 updater,
                 clock,
@@ -249,6 +258,10 @@ impl Coordinator {
             }
             Operation::Status => Ok(self.device.status(&self.stored, now)),
             Operation::Settings => Ok(self.device.settings_status(&self.stored)),
+            Operation::SessionLocked(locked) => {
+                self.set_session_locked(locked);
+                Ok(self.device.settings_status(&self.stored))
+            }
             Operation::Brightness(value) => {
                 if value > 100 {
                     return Err(AdmissionError::new(

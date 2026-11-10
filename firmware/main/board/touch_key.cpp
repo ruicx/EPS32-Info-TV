@@ -103,6 +103,7 @@ ButtonEvent TouchKey::tick(uint64_t nowMs) {
 
       // Touching TP_KEY drops count by ~100 (e.g. from ~16500 down to ~16400)
       const int32_t drop = static_cast<int32_t>(baseline_) - static_cast<int32_t>(lastSmooth_);
+      if (filterWakeTouch(drop < 18, nowMs)) return ButtonEvent::kNone;
       if (drop >= static_cast<int32_t>(thresh_)) {
         if (!swTouched_) {
           swTouched_ = true;
@@ -134,7 +135,22 @@ ButtonEvent TouchKey::tick(uint64_t nowMs) {
     touched_.store(swTouched_, std::memory_order_relaxed);
   }
 #endif
+  if (filterWakeTouch(!touched_.load(std::memory_order_relaxed), nowMs)) return ButtonEvent::kNone;
   return detector_.update(touched_.load(std::memory_order_relaxed), nowMs);
+}
+
+bool TouchKey::filterWakeTouch(bool released, uint64_t nowMs) {
+  if (!consumeWakeTouch_) return false;
+  if (!released) {
+    wakeReleaseSinceMs_ = 0;
+  } else if (!wakeReleaseSinceMs_) {
+    wakeReleaseSinceMs_ = nowMs;
+  } else if (nowMs - wakeReleaseSinceMs_ >= 100) {
+    consumeWakeTouch_ = false;
+    detector_.reset();
+  }
+  touched_.store(false, std::memory_order_relaxed);
+  return true;
 }
 
 }  // namespace info_tv

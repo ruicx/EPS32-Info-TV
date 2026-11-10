@@ -8,7 +8,7 @@ use axum::{
     http::Request,
 };
 use info_tv::{
-    config::Settings,
+    config::{LockAction, Settings},
     http,
     protocol::{self, pb},
     runtime::{Coordinator, Handle, Operation},
@@ -135,6 +135,109 @@ fn yaml_discovery_strictness_and_precedence() {
             "accepted invalid YAML: {invalid}"
         );
     }
+}
+
+#[test]
+fn lock_action_accepts_only_documented_actions_and_defaults_to_none() {
+    let directory = TempDir::new().expect("temp");
+    assert_eq!(
+        Settings::load(None, directory.path())
+            .expect("defaults")
+            .0
+            .lock_action,
+        LockAction::None
+    );
+    let path = directory.path().join("info-tv.yaml");
+    for (name, action) in [
+        ("none", LockAction::None),
+        ("screen_off", LockAction::ScreenOff),
+        ("deep_sleep", LockAction::DeepSleep),
+    ] {
+        std::fs::write(&path, format!("lock_action: {name}\n")).expect("write");
+        assert_eq!(
+            Settings::load(None, directory.path())
+                .expect("boolean")
+                .0
+                .lock_action,
+            action
+        );
+    }
+    for invalid in ["true", "1", "null", "[]", "shutdown"] {
+        std::fs::write(&path, format!("lock_action: {invalid}\n")).expect("write");
+        assert!(Settings::load(None, directory.path()).is_err());
+    }
+}
+
+#[tokio::test]
+async fn session_lock_overrides_brightness_without_persisting_zero() {
+    let directory = TempDir::new().expect("temp");
+    let settings = Settings {
+        lock_action: LockAction::ScreenOff,
+        ..Settings::default()
+    };
+    let host = Host::open(directory.path(), settings.clone()).await;
+    host.handle
+        .request(Operation::Brightness(35))
+        .await
+        .expect("brightness");
+    let locked = host
+        .handle
+        .request(Operation::SessionLocked(true))
+        .await
+        .expect("lock");
+    assert_eq!(locked["brightness_percent"], 35);
+    assert_eq!(locked["effective_brightness_percent"], 0);
+    assert_eq!(locked["screen_off_for_lock"], true);
+    let changed = host
+        .handle
+        .request(Operation::Brightness(60))
+        .await
+        .expect("new target");
+    assert_eq!(changed["brightness_percent"], 60);
+    assert_eq!(changed["effective_brightness_percent"], 0);
+    host.finish().await;
+
+    let host = Host::open(directory.path(), settings).await;
+    host.handle
+        .request(Operation::SessionLocked(true))
+        .await
+        .expect("lock after restart");
+    let unlocked = host
+        .handle
+        .request(Operation::SessionLocked(false))
+        .await
+        .expect("unlock");
+    assert_eq!(unlocked["brightness_percent"], 60);
+    assert_eq!(unlocked["effective_brightness_percent"], 60);
+    host.handle
+        .request(Operation::Brightness(0))
+        .await
+        .expect("manual off");
+    host.handle
+        .request(Operation::SessionLocked(true))
+        .await
+        .expect("lock");
+    let unlocked = host
+        .handle
+        .request(Operation::SessionLocked(false))
+        .await
+        .expect("unlock");
+    assert_eq!(unlocked["effective_brightness_percent"], 0);
+    host.finish().await;
+
+    let host = Host::open(directory.path(), Settings::default()).await;
+    host.handle
+        .request(Operation::Brightness(35))
+        .await
+        .expect("brightness");
+    let disabled = host
+        .handle
+        .request(Operation::SessionLocked(true))
+        .await
+        .expect("disabled");
+    assert_eq!(disabled["effective_brightness_percent"], 35);
+    assert_eq!(disabled["screen_off_for_lock"], false);
+    host.finish().await;
 }
 
 #[tokio::test]
@@ -681,7 +784,14 @@ async fn rust_http_to_cpp_firmware_core() {
         return;
     }
     let directory = TempDir::new().expect("temp");
-    let mut host = Host::open(directory.path(), Settings::default()).await;
+    let mut host = Host::open(
+        directory.path(),
+        Settings {
+            lock_action: LockAction::DeepSleep,
+            ..Settings::default()
+        },
+    )
+    .await;
     let mut child = tokio::process::Command::new(executable)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
@@ -710,6 +820,13 @@ async fn rust_http_to_cpp_firmware_core() {
         .expect("firmware feedback timeout")
     };
     wait(host.handle.clone(), |v| v["state"] == "online").await;
+    assert_eq!(
+        host.handle
+            .request(Operation::Settings)
+            .await
+            .expect("settings")["power_delivery"]["applied"],
+        true
+    );
     assert_eq!(
         host.request(
             "PUT",
@@ -785,6 +902,22 @@ async fn rust_http_to_cpp_firmware_core() {
                 d["message_id"].as_str().is_some_and(|id| !id.contains(':'))
                     && d["presented"] == true
             })
+    })
+    .await;
+    host.handle
+        .request(Operation::SessionLocked(true))
+        .await
+        .expect("lock policy");
+    wait(host.handle.clone(), |v| {
+        v["settings"]["power_delivery"]["applied"] == true
+    })
+    .await;
+    host.handle
+        .request(Operation::SessionLocked(false))
+        .await
+        .expect("unlock policy");
+    wait(host.handle.clone(), |v| {
+        v["settings"]["power_delivery"]["applied"] == true
     })
     .await;
     host.finish().await;
