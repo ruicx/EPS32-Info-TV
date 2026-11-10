@@ -58,6 +58,8 @@ void DeviceSession::sendFeedback(const Feedback& feedback) {
       ack.has_lock_action = ack.has_session_locked = true;
       ack.lock_action = feedback.lockAction;
       ack.session_locked = feedback.sessionLocked;
+      ack.has_unlock_poll_seconds = true;
+      ack.unlock_poll_seconds = feedback.unlockPollSeconds;
     } else if (feedback.stage == info_tv_v1_AckStage_ACK_STAGE_APPLIED) {
       ack.has_brightness_percent = true;
       ack.brightness_percent = feedback.brightnessPercent;
@@ -89,6 +91,7 @@ void DeviceSession::dispatch(uint64_t nowMs) {
     reply_.body.hello.weather = true;
     reply_.body.hello.weather_details = true;
     reply_.body.hello.power_control = true;
+    reply_.body.hello.unlock_polling = true;
     send();
     return;
   }

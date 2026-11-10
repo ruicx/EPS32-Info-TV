@@ -45,6 +45,7 @@ fn online(stored: &StoredState) -> DeviceSession {
             weather: true,
             weather_details: true,
             power_control: false,
+            unlock_polling: false,
         }),
     );
     device.feedback(reply, stored, 1).expect("hello");
@@ -192,6 +193,7 @@ fn locked_reconnect_completes_handshake_at_zero_brightness() {
             weather: true,
             weather_details: true,
             power_control: false,
+            unlock_polling: false,
         }),
     );
     device.feedback(reply, &stored, 11).expect("hello");
@@ -222,7 +224,12 @@ fn locked_reconnect_completes_handshake_at_zero_brightness() {
 }
 
 /// Complete content and brightness synchronization up to the new power-policy command.
-fn configure_power(device: &mut DeviceSession, stored: &StoredState, now: i64) -> pb::Envelope {
+fn configure_power(
+    device: &mut DeviceSession,
+    stored: &StoredState,
+    now: i64,
+    polling: bool,
+) -> pb::Envelope {
     device.connected(2, now);
     let hello = feedback(
         device,
@@ -234,6 +241,7 @@ fn configure_power(device: &mut DeviceSession, stored: &StoredState, now: i64) -
             weather: true,
             weather_details: true,
             power_control: true,
+            unlock_polling: polling,
         }),
     );
     device.feedback(hello, stored, now + 1).expect("hello");
@@ -245,6 +253,13 @@ fn configure_power(device: &mut DeviceSession, stored: &StoredState, now: i64) -
     device
         .feedback(ack(device, &snapshot.message_id, 1, None), stored, now + 2)
         .expect("snapshot applied");
+    if polling {
+        return device
+            .poll(stored, now + 2)
+            .expect("power before brightness")
+            .pop()
+            .expect("command");
+    }
     let brightness = device
         .poll(stored, now + 2)
         .expect("brightness")
@@ -277,12 +292,13 @@ fn deep_sleep_keeps_preview_brightness_and_requires_correlated_power_proof() {
     let mut device = DeviceSession::default();
     device.set_lock_action(LockAction::DeepSleep);
     device.set_session_locked(true);
-    let power = configure_power(&mut device, &stored, 10);
+    let power = configure_power(&mut device, &stored, 10, false);
     assert!(matches!(
         power.body,
         Some(Body::PowerSettings(pb::PowerSettings {
             lock_action: 2,
-            session_locked: true
+            session_locked: true,
+            unlock_poll_seconds: 0
         }))
     ));
     device
@@ -315,12 +331,13 @@ fn deep_sleep_keeps_preview_brightness_and_requires_correlated_power_proof() {
     );
     // Touch wake causes a fresh USB handshake; repeat the same policy, leaving preview timing to firmware.
     device.disconnected("sleeping");
-    let repeated = configure_power(&mut device, &stored, 20);
+    let repeated = configure_power(&mut device, &stored, 20, false);
     assert!(matches!(
         repeated.body,
         Some(Body::PowerSettings(pb::PowerSettings {
             lock_action: 2,
-            session_locked: true
+            session_locked: true,
+            unlock_poll_seconds: 0
         }))
     ));
     device.set_session_locked(false);
@@ -345,7 +362,8 @@ fn deep_sleep_keeps_preview_brightness_and_requires_correlated_power_proof() {
         unlock.body,
         Some(Body::PowerSettings(pb::PowerSettings {
             lock_action: 2,
-            session_locked: false
+            session_locked: false,
+            unlock_poll_seconds: 0
         }))
     ));
 }
@@ -366,6 +384,98 @@ fn deep_sleep_rejects_firmware_without_power_control() {
             weather: true,
             weather_details: true,
             power_control: false,
+            unlock_polling: false,
+        }),
+    );
+    assert!(device.feedback(hello, &stored, 1).is_err());
+}
+
+#[test]
+fn automatic_unlock_configures_power_before_brightness_and_checks_interval_proof() {
+    let stored = StoredState::default();
+    let mut device = DeviceSession::default();
+    device.set_lock_action(LockAction::DeepSleep);
+    device.set_unlock_poll_seconds(5);
+    let power = configure_power(&mut device, &stored, 10, true);
+    assert!(matches!(
+        power.body,
+        Some(Body::PowerSettings(pb::PowerSettings {
+            lock_action: 2,
+            session_locked: false,
+            unlock_poll_seconds: 5
+        }))
+    ));
+    assert_eq!(device.applied_brightness, None);
+    let mut reply = pb::Acknowledgment {
+        in_reply_to: power.message_id,
+        stage: 3,
+        lock_action: Some(2),
+        session_locked: Some(false),
+        ..Default::default()
+    };
+    for interval in [None, Some(0), Some(15)] {
+        reply.unlock_poll_seconds = interval;
+        device
+            .feedback(
+                feedback(&device, Body::Acknowledgment(reply.clone())),
+                &stored,
+                13,
+            )
+            .expect("ignore interval mismatch");
+        assert_eq!(
+            device.settings_status(&stored)["power_delivery"]["applied"],
+            false
+        );
+    }
+    reply.unlock_poll_seconds = Some(5);
+    device
+        .feedback(feedback(&device, Body::Acknowledgment(reply)), &stored, 14)
+        .expect("power applied");
+    assert!(!device.online());
+    let brightness = device
+        .poll(&stored, 14)
+        .expect("brightness")
+        .pop()
+        .expect("command");
+    assert!(matches!(brightness.body, Some(Body::DeviceSettings(_))));
+    device
+        .feedback(
+            ack(&device, &brightness.message_id, 3, Some(100)),
+            &stored,
+            15,
+        )
+        .expect("brightness applied");
+    assert!(device.online());
+    assert_eq!(device.settings_status(&stored)["unlock_poll_seconds"], 5);
+    device.disconnected("timer cycle");
+    let next = configure_power(&mut device, &stored, 20, true);
+    assert!(matches!(
+        next.body,
+        Some(Body::PowerSettings(pb::PowerSettings {
+            unlock_poll_seconds: 5,
+            ..
+        }))
+    ));
+}
+
+#[test]
+fn polling_requires_its_own_firmware_capability() {
+    let stored = StoredState::default();
+    let mut device = DeviceSession::default();
+    device.set_lock_action(LockAction::DeepSleep);
+    device.set_unlock_poll_seconds(5);
+    device.connected(1, 0);
+    let hello = feedback(
+        &device,
+        Body::Hello(pb::Hello {
+            boot_id: 1,
+            max_cards: 8,
+            task_icons: true,
+            brightness_control: true,
+            weather: true,
+            weather_details: true,
+            power_control: true,
+            unlock_polling: false,
         }),
     );
     assert!(device.feedback(hello, &stored, 1).is_err());

@@ -168,6 +168,37 @@ fn lock_action_accepts_only_documented_actions_and_defaults_to_none() {
     }
 }
 
+#[test]
+fn unlock_poll_seconds_is_bounded_and_defaults_disabled() {
+    let directory = TempDir::new().expect("temp");
+    assert_eq!(
+        Settings::load(None, directory.path())
+            .expect("defaults")
+            .0
+            .unlock_poll_seconds,
+        0
+    );
+    let path = directory.path().join("info-tv.yaml");
+    for seconds in [0, 5, 3600] {
+        std::fs::write(
+            &path,
+            format!("lock_action: deep_sleep\nunlock_poll_seconds: {seconds}\n"),
+        )
+        .expect("write");
+        assert_eq!(
+            Settings::load(None, directory.path())
+                .expect("interval")
+                .0
+                .unlock_poll_seconds,
+            seconds
+        );
+    }
+    for invalid in ["true", "'5'", "null", "-1", "3601"] {
+        std::fs::write(&path, format!("unlock_poll_seconds: {invalid}\n")).expect("write");
+        assert!(Settings::load(None, directory.path()).is_err());
+    }
+}
+
 #[tokio::test]
 async fn session_lock_overrides_brightness_without_persisting_zero() {
     let directory = TempDir::new().expect("temp");
@@ -788,6 +819,7 @@ async fn rust_http_to_cpp_firmware_core() {
         directory.path(),
         Settings {
             lock_action: LockAction::DeepSleep,
+            unlock_poll_seconds: 5,
             ..Settings::default()
         },
     )
@@ -820,6 +852,13 @@ async fn rust_http_to_cpp_firmware_core() {
         .expect("firmware feedback timeout")
     };
     wait(host.handle.clone(), |v| v["state"] == "online").await;
+    assert_eq!(
+        host.handle
+            .request(Operation::Settings)
+            .await
+            .expect("settings")["unlock_poll_seconds"],
+        5
+    );
     assert_eq!(
         host.handle
             .request(Operation::Settings)

@@ -1,8 +1,10 @@
 #include "power/power_policy.h"
 
 namespace info_tv {
-PowerPolicy::PowerPolicy(bool touchWake) : preview_(touchWake) {
-  if (touchWake) {
+PowerPolicy::PowerPolicy(WakeReason reason, uint64_t nowMs)
+    : preview_(reason == WakeReason::kTouch), probing_(reason == WakeReason::kTimer),
+      silent_(reason == WakeReason::kTimer), probeDeadlineMs_(nowMs + 5000) {
+  if (reason != WakeReason::kCold) {
     action_ = info_tv_v1_LockAction_LOCK_ACTION_DEEP_SLEEP;
     locked_ = true;
   }
@@ -11,7 +13,16 @@ PowerPolicy::PowerPolicy(bool touchWake) : preview_(touchWake) {
 void PowerPolicy::configure(info_tv_v1_LockAction action, bool locked) {
   action_ = action;
   locked_ = locked;
+  probing_ = false;
   if (action != info_tv_v1_LockAction_LOCK_ACTION_DEEP_SLEEP || !locked) preview_ = false;
+  if (action != info_tv_v1_LockAction_LOCK_ACTION_DEEP_SLEEP || !locked) silent_ = false;
+}
+
+bool PowerPolicy::touchPressed() {
+  if (!silent_) return false;
+  silent_ = probing_ = false;
+  preview_ = true;
+  return true;
 }
 
 void PowerPolicy::framePresented(uint64_t nowMs) {
@@ -20,6 +31,7 @@ void PowerPolicy::framePresented(uint64_t nowMs) {
 
 bool PowerPolicy::shouldSleep(uint64_t nowMs) const {
   if (action_ != info_tv_v1_LockAction_LOCK_ACTION_DEEP_SLEEP || !locked_) return false;
+  if (probing_) return nowMs >= probeDeadlineMs_;
   return !preview_ || (previewDeadlineMs_ && nowMs >= previewDeadlineMs_);
 }
 }  // namespace info_tv

@@ -13,27 +13,51 @@ int main() {
   CHECK(!cold.shouldSleep(0));
   cold.configure(kDeep, true);
   CHECK(cold.shouldSleep(0));
-  PowerPolicy wake(true);
+  PowerPolicy wake(info_tv::WakeReason::kTouch);
   CHECK(!wake.shouldSleep(100000));  // Boot and USB reconnection do not consume preview time.
   wake.framePresented(100000);
   wake.configure(kDeep, true);
   wake.framePresented(110000);  // Refreshes and repeated settings never extend the window.
   CHECK(!wake.shouldSleep(114999));
   CHECK(wake.shouldSleep(115000));
-  PowerPolicy unlocked(true);
+  PowerPolicy unlocked(info_tv::WakeReason::kTouch);
   unlocked.framePresented(1000);
   unlocked.configure(kDeep, false);
   CHECK(!unlocked.shouldSleep(50000));
   unlocked.configure(kDeep, true);
   CHECK(unlocked.shouldSleep(50000));
-  PowerPolicy disabled(true);
+  PowerPolicy disabled(info_tv::WakeReason::kTouch);
   disabled.configure(kNone, true);
   CHECK(!disabled.shouldSleep(50000));
-  PowerPolicy dark(true);
+  PowerPolicy dark(info_tv::WakeReason::kTouch);
   dark.skipDarkPreview();
   CHECK(dark.shouldSleep(0));
   dark.configure(kDeep, false);
   CHECK(!dark.shouldSleep(50000));
+
+  PowerPolicy probe(info_tv::WakeReason::kTimer, 1000);
+  CHECK(!probe.backlightAllowed());
+  CHECK(!probe.shouldSleep(5999));
+  CHECK(probe.shouldSleep(6000)); // Missing host confirmation is bounded.
+  PowerPolicy stillLocked(info_tv::WakeReason::kTimer, 1000);
+  stillLocked.configure(kDeep, true);
+  CHECK(stillLocked.shouldSleep(1200));
+  CHECK(!stillLocked.backlightAllowed()); // A locked reply never exposes the cached frame.
+  PowerPolicy autoUnlock(info_tv::WakeReason::kTimer, 1000);
+  autoUnlock.configure(kDeep, false);
+  CHECK(autoUnlock.backlightAllowed());
+  CHECK(!autoUnlock.shouldSleep(20000));
+  autoUnlock.configure(kDeep, true);
+  CHECK(autoUnlock.shouldSleep(20001));
+  PowerPolicy touchedProbe(info_tv::WakeReason::kTimer, 1000);
+  CHECK(touchedProbe.touchPressed());
+  CHECK(touchedProbe.backlightAllowed());
+  touchedProbe.configure(kDeep, true);
+  CHECK(!touchedProbe.shouldSleep(30000)); // No preview time is consumed before display.
+  touchedProbe.framePresented(30000);
+  CHECK(!touchedProbe.shouldSleep(44999));
+  CHECK(touchedProbe.shouldSleep(45000));
+  CHECK(!touchedProbe.touchPressed()); // Further touches do not renew the preview.
 
   TouchWakeState touch{16500, 0, 0, 0, false};
   for (int i = 0; i < 10; ++i) CHECK(!updateTouchWake(&touch, 16400)); // Held at entry.

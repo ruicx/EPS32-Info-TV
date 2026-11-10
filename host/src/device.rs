@@ -69,6 +69,8 @@ pub struct DeviceSession {
     session_locked: bool,
     lock_action: LockAction,
     power_supported: bool,
+    polling_supported: bool,
+    unlock_poll_seconds: u32,
     power_dirty: bool,
     power_configured: bool,
     weather_dirty: bool,
@@ -103,6 +105,8 @@ impl Default for DeviceSession {
             session_locked: false,
             lock_action: LockAction::None,
             power_supported: false,
+            polling_supported: false,
+            unlock_poll_seconds: 0,
             power_dirty: false,
             power_configured: false,
             weather_dirty: false,
@@ -161,6 +165,20 @@ impl DeviceSession {
     /// Select the startup-only lock action before the connection handshake.
     pub fn set_lock_action(&mut self, action: LockAction) {
         self.lock_action = action;
+    }
+
+    /// Set the startup-only silent-probe interval; zero preserves touch-only sleep.
+    pub fn set_unlock_poll_seconds(&mut self, seconds: u32) {
+        self.unlock_poll_seconds = seconds;
+    }
+
+    /// Timer wake is meaningful only for deep-sleep lock handling.
+    fn effective_poll_seconds(&self) -> u32 {
+        if self.lock_action == LockAction::DeepSleep {
+            self.unlock_poll_seconds
+        } else {
+            0
+        }
     }
 
     /// Apply a new lock state without changing durable user brightness.
@@ -245,6 +263,7 @@ impl DeviceSession {
         self.brightness_delivery = None;
         self.power_delivery = None;
         self.power_supported = false;
+        self.polling_supported = false;
         self.power_dirty = false;
         self.power_configured = false;
         self.weather_delivery = None;
@@ -278,6 +297,11 @@ impl DeviceSession {
                     "Device firmware lacks ULP deep-sleep power control"
                 );
                 self.power_supported = hello.power_control;
+                anyhow::ensure!(
+                    self.effective_poll_seconds() == 0 || hello.unlock_polling,
+                    "Device firmware lacks automatic unlock polling"
+                );
+                self.polling_supported = hello.unlock_polling;
                 self.power_dirty = hello.power_control;
                 self.state = "synchronizing";
                 self.snapshot_dirty = true;
@@ -325,6 +349,8 @@ impl DeviceSession {
             {
                 if ack.lock_action != Some(settings.lock_action)
                     || ack.session_locked != Some(settings.session_locked)
+                    || (self.polling_supported
+                        && ack.unlock_poll_seconds != Some(settings.unlock_poll_seconds))
                 {
                     return;
                 }
@@ -448,20 +474,24 @@ impl DeviceSession {
                 Body::Snapshot(views::snapshot(stored, now_ms)),
                 stored.weather.as_ref().map(|w| w.expires_at_ms),
             ))
-        } else if matches!(self.state, "configuring" | "online") && self.brightness_dirty {
-            self.brightness_dirty = false;
-            Some((
-                Body::DeviceSettings(pb::DeviceSettings {
-                    brightness_percent: Some(self.effective_brightness(stored)),
-                }),
-                None,
-            ))
-        } else if matches!(self.state, "configuring" | "online") && self.power_dirty {
+        } else if matches!(self.state, "configuring" | "online")
+            && self.power_dirty
+            && (self.polling_supported || !self.brightness_dirty)
+        {
             self.power_dirty = false;
             Some((
                 Body::PowerSettings(pb::PowerSettings {
                     lock_action: self.lock_action.protocol_value(),
                     session_locked: self.session_locked,
+                    unlock_poll_seconds: self.effective_poll_seconds(),
+                }),
+                None,
+            ))
+        } else if matches!(self.state, "configuring" | "online") && self.brightness_dirty {
+            self.brightness_dirty = false;
+            Some((
+                Body::DeviceSettings(pb::DeviceSettings {
+                    brightness_percent: Some(self.effective_brightness(stored)),
                 }),
                 None,
             ))
@@ -672,6 +702,7 @@ impl DeviceSession {
             "effective_brightness_percent":self.effective_brightness(stored),
             "screen_off_for_lock":self.session_locked && self.lock_action == LockAction::ScreenOff,
             "lock_action":self.lock_action,"session_locked":self.session_locked,
+            "unlock_poll_seconds":self.effective_poll_seconds(),
             "power_delivery":self.delivery(&self.power_delivery),
             "applied_brightness_percent":self.applied_brightness,"delivery":delivery})
     }

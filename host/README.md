@@ -43,7 +43,10 @@ enable it. Restart after changing configuration.
 On Windows, set `lock_action: deep_sleep` in YAML to sleep the ESP32 when the
 current session locks. Touch the top pad to wake; while Windows stays locked,
 the visible preview lasts 15 seconds, then the device sleeps again. Unlocking
-during the preview keeps it awake; unlocking while asleep does not wake it.
+during the preview keeps it awake. Set `unlock_poll_seconds: 5` to check unlock
+automatically after each five-second sleep. Timer wakes stay dark until the host
+confirms unlock; locked probes sleep again. Startup and USB reconnection add to
+the recovery delay. The default interval is zero, disabling automatic checks.
 Update host and firmware together. The default `none` disables lock following;
 `screen_off` only turns off the backlight and restores brightness on unlock.
 The host samples session state once per second through a hidden Windows

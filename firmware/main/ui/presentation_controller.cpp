@@ -44,6 +44,7 @@ bool PresentationController::handleCommand(const DisplayCommand& command, uint64
     feedback.powerSettings = true;
     feedback.lockAction = envelope.body.power_settings.lock_action;
     feedback.sessionLocked = envelope.body.power_settings.session_locked;
+    feedback.unlockPollSeconds = envelope.body.power_settings.unlock_poll_seconds;
     feedback.stage = info_tv_v1_AckStage_ACK_STAGE_ACCEPTED;
     return true;
   }

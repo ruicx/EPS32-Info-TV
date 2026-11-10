@@ -9,8 +9,8 @@
 namespace info_tv {
 void Application::start() {
   sleep_.initialize();
-  power_ = PowerPolicy(sleep_.touchWake());
-  if (sleep_.touchWake()) touchKey_.restoreAfterWake(sleep_.baseline());
+  power_ = PowerPolicy(sleep_.wakeReason(), esp_timer_get_time() / 1000);
+  if (sleep_.sleepWake()) touchKey_.restoreAfterWake(sleep_.baseline(), sleep_.touchWake());
   commands_ = xQueueCreate(4, sizeof(DisplayCommand));
   feedback_ = xQueueCreate(16, sizeof(Feedback));
   assert(commands_ && feedback_);
@@ -45,7 +45,7 @@ void Application::queueFeedback(const Feedback& feedback) {
 
 void Application::uiTask(void* context) {
   auto& app = *static_cast<Application*>(context);
-  app.display_.initialize(app.sleep_.touchWake() ? 0 : 100);
+  app.display_.initialize(app.sleep_.sleepWake() ? 0 : 100);
   app.view_.initialize();
   app.touchKey_.initialize();
   uint32_t rendered = 0;
@@ -54,10 +54,15 @@ void Application::uiTask(void* context) {
   const uint64_t bootMs = esp_timer_get_time() / 1000;
   bool brightnessReceived = false;
   bool previewVisible = false;
+  uint32_t desiredBrightness = app.sleep_.brightness();
   for (;;) {
     const uint64_t nowMs = esp_timer_get_time() / 1000;
     Feedback feedback{};
-    const auto buttonEvent = app.touchKey_.tick(nowMs);
+    auto buttonEvent = app.touchKey_.tick(nowMs);
+    if (app.touchKey_.isTouched() && app.power_.touchPressed()) {
+      app.touchKey_.restoreAfterWake(app.touchKey_.baseline());
+      buttonEvent = ButtonEvent::kNone;
+    }
     if (buttonEvent == ButtonEvent::kDoubleClick) {
       app.presentation_.dismissActiveNotification(nowMs);
     }
@@ -87,8 +92,13 @@ void Application::uiTask(void* context) {
           app.presentation_.handleCommand(app.uiCommand_, nowMs, feedback)) {
         if (app.uiCommand_.envelope.which_body == info_tv_v1_Envelope_device_settings_tag &&
             feedback.error == info_tv_v1_ErrorCode_ERROR_CODE_UNSPECIFIED) {
-          if (app.display_.setBrightness(feedback.brightnessPercent)) {
+          desiredBrightness = feedback.brightnessPercent;
+          // Acknowledge admission only while the timer probe is still silent.
+          if (!app.power_.backlightAllowed() && desiredBrightness > 0) {
+            feedback.stage = info_tv_v1_AckStage_ACK_STAGE_ACCEPTED;
+          } else if (app.display_.setBrightness(desiredBrightness)) {
             brightnessReceived = true;
+            if (!app.display_.backlightEnabled()) app.power_.skipDarkPreview();
             feedback.stage = info_tv_v1_AckStage_ACK_STAGE_APPLIED;
           } else {
             feedback.stage = info_tv_v1_AckStage_ACK_STAGE_UNSPECIFIED;
@@ -98,9 +108,8 @@ void Application::uiTask(void* context) {
         }
         if (feedback.powerSettings && feedback.error == info_tv_v1_ErrorCode_ERROR_CODE_UNSPECIFIED) {
           if (feedback.lockAction != info_tv_v1_LockAction_LOCK_ACTION_DEEP_SLEEP ||
-              app.sleep_.prepare(app.touchKey_.baseline())) {
+              app.sleep_.prepare(app.touchKey_.baseline(), feedback.unlockPollSeconds)) {
             app.power_.configure(feedback.lockAction, feedback.sessionLocked);
-            if (brightnessReceived && !app.display_.backlightEnabled()) app.power_.skipDarkPreview();
             feedback.stage = info_tv_v1_AckStage_ACK_STAGE_APPLIED;
           } else {
             feedback.stage = info_tv_v1_AckStage_ACK_STAGE_UNSPECIFIED;
@@ -111,16 +120,15 @@ void Application::uiTask(void* context) {
         app.queueFeedback(feedback);
       }
       // If the host is absent, reveal the normal offline screen after a bounded reconnect wait.
-      if (app.sleep_.touchWake() && !brightnessReceived && !previewVisible && nowMs - bootMs >= 5000) {
-        ESP_ERROR_CHECK(app.display_.setBrightness(app.sleep_.brightness()) ? ESP_OK : ESP_FAIL);
+      if (app.power_.preview() && !brightnessReceived && !previewVisible && nowMs - bootMs >= 5000) {
+        ESP_ERROR_CHECK(app.display_.setBrightness(desiredBrightness) ? ESP_OK : ESP_FAIL);
         previewVisible = true;
         if (!app.display_.backlightEnabled()) app.power_.skipDarkPreview();
       }
       if (app.power_.shouldSleep(nowMs) && uxQueueMessagesWaiting(app.commands_) == 0) {
         if (app.sleepReady_.load() && app.sleepRequested_.load()) {
-          const uint32_t brightness = app.display_.brightness();
           ESP_ERROR_CHECK(app.display_.prepareSleep() ? ESP_OK : ESP_FAIL);
-          ESP_ERROR_CHECK(app.sleep_.enter(app.touchKey_.baseline(), brightness) ? ESP_OK : ESP_FAIL);
+          ESP_ERROR_CHECK(app.sleep_.enter(app.touchKey_.baseline(), desiredBrightness) ? ESP_OK : ESP_FAIL);
         }
         if (!app.sleepReady_.load()) app.sleepRequested_.store(true);
       } else if (app.sleepRequested_.load()) {

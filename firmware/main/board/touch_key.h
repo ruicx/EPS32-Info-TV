@@ -19,8 +19,11 @@ class TouchKey {
    * @return True if initialized successfully or in mock mode; false on hardware error.
    */
   bool initialize();
-  /** Restore the pre-sleep baseline and consume the waking press until release. */
-  void restoreAfterWake(uint32_t baseline) { baseline_ = baseline; consumeWakeTouch_ = true; }
+  /** Restore the baseline, consuming a touch wake or admitting new touches after timer wake. */
+  void restoreAfterWake(uint32_t baseline, bool consumeTouch = true) {
+    baseline_ = baseline;
+    consumeWakeTouch_ = consumeTouch;
+  }
 
   /**
    * @brief Process current touch state and return detected button events.

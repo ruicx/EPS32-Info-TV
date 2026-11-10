@@ -149,6 +149,7 @@ impl Coordinator {
         let updater = weather::updater_status(settings.weather.as_ref());
         let mut device = DeviceSession::default();
         device.set_lock_action(settings.lock_action);
+        device.set_unlock_poll_seconds(settings.unlock_poll_seconds);
         Ok((
             Self {
                 settings,

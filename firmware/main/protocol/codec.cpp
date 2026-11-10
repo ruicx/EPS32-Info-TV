@@ -72,7 +72,10 @@ const char* validateCommand(const Envelope& envelope) {
   switch (envelope.which_body) {
     case info_tv_v1_Envelope_power_settings_tag:
       return envelope.body.power_settings.lock_action >= info_tv_v1_LockAction_LOCK_ACTION_NONE &&
-          envelope.body.power_settings.lock_action <= info_tv_v1_LockAction_LOCK_ACTION_DEEP_SLEEP
+          envelope.body.power_settings.lock_action <= info_tv_v1_LockAction_LOCK_ACTION_DEEP_SLEEP &&
+          envelope.body.power_settings.unlock_poll_seconds <= 3600 &&
+          (envelope.body.power_settings.lock_action == info_tv_v1_LockAction_LOCK_ACTION_DEEP_SLEEP ||
+           envelope.body.power_settings.unlock_poll_seconds == 0)
           ? nullptr : "Invalid lock action";
     case info_tv_v1_Envelope_weather_alert_tag:
       return validWeatherAlert(envelope.body.weather_alert) ? nullptr : "Invalid weather alert";

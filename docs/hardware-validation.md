@@ -414,3 +414,39 @@ artifact identities are saved as `final-verified-device.json`, `final-tasks.json
 and `final-validation.json`; session transitions are in `final-lock-trace.jsonl`
 and `final-host.stderr.log`. Long-running touch drift/noise behavior and actual
 standby current remain unqualified by this short physical test.
+
+## 11. Silent Automatic Unlock Probes
+
+On 2026-11-10, the user approved five-second automatic unlock checks in addition
+to ULP touch wake. The implementation uses the RTC timer to boot the main CPU
+and reconnect USB; the ULP continues detecting touch. A timer probe keeps the
+backlight off until a fresh host policy confirms unlock. A locked reply returns
+to sleep immediately. Without a host reply, it waits at most five seconds from
+application startup. Touch instead enables the existing 15-second visible
+preview. Five seconds is the sleep interval, not total unlock latency.
+
+Deployment evidence is retained under the ignored directory
+`.local/unlock-poll-20261110-110238`. Before writing, the running host was stopped
+and its executable, YAML, and SQLite database were backed up. An app-only read
+at `0x10000` recovered the previous 4,710,768-byte firmware; SHA-256
+`5BFFB9ADE75360DBBC23CFD2D4A1950ADB888377404F55B69F5E50A0641690EE`
+matches the prior physically validated touch-only release. The partition table
+and bootloader were preserved.
+
+The new 4,711,328-byte application was flashed at `0x10000` and esptool verified
+the written hash. Its SHA-256 is
+`E68ECDC98F6DA40104783112E9401EBCCD99B54175776C99156AD8E2144014DB`.
+The installed static Windows x86-64 host SHA-256 is
+`89CF5DCB66D20D800B370F86294566D554506A090EF94BC0E1068DC367BBB7F8`.
+The host was restarted hidden with the existing state directory and YAML,
+adding `unlock_poll_seconds: 5` alongside `lock_action: deep_sleep`.
+At `11:04:48 +08:00`, the physical device was online, unlocked, with power-policy
+Applied, interval five, brightness Applied at 20%, and no device error. Existing
+task cards and the Changsha weather configuration were preserved.
+
+The backup, flash log, artifact identities, before/after API snapshots, and
+host stdout/stderr remain in that evidence directory. `lock-trace.jsonl`
+records host connection, session-lock, and settings transitions during the
+user-driven check. Visual confirmation of silent locked probes and automatic
+display recovery is pending; startup/USB latency, no-host cycling, long-running
+touch noise, and standby current are not qualified by the initial online check.

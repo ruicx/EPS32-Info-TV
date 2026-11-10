@@ -341,8 +341,11 @@ cargo test --manifest-path host/Cargo.toml --locked
 On Windows, set `lock_action: deep_sleep` in `info-tv.yaml` and restart the host
 to sleep the ESP32 when the current Windows session locks. Touch the top pad to
 wake it; while Windows stays locked, the visible preview lasts 15 seconds before
-sleeping again. Unlock during the preview keeps it awake. Update host and firmware
-together. The default is `none`; `screen_off` keeps USB connected and only disables
+sleeping again. Unlock during the preview keeps it awake. Add `unlock_poll_seconds: 5`
+for silent automatic unlock checks: sleep for five seconds, then reconnect USB;
+remain dark and sleep again if still locked. Zero (the default) disables checks.
+Unlock recovery also includes startup and USB reconnection time. Update host and firmware
+together. The default lock action is `none`; `screen_off` keeps USB connected and only disables
 the backlight. See [YAML configuration](docs/host-configuration.md#follow-windows-session-locking).
 
 ### ESP32 Firmware Build

@@ -33,6 +33,7 @@ message Hello {
   bool weather = 5;
   bool weather_details = 6;
   bool power_control = 7;
+  bool unlock_polling = 8;
 }
 message Ping {}
 message Pong {}
@@ -51,6 +52,8 @@ enum LockAction {
 message PowerSettings {
   LockAction lock_action = 1;
   bool session_locked = 2;
+  // Zero disables timer wake. Otherwise sleep this many seconds between silent probes.
+  uint32 unlock_poll_seconds = 3;
 }
 
 enum Tone {
@@ -163,6 +166,7 @@ message Acknowledgment {
   optional uint32 brightness_percent = 5;
   optional LockAction lock_action = 6;
   optional bool session_locked = 7;
+  optional uint32 unlock_poll_seconds = 8;
 }
 enum ErrorCode {
   ERROR_CODE_UNSPECIFIED = 0;

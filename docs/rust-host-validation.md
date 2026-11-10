@@ -201,6 +201,31 @@ roughly 15 seconds of visible preview while locked, and continued display after
 unlock. Long-running touch drift/noise behavior and standby current remain
 hardware qualification items.
 
+## Silent Automatic Unlock Probes (2026-11-10)
+
+The startup-only `unlock_poll_seconds` setting defaults to zero. With
+`lock_action: deep_sleep`, a value of five enables RTC wake after five seconds
+asleep. Timer probes stay dark until a fresh host policy confirms unlock; a
+locked reply or a five-second application-startup timeout returns to sleep.
+ULP touch wake and the nonrenewable 15-second visible preview remain enabled.
+
+All 41 Rust tests passed, including strict interval parsing, capability rejection,
+power-before-brightness ordering, interval acknowledgment presence/value checks,
+reconnection, and the real native C++ protocol/presentation bridge. All six
+native CTest cases passed, including silent-probe timeout, locked/unlocked
+confirmation, and touch takeover without extending a preview. These tests do
+not measure physical backlight behavior or sleep current. Clippy with
+`-D warnings`, rustfmt, protocol regeneration, Ruff, ty, and whitespace checks
+passed. The maximum encoded envelope remains 4093 bytes.
+
+ESP-IDF v6.1 built the application at `0x47e3a0` bytes (4,711,328 bytes), with
+25% of the 6 MiB app partition free. The unchanged ULP binary is 374 bytes.
+The firmware and static Windows x86-64 Release host were deployed together;
+the physical device returned online with polling interval five, power policy
+Applied, brightness Applied at 20%, and no device error. User data and weather
+configuration were preserved. See the separate
+[deployment and physical validation record](hardware-validation.md#11-silent-automatic-unlock-probes).
+
 ## Remaining Qualification
 
 - Actual unplug/replug, port changes, powered host restart, and user visual

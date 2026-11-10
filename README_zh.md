@@ -340,8 +340,10 @@ cargo test --manifest-path host/Cargo.toml --locked
 
 在 Windows 上，在 `info-tv.yaml` 中设置 `lock_action: deep_sleep` 并重启主机服务，
 即可在当前 Windows 会话锁屏时让 ESP32 深度休眠。触摸顶部可唤醒；电脑仍锁屏时，
-画面显示 15 秒后再次休眠，期间解锁则保持运行。主机与固件需一起更新。
-默认值为 `none`；`screen_off` 仅关闭背光并保持 USB 连接。
+画面显示 15 秒后再次休眠，期间解锁则保持运行。增加 `unlock_poll_seconds: 5`
+可自动检查解锁：每次休眠 5 秒后重连 USB，仍锁屏则保持黑屏并再次休眠。
+该配置默认 `0`，表示禁用自动检查；解锁恢复还需加上启动和 USB 重连时间。
+主机与固件需一起更新。锁屏动作默认值为 `none`；`screen_off` 仅关闭背光并保持 USB 连接。
 详见 [YAML 配置说明](docs/host-configuration.md#follow-windows-session-locking)。
 
 ### ESP32 固件编译

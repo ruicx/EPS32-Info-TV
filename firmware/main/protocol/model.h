@@ -32,6 +32,7 @@ struct Feedback {
   bool powerSettings = false;
   info_tv_v1_LockAction lockAction = info_tv_v1_LockAction_LOCK_ACTION_NONE;
   bool sessionLocked = false;
+  uint32_t unlockPollSeconds = 0;
   info_tv_v1_AckStage stage = info_tv_v1_AckStage_ACK_STAGE_UNSPECIFIED;
   info_tv_v1_ErrorCode error = info_tv_v1_ErrorCode_ERROR_CODE_UNSPECIFIED;
   char detail[97]{};

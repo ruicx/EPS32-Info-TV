@@ -83,6 +83,8 @@ pub struct Settings {
     #[serde(default)]
     pub lock_action: LockAction,
     #[serde(default)]
+    pub unlock_poll_seconds: u32,
+    #[serde(default)]
     pub weather: Option<WeatherSettings>,
 }
 
@@ -95,6 +97,7 @@ impl Default for Settings {
             http_port: http_default(),
             completed_retention_seconds: retention_default(),
             lock_action: LockAction::None,
+            unlock_poll_seconds: 0,
             weather: None,
         }
     }
@@ -134,6 +137,9 @@ impl Settings {
 
     /// Check ranges before opening storage, ports, or network listeners.
     pub fn validate(&self) -> Result<()> {
+        if self.unlock_poll_seconds > 3600 {
+            bail!("unlock_poll_seconds must be between 0 and 3600");
+        }
         if self.serial_port.trim().is_empty()
             || self.http_port == 0
             || self.completed_retention_seconds == 0

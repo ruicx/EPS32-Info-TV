@@ -26,6 +26,7 @@ usb_pid: 0x1001
 http_port: 8765
 completed_retention_seconds: 300
 lock_action: deep_sleep
+unlock_poll_seconds: 5
 
 weather:
   location: Shanghai
@@ -48,6 +49,7 @@ All top-level fields are optional. Omitting a field uses the default below.
 | `http_port` | Integer | `8765` | HTTP listening port, from 1 to 65535 inclusive. The bind address remains `127.0.0.1`. |
 | `completed_retention_seconds` | Integer | `300` | Seconds to retain a completed or interrupted task before removing its card. Must be at least 1; no configured upper limit. Zero does not disable cleanup. |
 | `lock_action` | String | `none` | Windows only when enabled. `none` leaves the device running; `screen_off` turns off the backlight; `deep_sleep` sleeps the main CPU and USB controller, with ULP touch wake and a 15-second preview while locked. |
+| `unlock_poll_seconds` | Integer | `0` | Seconds asleep between silent unlock probes, from 0 to 3600 inclusive. Zero disables timer wake. Effective only with `lock_action: deep_sleep`; ignored for other actions. Startup and USB reconnection add to this interval. |
 | `weather` | Mapping or `null` | `null` | Enables automatic Open-Meteo retrieval when a valid mapping is supplied. Omit it or use `null` to disable automatic retrieval; manual weather API/CLI commands remain available. |
 
 ### Serial selection
@@ -106,15 +108,32 @@ is enabled. While the host session remains locked, or unlock cannot be
 confirmed, the device sleeps again after 15 seconds. Repeated touches, refreshes,
 lock samples, and serial reconnections do not extend the preview. An unlock
 confirmation received before expiry cancels it; the next lock sleeps immediately.
-Unlocking Windows while the device is already asleep does not wake it. A saved
-brightness of zero remains dark and skips the visible preview. Keep the host
+With the default `unlock_poll_seconds: 0`, unlocking Windows while the device is
+already asleep does not wake it. A saved brightness of zero remains dark and skips the visible preview. Keep the host
 running to confirm unlock; state sampling has up to roughly one second of delay.
+
+For automatic unlock recovery, set `unlock_poll_seconds: 5`. An RTC timer wakes
+the main CPU after each five-second sleep; ULP touch detection remains enabled.
+The backlight stays off while USB reconnects and the host sends a fresh policy.
+A confirmed unlock restores the current user brightness and keeps the device
+awake. A confirmed locked state immediately returns it to sleep without a visible
+preview. Without a host response, a silent probe waits at most five seconds from
+application startup before sleeping again. A touch during a probe instead starts
+the same 15-second visible preview. Thus five seconds is the sleep interval,
+not an upper bound on unlock latency: startup, USB reconnection, and the host's
+session sampling also take time. Repeated main-CPU/USB wakeups consume more power
+than touch-only sleep; standby current has not been measured.
+
+Update host and firmware together before enabling polling. The host requires
+the `unlock_polling` firmware capability and verifies the echoed interval. It
+configures power policy before brightness on capable firmware, so a timer probe
+cannot illuminate the backlight before unlock confirmation.
 
 `info-tv brightness` and device status report `effective_brightness_percent`
 and `screen_off_for_lock` alongside the saved target and device Applied feedback.
 The reported brightness target stays nonzero in deep-sleep mode when that is
 the user's setting; power policy separately controls sleep. `lock_action`,
-`session_locked`, and `power_delivery` describe the requested policy and its
+`session_locked`, `unlock_poll_seconds`, and `power_delivery` describe the requested policy and its
 configuration acknowledgment. Applied policy is not proof of sleep entry or
 physical power consumption. The host continues accepting tasks while the USB
 device sleeps and resynchronizes current state after touch wake.

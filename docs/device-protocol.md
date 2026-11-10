@@ -85,7 +85,7 @@ The generated worst-case envelope size is 4093 bytes, within the existing
 
 Host startup creates a new service-session identity; reconnect retains it.
 Exchange Hello, send the current overview snapshot, and wait for UI Accepted.
-Then send the current target brightness and wait for Applied before declaring
+Then configure power and target brightness, requiring Applied before declaring
 the connection online. Snapshots never contain notification history.
 Device Hello now includes `max_cards: 8`; zero identifies older firmware without
 the multi-conversation overview. The host refuses synchronization if capacity is
@@ -98,6 +98,10 @@ Deep-sleep policy additionally requires `Hello.power_control = true`. Hosts
 retain backlight-only compatibility with firmware without that capability.
 Capable firmware also receives PowerSettings during synchronization, including
 `none`, so changing configuration clears a previous touch-wake preview.
+Automatic unlock polling additionally requires `Hello.unlock_polling = true`
+(field 8). For that capability, power configuration precedes brightness to keep
+timer probes dark. Firmware without it retains brightness-first synchronization
+and accepts only a zero polling interval from this host.
 Persistent weather additionally requires `Hello.weather = true`. A snapshot can
 include bounded weather values with remaining freshness, separate from cards.
 Weather updates require a location, presence-aware integer temperature -100..100,
@@ -216,14 +220,18 @@ unknown while disconnected; firmware does not persist user targets in NVS.
 ## 8. Device Power Policy
 
 `PowerSettings` uses envelope body tag 21 and contains `lock_action` (`none = 0`,
-`screen_off = 1`, `deep_sleep = 2`) and `session_locked`. It requires the current
+`screen_off = 1`, `deep_sleep = 2`), `session_locked`, and `unlock_poll_seconds`
+(field 3). Zero disables polling; values 1..3600 specify seconds asleep between
+probes and are valid only with `deep_sleep`. It requires the current
 snapshot session. Unknown actions are invalid. Brightness and power are separate
 operations so a temporary preview can use the user target while Windows is locked.
 
 The UI owner checks ULP/touch readiness for deep sleep and configures its local
 policy before replying with Applied. That reply has present, echoed
-`lock_action` and `session_locked` fields and no brightness echo. The host
-requires matching operation identity and both values; Accepted or a brightness
+`lock_action`, `session_locked`, and `unlock_poll_seconds` fields and no brightness
+echo. The interval echo is optional acknowledgment field 8; its presence is
+required when Hello advertises `unlock_polling`, including for zero. The host
+requires matching operation identity and echoed values; Accepted or a brightness
 acknowledgment cannot complete power configuration. Capable devices become
 online only after snapshot, brightness, and power-policy configuration complete.
 Applied means policy configured, not proof that deep sleep was entered.
@@ -236,4 +244,14 @@ the next deep-sleep lock sleeps immediately. The firmware's timer runs without
 host connectivity and consumes the waking press until release. Before sleep,
 the UI quiesces rendering and requests the communication owner to drain feedback,
 then checks final commands again before powering down USB. RTC context retains
-brightness and touch baseline; it does not persist cards or notifications.
+brightness, touch baseline, and polling interval; it does not persist cards or notifications.
+
+With a nonzero interval, RTC timer wake starts a silent probe. USB reconnects
+while PWM remains zero. A fresh locked policy returns to sleep; an unlocked or
+disabled policy permits subsequent brightness application. Without policy
+confirmation, the probe sleeps after five seconds from application startup.
+An early positive brightness command is only Accepted, never Applied, while the
+probe is silent. Touch during a probe takes over into the same visible preview;
+coincident ULP and timer wake also gives touch priority. The interval measures
+sleep time; startup, USB reconnection, and host session sampling add to unlock
+latency. The ULP remains responsible for touch detection, not USB decoding.

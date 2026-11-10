@@ -7,6 +7,8 @@ completed_retention_seconds: 300
 
 # Windows only: none, screen_off, or deep_sleep (touch wake, 15-second locked preview).
 lock_action: none
+# Deep sleep only: seconds asleep between silent unlock checks (0 disables; 1..3600).
+unlock_poll_seconds: 0
 
 # Uncomment to enable automatic weather. The location is an explicit example.
 # weather:

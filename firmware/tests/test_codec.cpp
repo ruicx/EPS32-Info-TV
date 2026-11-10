@@ -14,6 +14,14 @@ int main(int argc, char** argv) {
   power.envelope.which_body = info_tv_v1_Envelope_power_settings_tag;
   power.envelope.body.power_settings.lock_action = info_tv_v1_LockAction_LOCK_ACTION_DEEP_SLEEP;
   power.envelope.body.power_settings.session_locked = true;
+  power.envelope.body.power_settings.unlock_poll_seconds = 5;
+  CHECK(!info_tv::validateCommand(power.envelope));
+  power.envelope.body.power_settings.unlock_poll_seconds = 3601;
+  CHECK(info_tv::validateCommand(power.envelope));
+  power.envelope.body.power_settings.unlock_poll_seconds = 5;
+  power.envelope.body.power_settings.lock_action = info_tv_v1_LockAction_LOCK_ACTION_NONE;
+  CHECK(info_tv::validateCommand(power.envelope));
+  power.envelope.body.power_settings.unlock_poll_seconds = 0;
   CHECK(!info_tv::validateCommand(power.envelope));
   power.envelope.body.power_settings.lock_action = static_cast<info_tv_v1_LockAction>(3);
   CHECK(info_tv::validateCommand(power.envelope));
