@@ -120,6 +120,62 @@ fn codex_index() -> Option<PathBuf> {
         .map(|home| home.join("session_index.jsonl"))
 }
 
+/// Locate the Antigravity presence lock file for an active conversation.
+pub fn agy_presence_path_in(base: Option<&Path>, conversation_id: &str) -> Option<PathBuf> {
+    base.map(Path::to_path_buf)
+        .or_else(|| std::env::var_os("ANTIGRAVITY_APP_DATA_DIR").map(PathBuf::from))
+        .or_else(|| {
+            std::env::var_os("USERPROFILE")
+                .or_else(|| std::env::var_os("HOME"))
+                .map(|home| PathBuf::from(home).join(".gemini").join("antigravity-cli"))
+        })
+        .map(|dir| dir.join("presence").join(format!("{conversation_id}.lock")))
+}
+
+pub fn agy_presence_path(conversation_id: &str) -> Option<PathBuf> {
+    agy_presence_path_in(None, conversation_id)
+}
+
+/// Determine whether the agent producer conversation is still active.
+#[cfg(windows)]
+pub fn is_conversation_active_in(base: Option<&Path>, source: &str, conversation_id: &str) -> bool {
+    if source != "agy" {
+        return true;
+    }
+    use std::os::windows::fs::OpenOptionsExt;
+    let Some(path) = agy_presence_path_in(base, conversation_id) else {
+        return false;
+    };
+    if !path.exists() {
+        return false;
+    }
+    match std::fs::OpenOptions::new()
+        .read(true)
+        .share_mode(0)
+        .open(&path)
+    {
+        Ok(_) => false,
+        Err(err) if err.raw_os_error() == Some(32) => true,
+        Err(_) => false,
+    }
+}
+
+/// Determine whether the agent producer conversation is still active.
+#[cfg(not(windows))]
+pub fn is_conversation_active_in(base: Option<&Path>, source: &str, conversation_id: &str) -> bool {
+    if source != "agy" {
+        return true;
+    }
+    let Some(path) = agy_presence_path_in(base, conversation_id) else {
+        return false;
+    };
+    path.exists()
+}
+
+pub fn is_conversation_active(source: &str, conversation_id: &str) -> bool {
+    is_conversation_active_in(None, source, conversation_id)
+}
+
 /// Native callback fields shared by Codex and ZCode, with public ZCode aliases.
 #[derive(Deserialize)]
 struct TurnHook {

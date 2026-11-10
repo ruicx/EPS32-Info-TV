@@ -319,6 +319,40 @@ async fn session_closure_retires_durably_without_a_notification() {
     host.finish().await;
 }
 
+#[tokio::test]
+async fn agy_session_exit_retires_task_and_removes_from_device() {
+    let directory = TempDir::new().expect("temp");
+    let settings = Settings::default();
+    let host = Host::open(directory.path(), settings.clone()).await;
+
+    let agy_event = json!({
+        "event_id": Uuid::new_v4().simple().to_string(),
+        "source": "agy",
+        "task_id": "agy-task-1",
+        "sequence": 1,
+        "state": "running",
+        "title": "AGY running task",
+        "conversation_id": "nonexistent-agy-conv",
+        "run_sequence": 1,
+    });
+    let (status, admitted) = host
+        .request("POST", "/v1/task-events", Some(agy_event))
+        .await;
+    assert_eq!(status, 202);
+    assert!(admitted["card_id"].is_string());
+
+    // Upon the next query or expiration tick, inactive agy conversation is retired
+    let (_, tasks) = host.request("GET", "/v1/tasks", None).await;
+    assert_eq!(tasks, json!([]));
+
+    host.finish().await;
+
+    // After restart, it remains cleanly closed
+    let host = Host::open(directory.path(), settings).await;
+    assert_eq!(host.request("GET", "/v1/tasks", None).await.1, json!([]));
+    host.finish().await;
+}
+
 #[test]
 fn protocol_vectors_corruption_and_bounds() {
     let hex = include_str!("../../protocol/test_vectors/status_frame.hex").trim();

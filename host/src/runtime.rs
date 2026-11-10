@@ -142,6 +142,21 @@ impl Coordinator {
         stored
             .tasks
             .expire(now, settings.completed_retention_seconds);
+        let inactive: Vec<String> = stored
+            .tasks
+            .tasks
+            .iter()
+            .filter(|r| {
+                r.event
+                    .conversation_id
+                    .as_deref()
+                    .is_some_and(|cid| !crate::hooks::is_conversation_active(&r.event.source, cid))
+            })
+            .map(|r| r.card_id.clone())
+            .collect();
+        for id in &inactive {
+            stored.tasks.close(id);
+        }
         stored.saved_at_ms = now;
         let (storage, worker) = Storage::start(database);
         storage.save(stored.clone()).await?;
@@ -180,9 +195,25 @@ impl Coordinator {
 
     async fn expire(&mut self, now: i64) -> Result<(), AdmissionError> {
         let mut candidate = self.stored.clone();
-        let expired = candidate
+        let mut expired = candidate
             .tasks
             .expire(now, self.settings.completed_retention_seconds);
+        let inactive: Vec<String> = candidate
+            .tasks
+            .tasks
+            .iter()
+            .filter(|r| {
+                r.event
+                    .conversation_id
+                    .as_deref()
+                    .is_some_and(|cid| !crate::hooks::is_conversation_active(&r.event.source, cid))
+            })
+            .map(|r| r.card_id.clone())
+            .collect();
+        for id in &inactive {
+            candidate.tasks.close(id);
+        }
+        expired.extend(inactive);
         if !expired.is_empty() {
             self.save(candidate).await?;
             for id in expired {

@@ -265,3 +265,51 @@ fn agy_tool_use_transitions_to_waiting_input_and_back_to_running() {
     assert_eq!(completed.sequence, 4);
     assert_eq!(completed.detail, "Turn ended");
 }
+
+#[test]
+fn agy_conversation_presence_tracks_process_lifecycle() {
+    let directory = TempDir::new().expect("temp");
+    let presence_dir = directory.path().join("presence");
+    std::fs::create_dir_all(&presence_dir).expect("create presence dir");
+    let conv_id = "test-conv-123";
+    let lock_path = presence_dir.join(format!("{conv_id}.lock"));
+
+    // 1. Without lock file: conversation is not active
+    assert!(!hooks::is_conversation_active_in(
+        Some(directory.path()),
+        "agy",
+        conv_id
+    ));
+
+    // Non-agy source is unaffected
+    assert!(hooks::is_conversation_active_in(
+        Some(directory.path()),
+        "codex",
+        conv_id
+    ));
+
+    // 2. Lock file created and open by agent: active
+    let agent_file = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&lock_path)
+        .expect("create lock file");
+
+    #[cfg(windows)]
+    assert!(hooks::is_conversation_active_in(
+        Some(directory.path()),
+        "agy",
+        conv_id
+    ));
+
+    // 3. Agent exits (drops lock file handle): inactive
+    drop(agent_file);
+
+    #[cfg(windows)]
+    assert!(!hooks::is_conversation_active_in(
+        Some(directory.path()),
+        "agy",
+        conv_id
+    ));
+}

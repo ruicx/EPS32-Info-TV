@@ -131,9 +131,11 @@ restart, obtains new device feedback, and does not replay old pop-up notices.
 - The native hooks do not include approval-request events, so this adapter
   does not report `waiting_input`. A tool call is not evidence of an approval.
 - Two real ACP cancellations returned `cancelled` without a `Stop` hook.
-  Such a card remains running until a later turn replaces it. An emitted
-  `USER_CANCELED` stop would map to interrupted, but missing callbacks cannot
-  be recovered by guessing from silence or timeouts.
+  Antigravity CLI does not emit a native session-end hook on exit. To prevent
+  abandoned cards, the service monitors Antigravity's active conversation
+  presence lock (`.gemini/antigravity-cli/presence/<conversationId>.lock`),
+  automatically retiring the card from the display when the Antigravity process
+  exits.
 - Stop lacks a native turn/message ID or matching trajectory position. The
   supported case is one sequential execution per conversation with synchronous
   callbacks. An arbitrarily delayed stop for an identical repeated prompt
