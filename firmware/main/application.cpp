@@ -77,8 +77,6 @@ void Application::uiTask(void* context) {
     } else if (nowMs >= clickShowUntilMs) {
       activeClick = 0;
     }
-    const bool touchIndicatorChanged = app.view_.setTouchIndicator(
-        app.touchKey_.isTouched(), activeClick);
     if (!app.display_.hasPendingFrame()) {
       const auto completed = app.display_.completedGeneration();
       if (completed && app.display_.backlightEnabled()) app.power_.framePresented(nowMs);
@@ -137,6 +135,9 @@ void Application::uiTask(void* context) {
       const auto& model = app.presentation_.tick(nowMs);
       const bool contentChanged = model.generation != rendered;
       if (contentChanged) app.view_.render(model);
+      // Apply badge changes only when this iteration can submit their refresh.
+      const bool touchIndicatorChanged = app.view_.setTouchIndicator(
+          app.touchKey_.isTouched(), activeClick);
       const bool animated = app.display_.backlightEnabled() && app.view_.animate(nowMs);
       if (!app.sleepRequested_.load() && (contentChanged || animated || touchIndicatorChanged)) {
         // DMA identities advance for animation, while Presented tracks content.

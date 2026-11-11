@@ -4,6 +4,7 @@
 #include <cstring>
 #include <fstream>
 #include <string>
+#include <vector>
 
 #include "lvgl.h"
 #include "src/misc/lv_text_private.h"
@@ -177,6 +178,34 @@ void captureAnimation(info_tv::ScreenView& screen, lv_display_t* display, Captur
   CHECK(frame >= 10 && capture.pixels == baseline);
 }
 
+/** Verify badge pixels refresh independently and restore the untouched header. */
+void checkTouchIndicator(info_tv::ScreenView& screen, Capture& capture) {
+  const std::vector<uint8_t> baseline(capture.pixels.begin(), capture.pixels.end());
+  CHECK(!screen.setTouchIndicator(false, 0));
+  for (uint32_t clickCount : {0U, 1U, 2U}) {
+    capture.pixelsFlushed = 0;
+    CHECK(screen.setTouchIndicator(true, clickCount));
+    CHECK(hasLabel(clickCount == 0 ? "KEY" : clickCount == 1 ? "1X" : "2X"));
+    checkBounds();
+    CHECK(!screen.setTouchIndicator(true, clickCount));
+    lv_display_refr_timer(nullptr);
+    CHECK(capture.pixelsFlushed > 0 && capture.pixelsFlushed < 240 * 240);
+    CHECK(!std::equal(capture.pixels.begin(), capture.pixels.end(), baseline.begin()));
+    for (size_t y = 0; y < 240; ++y) {
+      for (size_t x = 0; x < 240; ++x) {
+        if (x >= 68 && x < 106 && y >= 5 && y < 25) continue;
+        const size_t pixel = (y * 240 + x) * 3;
+        for (size_t channel = 0; channel < 3; ++channel)
+          CHECK(capture.pixels[pixel + channel] == baseline[pixel + channel]);
+      }
+    }
+  }
+  CHECK(screen.setTouchIndicator(false, 0));
+  CHECK(!hasLabel("KEY") && !hasLabel("1X") && !hasLabel("2X"));
+  lv_display_refr_timer(nullptr);
+  CHECK(std::equal(capture.pixels.begin(), capture.pixels.end(), baseline.begin()));
+}
+
 /** Verify manual partial refresh cannot be bypassed by the LVGL timer handler. */
 void checkPartialAnimation() {
   Capture capture;
@@ -219,6 +248,7 @@ void checkPartialAnimation() {
   CHECK(screen.animate(5170));
   lv_display_refr_timer(nullptr);
   CHECK(capture.pixelsFlushed == 80 * 84 && capture.pixels == baseline);
+  checkTouchIndicator(screen, capture);
   lv_display_delete(display);
 }
 

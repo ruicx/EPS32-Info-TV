@@ -1,5 +1,7 @@
 #include "board/touch_key.h"
 
+#include <algorithm>
+
 #include "board/board_config.h"
 
 #if defined(ESP_PLATFORM)
@@ -85,58 +87,96 @@ bool TouchKey::initialize() {
 #endif
 }
 
+void TouchKey::restoreAfterWake(uint32_t baseline, bool consumeTouch) {
+  baseline_ = baseline;
+  consumeWakeTouch_ = consumeTouch;
+  wakeReleaseSinceMs_ = 0;
+  swTouched_ = pendingTouched_ = false;
+  baselineRising_ = false;
+  sampleCount_ = sampleIndex_ = 0;
+  detector_.reset();
+  touched_.store(false, std::memory_order_relaxed);
+}
+
 ButtonEvent TouchKey::tick(uint64_t nowMs) {
 #if defined(ESP_PLATFORM)
   if (chanHandle_) {
     uint32_t smooth = 0;
     auto* ch = static_cast<touch_channel_handle_t>(chanHandle_);
-    if (touch_channel_read_data(ch, TOUCH_CHAN_DATA_TYPE_SMOOTH, &smooth) == ESP_OK && smooth > 0) {
-      lastSmooth_ = smooth;
-      if (baseline_ == 0) {
-        baseline_ = smooth;
-      }
-
-      // Fast-track baseline upwards if reading jumps up (e.g. after finger release)
-      if (lastSmooth_ > baseline_ + 25) {
-        baseline_ = lastSmooth_;
-      }
-
-      // Touching TP_KEY drops count by ~100 (e.g. from ~16500 down to ~16400)
-      const int32_t drop = static_cast<int32_t>(baseline_) - static_cast<int32_t>(lastSmooth_);
-      if (filterWakeTouch(drop < 18, nowMs)) return ButtonEvent::kNone;
-      if (drop >= static_cast<int32_t>(thresh_)) {
-        if (!swTouched_) {
-          swTouched_ = true;
-          touchStartMs_ = nowMs;
-        }
-      } else if (drop < 18) {
-        swTouched_ = false;
-      }
-
-      // Safety timeout: if held for > 5s, force release and re-baseline
-      if (swTouched_) {
-        if (nowMs - touchStartMs_ > 5000) {
-          swTouched_ = false;
-          baseline_ = lastSmooth_;
-        }
-      } else {
-        // Slow baseline adaptation when untouched to track thermal drift
-        if (nowMs - lastAdaptMs_ >= 100) {
-          lastAdaptMs_ = nowMs;
-          if (baseline_ < lastSmooth_) {
-            ++baseline_;
-          } else if (baseline_ > lastSmooth_) {
-            --baseline_;
-          }
-        }
-      }
-    }
-
-    touched_.store(swTouched_, std::memory_order_relaxed);
+    if (touch_channel_read_data(ch, TOUCH_CHAN_DATA_TYPE_SMOOTH, &smooth) != ESP_OK) smooth = 0;
+    return updateSample(smooth, nowMs);
   }
 #endif
   if (filterWakeTouch(!touched_.load(std::memory_order_relaxed), nowMs)) return ButtonEvent::kNone;
   return detector_.update(touched_.load(std::memory_order_relaxed), nowMs);
+}
+
+ButtonEvent TouchKey::updateSample(uint32_t smooth, uint64_t nowMs) {
+  if (!smooth) {
+    sampleCount_ = 0;
+    pendingTouched_ = swTouched_;
+    baselineRising_ = false;
+    wakeReleaseSinceMs_ = 0;
+    return ButtonEvent::kNone;
+  }
+  lastSmooth_ = smooth;
+  samples_[sampleIndex_] = smooth;
+  sampleIndex_ = (sampleIndex_ + 1) % samples_.size();
+  if (sampleCount_ < samples_.size()) ++sampleCount_;
+  if (sampleCount_ < samples_.size()) return ButtonEvent::kNone;
+  auto sorted = samples_;
+  std::sort(sorted.begin(), sorted.end());
+  const uint32_t filtered = sorted[1];
+  if (baseline_ == 0) baseline_ = filtered;
+  trackBaseline(filtered, nowMs);
+  const int32_t drop = static_cast<int32_t>(baseline_) - static_cast<int32_t>(filtered);
+  if (filterWakeTouch(drop < 18, nowMs)) return ButtonEvent::kNone;
+  confirmTouchEdge(drop, nowMs);
+  if (swTouched_ && nowMs - touchStartMs_ > 5000) {
+    swTouched_ = pendingTouched_ = false;
+    baseline_ = filtered;
+    detector_.reset();
+  }
+  touched_.store(swTouched_, std::memory_order_relaxed);
+  return detector_.update(swTouched_, nowMs);
+}
+
+void TouchKey::trackBaseline(uint32_t filtered, uint64_t nowMs) {
+  if (!swTouched_ && filtered > baseline_ + 25) {
+    if (!baselineRising_) {
+      baselineRising_ = true;
+      baselineRiseSinceMs_ = nowMs;
+    } else if (nowMs - baselineRiseSinceMs_ >= 15) {
+      baseline_ = filtered;
+      baselineRising_ = false;
+    }
+  } else {
+    baselineRising_ = false;
+  }
+  // Keep tracking during wake consumption so an idle offset cannot latch the filter.
+  const bool idleReading = filtered >= baseline_ || baseline_ - filtered < thresh_;
+  if (!swTouched_ && !pendingTouched_ && (consumeWakeTouch_ || idleReading) &&
+      nowMs - lastAdaptMs_ >= 100) {
+    lastAdaptMs_ = nowMs;
+    if (baseline_ < filtered) ++baseline_;
+    else if (baseline_ > filtered) --baseline_;
+  }
+}
+
+void TouchKey::confirmTouchEdge(int32_t drop, uint64_t nowMs) {
+  bool candidate = swTouched_;
+  if (drop >= static_cast<int32_t>(thresh_)) candidate = true;
+  else if (drop < 18) candidate = false;
+
+  if (candidate == swTouched_) {
+    pendingTouched_ = swTouched_;
+  } else if (candidate != pendingTouched_) {
+    pendingTouched_ = candidate;
+    pendingSinceMs_ = nowMs;
+  } else if (nowMs - pendingSinceMs_ >= 15) {
+    swTouched_ = candidate;
+    if (swTouched_) touchStartMs_ = nowMs;
+  }
 }
 
 bool TouchKey::filterWakeTouch(bool released, uint64_t nowMs) {

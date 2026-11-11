@@ -1,6 +1,8 @@
 #pragma once
 
+#include <array>
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 
 #include "input/button_detector.h"
@@ -20,10 +22,7 @@ class TouchKey {
    */
   bool initialize();
   /** Restore the baseline, consuming a touch wake or admitting new touches after timer wake. */
-  void restoreAfterWake(uint32_t baseline, bool consumeTouch = true) {
-    baseline_ = baseline;
-    consumeWakeTouch_ = consumeTouch;
-  }
+  void restoreAfterWake(uint32_t baseline, bool consumeTouch = true);
 
   /**
    * @brief Process current touch state and return detected button events.
@@ -31,6 +30,9 @@ class TouchKey {
    * @return Detected ButtonEvent (kNone, kSingleClick, or kDoubleClick).
    */
   ButtonEvent tick(uint64_t nowMs);
+
+  /** Process one hardware-smoothed sample; zero denotes a failed read. */
+  ButtonEvent updateSample(uint32_t smooth, uint64_t nowMs);
 
   /**
    * @brief Update touched state from ISR callback.
@@ -65,11 +67,22 @@ class TouchKey {
   uint32_t threshold() const { return thresh_; }
 
  private:
+  /** Track idle drift and confirm upward baseline changes before applying them. */
+  void trackBaseline(uint32_t filtered, uint64_t nowMs);
+  /** Confirm a threshold crossing for 15 ms before changing the pressed state. */
+  void confirmTouchEdge(int32_t drop, uint64_t nowMs);
   /** Consume the waking contact until a stable 100 ms release has been observed. */
   bool filterWakeTouch(bool released, uint64_t nowMs);
   std::atomic<bool> isrTouched_{false};
   std::atomic<bool> touched_{false};
   bool swTouched_ = false;
+  bool pendingTouched_ = false;
+  uint64_t pendingSinceMs_ = 0;
+  std::array<uint32_t, 3> samples_{};
+  std::size_t sampleCount_ = 0;
+  std::size_t sampleIndex_ = 0;
+  bool baselineRising_ = false;
+  uint64_t baselineRiseSinceMs_ = 0;
   uint64_t touchStartMs_ = 0;
   uint64_t lastAdaptMs_ = 0;
   ButtonDetector detector_{};

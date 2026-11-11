@@ -450,3 +450,45 @@ records host connection, session-lock, and settings transitions during the
 user-driven check. Visual confirmation of silent locked probes and automatic
 display recovery is pending; startup/USB latency, no-host cycling, long-running
 touch noise, and standby current are not qualified by the initial online check.
+
+## 12. Active touch filtering and edge confirmation
+
+The active CPU touch path now applies a three-sample median to the driver's
+hardware-smoothed readings. Press and release crossings retain the 35/18-count
+hysteresis and must persist for 15 ms before changing the touch state. At a
+regular 5 ms polling interval, a step is confirmed after approximately 20 ms;
+this is a replay result, not measured panel response time. Existing click timing
+is applied to the confirmed state. The ULP sleep-wake detector is unchanged.
+
+Upward baseline jumps also require 15 ms confirmation so a short positive spike
+cannot raise the baseline and produce a false press afterward. Slow baseline
+tracking continues during wake-contact suppression. Recovering a downward idle
+offset can therefore take seconds at one count per 100 ms; the stable-release
+requirement remains 100 ms. Restoring wake state clears pending edges and clicks.
+
+Native sample replay first reproduced an isolated-spike press and, separately,
+baseline contamination by a short positive burst. All seven desktop CTest targets
+pass after the changes. Replay covers press/release noise, slow contact, idle
+drift, single/double clicks, 25 ms taps, long holds, invalid reads, wake baseline
+offsets, and touch admission after timer wake. These checks exercise the same
+sample-processing method called by the firmware driver. Physical touch feel,
+noise rejection, and wake/release recovery still require device validation.
+
+### Firmware deployment (2026-11-11)
+
+The seven desktop CTest targets and ESP-IDF 6.1 build passed again before
+deployment. The current host service was stopped with its original arguments
+recorded, and its state directory and YAML were backed up under
+`.local/touch-filter-deploy-20261111-151501`. A full 16 MiB device flash readback
+completed before writing; its partition table matched the build.
+
+Only the 4,712,656-byte application at `0x10000` was written on COM6. Its SHA-256
+is `46E0493B29072DB486ED69AD0A37267D2F1E7B55D4521013B66DA115B2F5159B`.
+Both the write-time hash check and a separate esptool `verify-flash` digest check
+passed. The host was restarted hidden with the same executable, configuration,
+and state directory. The device returned online without an API error, with
+brightness Applied at 20% and deep-sleep power policy Applied with five-second
+unlock polling. Flash logs and before/after device/task snapshots are retained
+in the backup directory. After flashing, the user reported noticeably improved
+touch responsiveness. Physical `KEY`/`1X`/`2X` visibility, noise rejection, and
+lock/touch/unlock behavior remain pending user confirmation.

@@ -15,7 +15,7 @@ add_library(info_tv_core STATIC
     "${APP}/ui/display_state.cpp" "${APP}/ui/presentation_controller.cpp"
     "${NANOPB}/pb_common.c" "${NANOPB}/pb_encode.c" "${NANOPB}/pb_decode.c")
 target_include_directories(info_tv_core PUBLIC "${APP}" "${NANOPB}")
-foreach(name framing codec presentation button_detector power)
+foreach(name framing codec presentation button_detector power touch_key)
     add_executable(test_${name} test_${name}.cpp)
     target_link_libraries(test_${name} PRIVATE info_tv_core)
     add_test(NAME ${name} COMMAND test_${name} "${CMAKE_CURRENT_LIST_DIR}/../../protocol/test_vectors")
