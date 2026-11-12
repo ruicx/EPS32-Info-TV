@@ -808,7 +808,7 @@ dependencies = [
 
 [[package]]
 name = "info-tv"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "axum",
