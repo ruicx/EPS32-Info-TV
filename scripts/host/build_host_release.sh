@@ -4,7 +4,7 @@ set -euo pipefail
 
 script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repository="$(cd -- "$script_directory/../.." && pwd)"
-target=
+target="${CARGO_BUILD_TARGET:-}"
 while (($#)); do
     case "$1" in
         --target)

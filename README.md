@@ -151,8 +151,10 @@ If your board does not have the info_tv firmware flashed yet, you can write it u
    # Register login autostart service
    info-tv autostart install --config info-tv.yaml
    ```
-   Windows tasks directly use the adjacent `info-tv-startup.exe`; keep both
-   executables together when upgrading. The CLI remains `info-tv.exe`.
+   This command creates a scheduled task that runs the native launcher
+   `info-tv-startup.exe` without a console window when the user logs in. Update
+   both executables together when upgrading; continue using `info-tv.exe` for
+   terminal commands.
 
 ---
 
@@ -310,7 +312,7 @@ Run from the repository root:
 **Windows (PowerShell)**:
 
 ```powershell
-# Build Release executable (output to host/target/release/)
+# Build Release executables (output to host/target/<triple>/release/)
 ./scripts/host/build_host.ps1
 
 # (Optional) Build Debug executable
@@ -323,7 +325,7 @@ Run from the repository root:
 **Linux / macOS (Bash)**:
 
 ```bash
-# Build Release executable (output to host/target/release/)
+# Build Release executable (output to host/target/<triple>/release/)
 bash scripts/host/build_host.sh
 
 # (Optional) Build Debug executable
@@ -347,6 +349,11 @@ cargo fmt --manifest-path host/Cargo.toml -- --check
 cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnings
 cargo test --manifest-path host/Cargo.toml --locked
 ```
+
+Build scripts automatically include the startup executable for Windows targets
+and omit it for Linux/macOS targets. Explicit targets override `CARGO_BUILD_TARGET`,
+then the Rust host triple is used. For direct Windows Cargo build/test/Clippy
+commands, add `--features windows-startup` to include the startup target and tests.
 
 On Windows, set `lock_action: deep_sleep` in `info-tv.yaml` and restart the host
 to sleep the ESP32 when the current Windows session locks. Touch the top pad to

@@ -7,10 +7,16 @@ quick-start guide. Does not register startup, open serial ports, or publish a re
 #>
 [CmdletBinding()]
 param(
-    [string]$Target = 'x86_64-pc-windows-msvc'
+    [string]$Target
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not $Target) { $Target = $env:CARGO_BUILD_TARGET }
+if (-not $Target) {
+    $compilerInfo = & rustc -vV
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot read Rust compiler information.' }
+    $Target = ($compilerInfo | Where-Object { $_ -match '^host: ' } | Select-Object -First 1) -replace '^host: ', ''
+}
 if ($Target -notin @('x86_64-pc-windows-msvc', 'aarch64-pc-windows-msvc')) {
     throw 'This packaging script supports Windows MSVC targets only.'
 }

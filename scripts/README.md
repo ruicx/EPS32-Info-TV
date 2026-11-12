@@ -49,9 +49,18 @@ be invoked from any working directory. Examples below run from the repository ro
 
 Host builds require Rust and native build tools (on Windows, the Visual Studio
 C++ build tools and Windows SDK). Cargo builds the host executable and, on
-Windows, the native `info-tv-startup.exe` login launcher with the
-locked dependencies; the default output is `host/target/release`, or
-`host/target/debug` with `-Debug`, unless Cargo's target directory is overridden.
+Windows targets, the native `info-tv-startup.exe` login launcher with the locked
+dependencies. Scripts resolve the target from `--target` / `-Target`, then
+`CARGO_BUILD_TARGET`, then the Rust compiler's host triple, and pass that target
+explicitly to Cargo. Cross-compilation decisions use the target rather than the
+OS running the script. Set the target through these inputs rather than Cargo's
+TOML `build.target` setting when using the scripts.
+
+The `windows-startup` feature is enabled automatically for Windows targets.
+Other targets build only `info-tv`; scripts do not use `--bin` or `--bins`.
+The default output is `host/target/<triple>/release`, or
+`host/target/<triple>/debug` with `-Debug` / `--debug`, unless Cargo's target
+directory is overridden.
 Use `host/build_host_release.ps1` for a packaged Windows release archive:
 
 ```powershell
@@ -85,12 +94,17 @@ bash scripts/firmware/build_firmware_release.sh
 
 Install Rust and native C/C++ build tools for Host builds. Cross compilation with
 `--target` also requires the appropriate Rust target and native linker/toolchain.
-The Linux packaging script defaults to the Rust compiler's host triple, reuses
+The Linux packaging script uses the same target precedence, reuses
 `build_host.sh`, and reads the version and output directory from Cargo metadata.
 It requires Python 3, tar, and sha256sum, and writes the executable,
 configuration, and README to `build/host-dist/info-tv-VERSION-TARGET.tar.gz`.
 Linux archives use the target's normal runtime linkage; GNU builds require a
 compatible system runtime on the destination machine.
+
+Direct Cargo builds select only the main executable by default. On Windows,
+add `--features windows-startup` to direct Cargo build, test, or Clippy commands
+to include the native startup executable and its regression checks. The build
+scripts select this feature automatically; no binary-selection argument is needed.
 
 Activate ESP-IDF v6.1 before firmware operations. Replace `/dev/ttyACM0` with the
 device port, ensure your account has serial-port access, and stop any service or

@@ -1,6 +1,6 @@
 //! Real Windows launcher checks without registering or changing user startup tasks.
 
-#![cfg(windows)]
+#![cfg(all(windows, feature = "windows-startup"))]
 
 use std::{
     os::windows::process::CommandExt,

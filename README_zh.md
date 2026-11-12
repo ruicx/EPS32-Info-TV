@@ -150,8 +150,7 @@ flowchart LR
    # 注册登录自启动服务
    info-tv autostart install --config info-tv.yaml
    ```
-   Windows 任务直接使用同目录下的 `info-tv-startup.exe`；升级时一起更新两个 exe。
-   终端命令仍使用 `info-tv.exe`。
+   此命令会创建一个任务计划，在用户登录时调用无控制台窗口的原生启动器 `info-tv-startup.exe`。在升级时一起更新两个 exe，平时终端命令仍使用 `info-tv.exe`。
 
 ---
 
@@ -309,7 +308,7 @@ info_tv/
 **Windows (PowerShell)**：
 
 ```powershell
-# 编译 Release 版可执行程序（输出至 host/target/release/）
+# 编译 Release 版可执行程序（输出至 host/target/<triple>/release/）
 ./scripts/host/build_host.ps1
 
 # （可选）编译 Debug 版
@@ -322,7 +321,7 @@ info_tv/
 **Linux / macOS (Bash)**：
 
 ```bash
-# 编译 Release 版可执行程序（输出至 host/target/release/）
+# 编译 Release 版可执行程序（输出至 host/target/<triple>/release/）
 bash scripts/host/build_host.sh
 
 # （可选）编译 Debug 版
@@ -346,6 +345,11 @@ cargo fmt --manifest-path host/Cargo.toml -- --check
 cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnings
 cargo test --manifest-path host/Cargo.toml --locked
 ```
+
+构建脚本会自动为 Windows 目标编译启动器，为 Linux/macOS 目标仅编译主程序。
+目标平台依次取显式参数、`CARGO_BUILD_TARGET`、Rust 编译器的本机平台。
+在 Windows 上直接使用 Cargo 编译、测试或运行 Clippy 时，添加
+`--features windows-startup` 可包含启动器及其测试。
 
 在 Windows 上，在 `info-tv.yaml` 中设置 `lock_action: deep_sleep` 并重启主机服务，
 即可在当前 Windows 会话锁屏时让 ESP32 深度休眠。触摸顶部可唤醒；电脑仍锁屏时，

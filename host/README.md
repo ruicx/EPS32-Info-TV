@@ -149,14 +149,19 @@ Rust, protoc, SQLite, nor Python installed.
 From the repository root:
 
 ```powershell
-cargo test --manifest-path host/Cargo.toml --locked
-cargo clippy --manifest-path host/Cargo.toml --all-targets --locked -- -D warnings
+cargo test --manifest-path host/Cargo.toml --features windows-startup --locked
+cargo clippy --manifest-path host/Cargo.toml --all-targets --features windows-startup --locked -- -D warnings
 cargo fmt --manifest-path host/Cargo.toml -- --check
 powershell -NoProfile -File scripts/host/build_host_release.ps1
 ```
 
 The archive is written under `build/host-dist`. The packaging script builds
-the executable with the static MSVC runtime. It does not publish it.
+both Windows executables with the static MSVC runtime and enables the
+`windows-startup` feature automatically. Direct Cargo builds omit the startup
+target unless this feature is enabled. Omit it for non-Windows checks.
+Build scripts resolve `--target` / `-Target`, then `CARGO_BUILD_TARGET`, then the
+Rust host triple; their output is under `host/target/<triple>/<profile>`.
+They do not publish the archive.
 Build `firmware/tests` first to run the Rust-to-C++ bridge integration. Set
 `INFO_TV_PROTOCOL_BRIDGE` if the executable uses a nondefault path. Other Rust
 tests do not need the device, ESP-IDF, or Python. Hardware and login startup

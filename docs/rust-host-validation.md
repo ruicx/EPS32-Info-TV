@@ -357,6 +357,31 @@ platforms, and remote CI were not executed for this change. Window sampling is
 not frame-by-frame visual evidence. No firmware or physical lock/unlock behavior
 was changed or qualified.
 
+### Automatic platform selection in build scripts (2026-11-12)
+
+The native startup target now requires the `windows-startup` feature, which also
+controls its optional Windows job dependency. Direct Cargo builds select only
+the CLI by default. Both build scripts resolve the target from an explicit
+`--target` / `-Target`, then `CARGO_BUILD_TARGET`, then `rustc -vV`, and pass it
+explicitly to Cargo. Only Windows targets enable the startup feature; neither
+script uses binary-selection flags. Output directories include the resolved
+target triple. Release wrappers use the same precedence.
+
+Two script regression tests mock Cargo/rustc in Bash and Windows PowerShell.
+All 14 native, cross-compilation, environment-precedence, Windows ARM64, and
+Debug/Release cases passed. These checks validate argument selection without
+claiming that a cross-platform compiler or linker ran. A real default Cargo
+build emitted a binary artifact only for `info-tv`. The Windows release script
+was invoked without a target argument and built an archive containing both
+executables, YAML, and README. Its SHA-256 was
+`b08d75d772ced1d17affdb797e81ae50b78c76492a915f307d22991f724c811c`.
+
+All 57 Rust tests passed with `--features windows-startup`, with one ignored
+subprocess helper exercised by integration tests. Clippy with warnings denied
+passed with the feature enabled and with defaults; rustfmt and Bash/PowerShell
+syntax checks passed. Cargo.lock remained unchanged. Linux selection was tested
+through the scripts, but a real Linux build and remote CI were not run.
+
 ## Remaining Qualification
 
 - Actual unplug/replug, port changes, powered host restart, and user visual

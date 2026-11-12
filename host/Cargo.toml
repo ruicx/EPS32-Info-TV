@@ -7,6 +7,14 @@ description = "Local structured-display service for info_tv"
 build = "build.rs"
 default-run = "info-tv"
 
+[features]
+windows-startup = ["dep:win32job"]
+
+[[bin]]
+name = "info-tv-startup"
+path = "src/bin/info-tv-startup.rs"
+required-features = ["windows-startup"]
+
 [dependencies]
 anyhow = "1"
 axum = "0.8"
@@ -30,7 +38,7 @@ uuid = { version = "1", features = ["v4", "v5", "serde"] }
 unicode-general-category = "1"
 
 [target.'cfg(windows)'.dependencies]
-win32job = "2.1"
+win32job = { version = "2.1", optional = true }
 
 [build-dependencies]
 prost-build = "0.14"
