@@ -1,7 +1,7 @@
 # Host YAML configuration reference
 
 The host reads one UTF-8 YAML file, selected explicitly or discovered in the
-current working directory. From the repository root:
+directory containing the executable. From the repository root:
 
 ```powershell
 cargo run --manifest-path host/Cargo.toml --locked -- serve --config host/info-tv.example.yaml
@@ -10,8 +10,9 @@ cargo run --manifest-path host/Cargo.toml --locked -- serve --config host/info-t
 Copy [the example configuration](../host/info-tv.example.yaml) for local use.
 Its weather mapping is commented out; uncomment and edit it to enable retrieval.
 Settings are read once at startup; restart the service after editing the file.
-Without `--config`, `serve` and `ports` look for `info-tv.yaml` in the current
-working directory. A missing default file uses built-in defaults. An explicit
+Without `--config`, `serve` and `ports` look for `info-tv.yaml` beside the actual
+executable, resolving symbolic links. Explicit relative `--config` paths use the
+current working directory. A missing default file uses built-in defaults. An explicit
 missing file or an invalid selected file is an error.
 
 ## Complete example

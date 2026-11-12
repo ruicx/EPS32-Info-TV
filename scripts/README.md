@@ -48,7 +48,8 @@ be invoked from any working directory. Examples below run from the repository ro
 ```
 
 Host builds require Rust and native build tools (on Windows, the Visual Studio
-C++ build tools and Windows SDK). Cargo builds the host executable with the
+C++ build tools and Windows SDK). Cargo builds the host executable and, on
+Windows, the native `info-tv-startup.exe` login launcher with the
 locked dependencies; the default output is `host/target/release`, or
 `host/target/debug` with `-Debug`, unless Cargo's target directory is overridden.
 Use `host/build_host_release.ps1` for a packaged Windows release archive:

@@ -26,7 +26,9 @@ impl Drop for Process {
 fn start(directory: &Path, state: &Path) -> Process {
     Process(
         Command::new(env!("CARGO_BIN_EXE_info-tv"))
-            .args(["serve", "--state-dir"])
+            .args(["serve", "--config"])
+            .arg(directory.join("info-tv.yaml"))
+            .arg("--state-dir")
             .arg(state)
             .current_dir(directory)
             .stdout(Stdio::null())
@@ -311,6 +313,8 @@ fn forced_termination_recovers_acknowledged_state_and_hook_ledger() {
         .expect("client");
     let mut process = start(directory.path(), &state);
     let original_session = wait_online(&client, &url, &mut process)["session_id"].clone();
+    assert!(state.join("host.sqlite3").is_file());
+    assert!(state.join("logs").is_dir());
     let event = json!({"event_id":Uuid::new_v4().simple().to_string(),"source":"test","task_id":"crash",
         "sequence":1,"state":"running","title":"Survive forced termination"});
     let response: Value = client
@@ -431,7 +435,7 @@ fn cli_configuration_and_usage_failures_have_distinct_exit_codes() {
     }
     std::fs::write(directory.path().join("info-tv.yaml"), "unknown: true").expect("bad config");
     let output = Command::new(env!("CARGO_BIN_EXE_info-tv"))
-        .args(["serve", "--state-dir"])
+        .args(["serve", "--config", "info-tv.yaml", "--state-dir"])
         .arg(directory.path().join("state"))
         .current_dir(directory.path())
         .output()
@@ -444,4 +448,91 @@ fn cli_configuration_and_usage_failures_have_distinct_exit_codes() {
         .output()
         .expect("client");
     assert_eq!(output.status.code(), Some(1));
+}
+
+/// Portable defaults follow the executable across working directories and moves.
+#[test]
+fn portable_defaults_keep_configuration_state_and_hooks_beside_the_binary() {
+    let directory = TempDir::new().expect("temp");
+    let installation = directory.path().join("info tv portable");
+    let workspace = directory.path().join("unrelated workspace");
+    let profile = directory.path().join("unused profile");
+    std::fs::create_dir(&installation).expect("installation");
+    std::fs::create_dir(&workspace).expect("workspace");
+    std::fs::write(workspace.join("info-tv.yaml"), "unknown: true").expect("unrelated config");
+    let binary_name = if cfg!(windows) {
+        "info-tv.exe"
+    } else {
+        "info-tv"
+    };
+    let executable = installation.join(binary_name);
+    std::fs::copy(env!("CARGO_BIN_EXE_info-tv"), &executable).expect("copy executable");
+    let port = free_port();
+    std::fs::write(
+        installation.join("info-tv.yaml"),
+        format!("serial_port: info-tv-absent-test-port\nhttp_port: {port}\n"),
+    )
+    .expect("portable config");
+    let client = reqwest::blocking::Client::builder()
+        .no_proxy()
+        .timeout(Duration::from_secs(2))
+        .build()
+        .expect("client");
+    let url = format!("http://127.0.0.1:{port}");
+    let launch = |executable: &Path| {
+        Process(
+            Command::new(executable)
+                .arg("serve")
+                .current_dir(&workspace)
+                .env("LOCALAPPDATA", &profile)
+                .env("HOME", &profile)
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .expect("portable service"),
+        )
+    };
+    let mut host = launch(&executable);
+    wait_online(&client, &url, &mut host);
+    client
+        .put(format!("{url}/v1/device/settings"))
+        .json(&json!({"brightness_percent":37}))
+        .send()
+        .expect("settings")
+        .error_for_status()
+        .expect("accepted");
+    assert!(installation.join("data/host.sqlite3").is_file());
+    assert!(installation.join("logs").is_dir());
+    assert!(!installation.join("data/logs").exists());
+    for source in ["codex", "agy", "zcode"] {
+        let output = Command::new(&executable)
+            .args(["hook", source, "--flush", "--url", "http://127.0.0.1:1"])
+            .current_dir(&workspace)
+            .env("LOCALAPPDATA", &profile)
+            .env("HOME", &profile)
+            .output()
+            .expect("hook flush");
+        assert!(output.status.success());
+        assert!(output.stderr.is_empty(), "{:?}", output.stderr);
+        assert!(
+            installation
+                .join(format!("data/{source}-hooks.sqlite3"))
+                .is_file()
+        );
+    }
+    drop(host);
+    let relocated = directory.path().join("relocated info tv");
+    std::fs::rename(&installation, &relocated).expect("move portable installation");
+    let mut host = launch(&relocated.join(binary_name));
+    wait_online(&client, &url, &mut host);
+    let settings: Value = client
+        .get(format!("{url}/v1/device/settings"))
+        .send()
+        .expect("restored settings")
+        .json()
+        .expect("JSON");
+    assert_eq!(settings["brightness_percent"], 37);
+    assert!(!workspace.join("data").exists());
+    assert!(!workspace.join("logs").exists());
+    assert!(!profile.exists());
 }

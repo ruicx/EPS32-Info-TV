@@ -104,8 +104,12 @@ impl Default for Settings {
 }
 
 impl Settings {
-    /// Discover one YAML file; an explicit missing path never falls back.
-    pub fn load(path: Option<&Path>, cwd: &Path) -> Result<(Self, Option<PathBuf>)> {
+    /// Discover YAML beside the executable; resolve explicit relative paths against cwd.
+    pub fn load(
+        path: Option<&Path>,
+        cwd: &Path,
+        installation: &Path,
+    ) -> Result<(Self, Option<PathBuf>)> {
         let selected = path.map(|p| {
             if p.is_absolute() {
                 p.to_owned()
@@ -115,8 +119,8 @@ impl Settings {
         });
         let selected = match selected {
             Some(path) => Some(path),
-            None => match cwd.join("info-tv.yaml").try_exists()? {
-                true => Some(cwd.join("info-tv.yaml")),
+            None => match installation.join("info-tv.yaml").try_exists()? {
+                true => Some(installation.join("info-tv.yaml")),
                 false => None,
             },
         };
@@ -163,15 +167,18 @@ impl Settings {
     }
 }
 
-/// Return the existing per-user data location, independent of the working directory.
-pub fn state_directory() -> PathBuf {
-    std::env::var_os("LOCALAPPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            std::env::var_os("HOME")
-                .map(PathBuf::from)
-                .unwrap_or_else(|| PathBuf::from("."))
-                .join(".local/state")
-        })
-        .join("info_tv")
+/// Return the executable's directory, resolving symbolic links before choosing defaults.
+pub fn installation_directory() -> Result<PathBuf> {
+    let executable = std::env::current_exe()?
+        .canonicalize()
+        .context("Cannot resolve the info-tv executable path")?;
+    Ok(executable
+        .parent()
+        .context("The info-tv executable has no parent directory")?
+        .to_owned())
+}
+
+/// Return the portable data directory beside the executable.
+pub fn state_directory() -> Result<PathBuf> {
+    Ok(installation_directory()?.join("data"))
 }

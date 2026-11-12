@@ -1,6 +1,9 @@
 # info-tv Rust host
 
-Run the local display service without installing Python. Firmware must already
+Run the local display service without installing Python. Windows archives include
+`info-tv.exe` for the CLI/service and `info-tv-startup.exe` for windowless login
+startup. Keep both executables together and update them from the same release.
+Firmware must already
 be installed on the supported ESP32-S3 board. This archive does not include a
 firmware flashing tool. Full project and hardware instructions:
 [ESP32-Info-TV](https://github.com/ruicx/EPS32-Info-TV).
@@ -34,8 +37,9 @@ HTTP acceptance does not mean the display has presented the content.
 ## Configuration and state
 
 Use `serve --config C:\info-tv\info-tv.yaml` to select a file explicitly. Without
-`--config`, `serve` and `ports` look for `info-tv.yaml` in the current working
-directory. If that default file is absent, built-in defaults apply. An explicit
+`--config`, `serve` and `ports` look for `info-tv.yaml` beside the executable,
+independent of the current working directory. If that default file is absent,
+built-in defaults apply. An explicit
 missing file or an invalid selected file is an error. CLI settings override YAML.
 The included YAML leaves automatic weather disabled; uncomment its example to
 enable it. Restart after changing configuration.
@@ -53,10 +57,23 @@ The host samples session state once per second through a hidden Windows
 PowerShell helper, requiring `Add-Type`. Keep the host running to confirm unlock.
 
 The service saves accepted tasks, recent replay/closure protection, target
-brightness, and weather/alert expiry in `%LOCALAPPDATA%\info_tv\host.sqlite3`.
-Logs rotate daily under `logs`, retaining seven files. `serve --state-dir <path>`
-selects an isolated state directory. Hook ledgers keep their existing independent
-per-user paths, or use an explicit `--state-file`.
+brightness, and weather/alert expiry in `data/host.sqlite3` beside the executable.
+Hook ledgers use `data/codex-hooks.sqlite3`, `data/agy-hooks.sqlite3`, and
+`data/zcode-hooks.sqlite3`. Logs rotate daily in the sibling `logs` directory,
+retaining seven files. Symbolic links resolve to the actual executable directory.
+The installation directory must be writable by the current user.
+
+`serve --state-dir <path>` selects a custom host state directory, with logs under
+`<path>/logs`. It does not change hook ledger paths; hooks accept an explicit
+`--state-file`. Explicit relative paths are resolved against the working directory.
+
+When upgrading from the per-user layout, stop the host and hook producers, back
+up `%LOCALAPPDATA%\info_tv` (or `~/.local/state/info_tv` on other platforms), and
+copy all SQLite databases and any `-wal`/`-shm` companions into the new `data`
+directory. Copy old logs into the sibling `logs` directory. Preserve the YAML
+configuration. Do not copy live SQLite files; use SQLite's backup API for an
+online snapshot. There is no automatic import from the old location. See the
+repository's `docs/host-cli.md` for migration and path override details.
 
 Restart restores task state and target brightness. Connection and display
 feedback are obtained again; old pop-up notifications are not replayed. Downtime
@@ -75,10 +92,33 @@ C:\info-tv\info-tv.exe autostart remove
 
 Registration takes effect at the next login; start `serve` manually for the
 current session. The logon task runs with limited user privileges, fixed paths,
-and a hidden PowerShell launcher. Removal unregisters startup; it does not stop
+and directly launches `info-tv-startup.exe`. This native Windows GUI-subsystem
+launcher starts the adjacent `info-tv.exe serve` with `CREATE_NO_WINDOW`, waits
+for it, and returns its exit code. The CLI remains a console application.
+The launcher owns a kill-on-close Windows job, so terminating the task also
+terminates the host and its helper processes. Committed SQLite state survives.
+PowerShell is used to register the task, not as its startup action; Windows lock
+monitoring still uses its separate hidden helper. No Windows 11-only console
+allocation policy is required. Removal unregisters startup; it does not stop
 an already-running service or delete its data. This is not a system service.
 To stop a hidden instance before an update, end `info-tv.exe` in Task Manager.
 Committed state survives this forced stop.
+The task's working directory uses the actual executable directory, regardless
+of where `autostart install` is invoked.
+Short Windows drive paths are saved without the `\\?\` prefix when the ordinary
+path resolves to the same location. Long or special paths retain their prefix.
+Explicit relative config/state options are resolved before registration against
+the directory from which the install command was invoked.
+Startup errors and the host's console output are appended to `logs/startup.log`
+beside the executables. The host's separate daily `host.*` logs retain their
+seven-file rotation. `startup.log` is append-only. The launcher forwards server
+options; explicit relative paths use its invocation directory.
+
+After upgrading from the PowerShell startup task, run `autostart install` again
+to replace its action. An old `data/autostart.ps1` is no longer used and can be
+removed after verification. Re-register startup and update external hook commands
+after moving the installation directory. Stop the task before replacing either
+executable.
 
 ## Agent hooks
 

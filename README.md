@@ -85,9 +85,17 @@ Extract the archive into your preferred directory (optionally add it to your sys
 ```text
 extracted-directory/
   ├── info-tv (info-tv.exe on Windows)  # Host core binary (background service, CLI, and hook adapters)
+  ├── info-tv-startup.exe                # Windows only: native launcher without a console window
   ├── info-tv.yaml                      # Optional sample config (for weather coordinates, fixed serial port, etc.)
+  ├── data/                             # Created at runtime: host state and agent hook databases
+  ├── logs/                             # Created at runtime: daily host logs
   └── firmware.bin                      # Downloaded firmware image (renamed here for convenient flashing)
 ```
+
+Configuration, default databases, and logs follow the executable directory,
+including when launched from another working directory or through a symbolic
+link. Keep this directory writable and preserve `data/` and `logs/` when
+upgrading. Existing per-user installations need a [one-time data migration](docs/host-cli.md#portable-paths-and-migration).
 
 > [!TIP]
 > The release firmware is a merged binary containing the bootloader, partition table, and application image. It can be flashed in a single step starting at offset `0x0` without manual multi-segment flashing.
@@ -143,6 +151,8 @@ If your board does not have the info_tv firmware flashed yet, you can write it u
    # Register login autostart service
    info-tv autostart install --config info-tv.yaml
    ```
+   Windows tasks directly use the adjacent `info-tv-startup.exe`; keep both
+   executables together when upgrading. The CLI remains `info-tv.exe`.
 
 ---
 

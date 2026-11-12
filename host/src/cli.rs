@@ -180,7 +180,11 @@ pub fn parse() -> Cli {
 
 /// Load the selected or discovered YAML and apply explicit overrides.
 pub fn settings(args: &ServeArgs) -> Result<(Settings, Option<PathBuf>)> {
-    let (mut settings, path) = Settings::load(args.config.as_deref(), &std::env::current_dir()?)?;
+    let (mut settings, path) = Settings::load(
+        args.config.as_deref(),
+        &std::env::current_dir()?,
+        &config::installation_directory()?,
+    )?;
     if let Some(port) = &args.serial_port {
         settings.serial_port = port.clone();
     }
@@ -279,13 +283,22 @@ fn positive_timeout(value: &str) -> Result<f64, String> {
 
 /// Run one service with supervised tasks and orderly SQLite/serial shutdown.
 pub async fn serve(args: ServeArgs, settings: Settings, path: Option<PathBuf>) -> Result<()> {
-    let directory = args.state_dir.unwrap_or_else(config::state_directory);
-    std::fs::create_dir_all(directory.join("logs"))?;
+    let (directory, logs) = match args.state_dir {
+        Some(directory) => {
+            let logs = directory.join("logs");
+            (directory, logs)
+        }
+        None => {
+            let installation = config::installation_directory()?;
+            (installation.join("data"), installation.join("logs"))
+        }
+    };
+    std::fs::create_dir_all(&logs)?;
     let file = tracing_appender::rolling::Builder::new()
         .rotation(tracing_appender::rolling::Rotation::DAILY)
         .filename_prefix("host")
         .max_log_files(7)
-        .build(directory.join("logs"))?;
+        .build(&logs)?;
     let (writer, _guard) = tracing_appender::non_blocking(file);
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
     tracing_subscriber::registry()
@@ -299,7 +312,7 @@ pub async fn serve(args: ServeArgs, settings: Settings, path: Option<PathBuf>) -
                 .with_writer(writer),
         )
         .try_init()?;
-    tracing::info!(configuration = ?path, state_directory = %directory.display(), "Starting info-tv");
+    tracing::info!(configuration = ?path, state_directory = %directory.display(), log_directory = %logs.display(), "Starting info-tv");
     #[cfg(not(windows))]
     anyhow::ensure!(
         settings.lock_action == crate::config::LockAction::None,

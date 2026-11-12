@@ -2,7 +2,7 @@
 
 Status: Architecture implemented; desktop checks passed. Hardware/login qualification remains pending.
 
-Updated: 2026-11-07
+Updated: 2026-11-12
 
 ## 1. Purpose and Decision Status
 
@@ -20,7 +20,7 @@ The following product decisions are confirmed:
 - Automatic startup is required after user login; operation before login is not
   required.
 - Configuration accepts an explicit path; otherwise, look for YAML configuration
-  in the process's current working directory.
+  beside the actual executable. Default data and logs also follow that directory.
 - The architecture was discussed before implementation; the user subsequently
   approved implementation of the plan.
 
@@ -61,7 +61,8 @@ must be explicit; a framework change does not preserve them automatically.
 
 ## 3. Process and Deployment Model
 
-Ship one executable with service and short-lived client commands:
+Ship the CLI/service executable below. Windows archives also include
+`info-tv-startup.exe`, a native GUI-subsystem launcher for login startup.
 
 | Command | Function |
 | --- | --- |
@@ -77,7 +78,8 @@ Ship one executable with service and short-lived client commands:
 | `info-tv hook agy ...` | Convert agy callbacks into task events, save them locally, and attempt delivery to the service. |
 | `info-tv hook zcode ...` | Convert ZCode callbacks into task events, save them locally, and attempt delivery to the service. |
 
-Only `serve` remains running. Client commands use HTTP; only the service owns the
+Only the `serve` CLI command remains running; the native startup launcher waits
+alongside it when used. Client commands use HTTP; only the service owns the
 serial connection. Hook commands also access their local SQLite ledgers. Existing
 hook configurations will need an explicit compatibility or reconfiguration path.
 
@@ -92,22 +94,25 @@ Prevent concurrent service instances for the same state directory with an OS-hel
 lock. Bind the configured loopback port before starting device work. A second
 instance must report the conflict rather than access the same device/database.
 
-Proposed Windows layout, retaining the existing `info_tv` data-directory name:
+Portable layout, with paths relative to the actual executable after resolving
+symbolic links:
 
 ```text
 <installation>/info-tv.exe
-<configuration file: explicit path or ./info-tv.yaml>
-%LOCALAPPDATA%/info_tv/host.sqlite3
-%LOCALAPPDATA%/info_tv/codex-hooks.sqlite3
-%LOCALAPPDATA%/info_tv/agy-hooks.sqlite3
-%LOCALAPPDATA%/info_tv/zcode-hooks.sqlite3
-%LOCALAPPDATA%/info_tv/logs/
+<installation>/info-tv-startup.exe    (Windows only)
+<installation>/info-tv.yaml
+<installation>/data/host.sqlite3
+<installation>/data/codex-hooks.sqlite3
+<installation>/data/agy-hooks.sqlite3
+<installation>/data/zcode-hooks.sqlite3
+<installation>/logs/
 ```
 
-Application state belongs outside the installation directory so replacing the
-executable preserves it. User configuration is not rewritten when restoring
-runtime state. Configuration discovery does not change the state-directory or
-hook-ledger locations.
+Replacing only the executable preserves adjacent configuration and state. The
+installation must be writable by the current user. Explicit `--state-dir`
+selects a custom host database/lock directory with its own `logs` child; hook
+ledgers accept separate `--state-file` overrides. There is no implicit import
+from the previous per-user directory; see [migration instructions](host-cli.md#portable-paths-and-migration).
 
 ### 3.1. Configuration Discovery and Precedence
 
@@ -117,14 +122,14 @@ The proposed default filename is `info-tv.yaml`. Apply the following rules to
 | Invocation or condition | Behavior |
 | --- | --- |
 | `--config <path>` is supplied | Read exactly that file. Resolve a relative path against the process's current working directory. |
-| No `--config` is supplied | Look for `info-tv.yaml` directly in the current working directory. |
+| No `--config` is supplied | Look for `info-tv.yaml` directly beside the actual executable. |
 | The default `info-tv.yaml` does not exist | Use built-in defaults, then apply explicit CLI overrides. |
 | An explicitly selected file is missing or unreadable | Report a configuration error; do not fall back to another file or defaults. |
 | A discovered file is unreadable, malformed, or fails validation | Report a configuration error; do not silently ignore it. |
 
-The current working directory is the directory from which the process is
-launched, not the directory containing the executable. Do not search parent
-directories, the installation directory, or the user profile. Select at most one
+Explicit relative paths use the directory from which the process is launched.
+Default discovery uses only the installation directory, never parent directories,
+the working directory, or the user profile. Select at most one
 YAML file; do not merge an explicit file with the discovered default file. An
 explicit path may have any filename.
 
@@ -135,10 +140,10 @@ of empty files, unknown fields, and invalid ranges. An empty mapping (`{}`) is
 valid and uses defaults.
 
 ```powershell
-# Read .\info-tv.yaml if present; otherwise use defaults.
+# Read info-tv.yaml beside the executable if present; otherwise use defaults.
 info-tv serve
 
-# Read a specific file, ignoring .\info-tv.yaml.
+# Read a specific file, ignoring the adjacent info-tv.yaml.
 info-tv serve --config C:\info-tv\settings.yaml
 
 # Read a relative file and override its serial-port setting.
@@ -152,7 +157,8 @@ they do not load server YAML from an agent's project directory.
 
 When registering login startup with a selected configuration file, save its
 resolved absolute path in the launch arguments. Always set an explicit working
-directory for the startup task, including when using defaults, so discovery
+directory pointing to the actual executable directory for the startup task,
+including when using defaults, so discovery
 does not depend on Task Scheduler's working-directory defaults.
 
 ## 4. Components and Dependencies
@@ -401,7 +407,7 @@ state. Existing hook ledgers require their own compatibility checks.
 | Area | Required evidence before default cutover |
 | --- | --- |
 | Contracts | Existing routes, CLI/config behavior, text bounds, and admission outcomes verified against the migration inventory. |
-| Config discovery | Explicit/relative paths, working-directory lookup, missing-default fallback, invalid-file errors, and CLI precedence pass; client/hook commands do not load server YAML. |
+| Config discovery | Explicit/relative paths, executable-directory lookup, missing-default fallback, invalid-file errors, and CLI precedence pass; client/hook commands do not load server YAML. |
 | Domain | Duplicate/conflicting IDs, stale sequences, conversation runs, capacity, closure, and retention remain correct. |
 | Durability | Normal restart and forced termination recover accepted tasks/brightness; commit-before-response retries are idempotent. |
 | Storage failure | Failed writes do not acknowledge new state, mutate the accepted cache, or publish device work. |
@@ -428,7 +434,13 @@ state. Existing hook ledgers require their own compatibility checks.
   conservatively. Running/waiting/failed cards remain. Changing retention applies
   the new duration to the original saved completion timestamp, without resetting it.
 - `autostart install/status/remove` manage a limited-privilege Windows logon task.
-  Its hidden PowerShell launcher keeps absolute paths and waits for the service.
+  Its action directly starts the native GUI-subsystem `info-tv-startup.exe`,
+  which starts the adjacent console CLI host with `CREATE_NO_WINDOW`, waits for
+  it, and propagates its exit code. A kill-on-close Windows job owned by the
+  launcher supervises the process tree; ending the task ends that tree. Startup
+  diagnostics and host console output are appended to `logs/startup.log`.
+  PowerShell remains a registration helper
+  and the separate lock-state monitor, rather than the scheduled startup action.
   Installation is explicit and does not modify startup during a normal launch.
 - `info-tv hook <source>` runs the adapters using the existing ledger schemas.
   Source flags and stored event UUIDs remain compatible. The separate

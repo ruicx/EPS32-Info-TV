@@ -93,8 +93,10 @@ The final assistant message may appear as a bounded stop detail.
 
 ## Delivery and retry
 
-Default ledger: `%LOCALAPPDATA%/info_tv/zcode-hooks.sqlite3`, with
-`~/.local/state/info_tv/zcode-hooks.sqlite3` as the portable fallback. ZCode's
+Default ledger: `data/zcode-hooks.sqlite3` beside the actual executable,
+resolving symbolic links independently of the agent's working directory.
+`--state-file` overrides this path. See [migration instructions](host-cli.md#portable-paths-and-migration)
+when upgrading from the previous per-user directory. ZCode's
 execution table is separate from the Codex and agy tables even if a custom
 ledger file is intentionally shared. Preserve the ledger when resuming sessions
 or upgrading; it retains run ordering and pending delivery payloads.

@@ -29,6 +29,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1", features = ["v4", "v5", "serde"] }
 unicode-general-category = "1"
 
+[target.'cfg(windows)'.dependencies]
+win32job = "2.1"
+
 [build-dependencies]
 prost-build = "0.14"
 protoc-bin-vendored = "3"

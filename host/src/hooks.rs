@@ -730,9 +730,10 @@ pub fn run(args: HookArgs) {
             args.timeout.is_finite() && args.timeout > 0.0,
             "--timeout must be finite and positive"
         );
-        let path = args.state_file.clone().unwrap_or_else(|| {
-            config::state_directory().join(format!("{}-hooks.sqlite3", args.source))
-        });
+        let path = match &args.state_file {
+            Some(path) => path.clone(),
+            None => config::state_directory()?.join(format!("{}-hooks.sqlite3", args.source)),
+        };
         if !args.flush {
             let mut bytes = Vec::new();
             std::io::stdin().take(1_048_577).read_to_end(&mut bytes)?;

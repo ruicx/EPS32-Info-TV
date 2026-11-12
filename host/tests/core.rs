@@ -97,22 +97,25 @@ fn yaml_discovery_strictness_and_precedence() {
     let directory = TempDir::new().expect("temp");
     let cwd = directory.path();
     assert_eq!(
-        Settings::load(None, cwd).expect("defaults").0.http_port,
+        Settings::load(None, cwd, cwd)
+            .expect("defaults")
+            .0
+            .http_port,
         8765
     );
     std::fs::write(cwd.join("info-tv.yaml"), "usb_vid: 0x303A\nhttp_port: 9876").expect("write");
-    let (settings, path) = Settings::load(None, cwd).expect("discovery");
+    let (settings, path) = Settings::load(None, cwd, cwd).expect("discovery");
     assert_eq!((settings.usb_vid, settings.http_port), (0x303a, 9876));
     assert_eq!(path, Some(cwd.join("info-tv.yaml")));
     std::fs::write(cwd.join("explicit.yaml"), "{}").expect("write");
     assert_eq!(
-        Settings::load(Some(Path::new("explicit.yaml")), cwd)
+        Settings::load(Some(Path::new("explicit.yaml")), cwd, cwd)
             .expect("explicit")
             .0
             .http_port,
         8765
     );
-    assert!(Settings::load(Some(Path::new("missing.yaml")), cwd).is_err());
+    assert!(Settings::load(Some(Path::new("missing.yaml")), cwd, cwd).is_err());
     for invalid in [
         "",
         "[]",
@@ -131,17 +134,39 @@ fn yaml_discovery_strictness_and_precedence() {
     ] {
         std::fs::write(cwd.join("info-tv.yaml"), invalid).expect("write");
         assert!(
-            Settings::load(None, cwd).is_err(),
+            Settings::load(None, cwd, cwd).is_err(),
             "accepted invalid YAML: {invalid}"
         );
     }
 }
 
 #[test]
+fn yaml_defaults_use_installation_but_explicit_paths_use_working_directory() {
+    let directory = TempDir::new().expect("temp");
+    let installation = directory.path().join("installation");
+    let cwd = directory.path().join("workspace");
+    std::fs::create_dir(&installation).expect("installation");
+    std::fs::create_dir(&cwd).expect("workspace");
+    std::fs::write(cwd.join("info-tv.yaml"), "http_port: 9876").expect("workspace config");
+    let (settings, path) = Settings::load(None, &cwd, &installation).expect("defaults");
+    assert_eq!(settings.http_port, 8765);
+    assert_eq!(path, None);
+    std::fs::write(installation.join("info-tv.yaml"), "http_port: 8766")
+        .expect("installation config");
+    let (settings, path) = Settings::load(None, &cwd, &installation).expect("discovery");
+    assert_eq!(settings.http_port, 8766);
+    assert_eq!(path, Some(installation.join("info-tv.yaml")));
+    let (settings, path) =
+        Settings::load(Some(Path::new("info-tv.yaml")), &cwd, &installation).expect("explicit");
+    assert_eq!(settings.http_port, 9876);
+    assert_eq!(path, Some(cwd.join("info-tv.yaml")));
+}
+
+#[test]
 fn lock_action_accepts_only_documented_actions_and_defaults_to_none() {
     let directory = TempDir::new().expect("temp");
     assert_eq!(
-        Settings::load(None, directory.path())
+        Settings::load(None, directory.path(), directory.path())
             .expect("defaults")
             .0
             .lock_action,
@@ -155,7 +180,7 @@ fn lock_action_accepts_only_documented_actions_and_defaults_to_none() {
     ] {
         std::fs::write(&path, format!("lock_action: {name}\n")).expect("write");
         assert_eq!(
-            Settings::load(None, directory.path())
+            Settings::load(None, directory.path(), directory.path())
                 .expect("boolean")
                 .0
                 .lock_action,
@@ -164,7 +189,7 @@ fn lock_action_accepts_only_documented_actions_and_defaults_to_none() {
     }
     for invalid in ["true", "1", "null", "[]", "shutdown"] {
         std::fs::write(&path, format!("lock_action: {invalid}\n")).expect("write");
-        assert!(Settings::load(None, directory.path()).is_err());
+        assert!(Settings::load(None, directory.path(), directory.path()).is_err());
     }
 }
 
@@ -172,7 +197,7 @@ fn lock_action_accepts_only_documented_actions_and_defaults_to_none() {
 fn unlock_poll_seconds_is_bounded_and_defaults_disabled() {
     let directory = TempDir::new().expect("temp");
     assert_eq!(
-        Settings::load(None, directory.path())
+        Settings::load(None, directory.path(), directory.path())
             .expect("defaults")
             .0
             .unlock_poll_seconds,
@@ -186,7 +211,7 @@ fn unlock_poll_seconds_is_bounded_and_defaults_disabled() {
         )
         .expect("write");
         assert_eq!(
-            Settings::load(None, directory.path())
+            Settings::load(None, directory.path(), directory.path())
                 .expect("interval")
                 .0
                 .unlock_poll_seconds,
@@ -195,7 +220,7 @@ fn unlock_poll_seconds_is_bounded_and_defaults_disabled() {
     }
     for invalid in ["true", "'5'", "null", "-1", "3601"] {
         std::fs::write(&path, format!("unlock_poll_seconds: {invalid}\n")).expect("write");
-        assert!(Settings::load(None, directory.path()).is_err());
+        assert!(Settings::load(None, directory.path(), directory.path()).is_err());
     }
 }
 

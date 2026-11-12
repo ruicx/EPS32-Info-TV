@@ -30,8 +30,13 @@ fn main() {
         Command::Ports { config } => {
             let settings = match std::env::current_dir()
                 .map_err(anyhow::Error::from)
-                .and_then(|cwd| Settings::load(config.as_deref(), &cwd))
-            {
+                .and_then(|cwd| {
+                    Settings::load(
+                        config.as_deref(),
+                        &cwd,
+                        &info_tv::config::installation_directory()?,
+                    )
+                }) {
                 Ok((settings, _)) => settings,
                 Err(error) => {
                     eprintln!("Configuration error: {error:#}");

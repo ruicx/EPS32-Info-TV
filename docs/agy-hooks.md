@@ -98,10 +98,12 @@ ledger. Once an execution is terminal, repeated stops cannot change it.
 
 ## Retry and state files
 
-The default ledger is `%LOCALAPPDATA%/info_tv/agy-hooks.sqlite3` on Windows,
-with `~/.local/state/info_tv/agy-hooks.sqlite3` as the portable fallback.
-All callbacks for this installation must share the same file. Codex keeps its
-existing separate default ledger. Explicitly sharing a custom file also keeps
+The default ledger is `data/agy-hooks.sqlite3` beside the actual executable,
+resolving symbolic links independently of the agent's working directory.
+`--state-file` overrides this path. See [migration instructions](host-cli.md#portable-paths-and-migration)
+when upgrading from the previous per-user directory.
+All callbacks for this installation must share the same file. Codex uses its
+own separate default ledger. Explicitly sharing a custom file also keeps
 the two producer cursors independent.
 
 The adapter reuses the Codex sender's durable outbox and acknowledgment rules:

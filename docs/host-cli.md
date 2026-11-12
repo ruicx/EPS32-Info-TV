@@ -42,8 +42,8 @@ usb_pid: 0x1001
 Both IDs are unsigned 16-bit integers (0..65535). YAML accepts hexadecimal
 integers with a `0x` prefix or decimal integers; do not quote these values.
 Omitted IDs retain the defaults. `ports --config ...` uses the same YAML filter
-as `serve --config ...`; plain `ports` discovers `info-tv.yaml` in the current
-working directory and otherwise uses built-in defaults. Explicit serial paths
+as `serve --config ...`; plain `ports` discovers `info-tv.yaml` beside the actual
+executable and otherwise uses built-in defaults. Explicit serial paths
 bypass USB filtering.
 
 This ID is shared by other ESP32 devices and does not prove that info_tv
@@ -67,6 +67,81 @@ Client options `--url` and `--timeout` go **before** the command. Defaults are
 `http://127.0.0.1:8765` and five seconds. HTTP client commands do not read server YAML
 or use environment HTTP proxies. If the server uses a different HTTP port,
 specify its URL explicitly.
+
+## Portable paths and migration
+
+Default paths follow the actual executable, resolving symbolic links, regardless
+of the working directory or the user profile:
+
+```text
+<installation>/info-tv.exe
+<installation>/info-tv-startup.exe    (Windows only)
+<installation>/info-tv.yaml
+<installation>/logs/host.YYYY-MM-DD
+<installation>/logs/startup.log      (Windows login startup)
+<installation>/data/host.sqlite3
+<installation>/data/codex-hooks.sqlite3
+<installation>/data/agy-hooks.sqlite3
+<installation>/data/zcode-hooks.sqlite3
+```
+
+The host creates `data` and `logs` when needed. Windows archives ship both
+executables; keep them together and update them from the same release. Keep this
+directory writable by the user running the service and hooks.
+Moving the whole directory preserves local state. Update external hook commands
+and re-register login startup if the installation path changes.
+
+`autostart install` fixes the task working directory to the actual executable
+directory. It does not capture the
+directory from which registration was invoked as the startup working directory.
+Explicit relative config/state options are resolved against that invocation
+directory before their absolute paths are saved.
+Short Windows drive paths in the task and launcher omit the `\\?\` prefix when
+their ordinary form resolves to the same location. Long or special paths keep
+their extended form.
+
+The task directly runs `info-tv-startup.exe`. It is a native GUI-subsystem
+executable that starts the adjacent `info-tv.exe serve` with `CREATE_NO_WINDOW`,
+waits for the host, and propagates its exit code. Its standard input is closed;
+the launcher owns a kill-on-close Windows job so ending the task also ends its
+host and helper processes. The repository keeps unsafe Windows API calls in the
+Windows-only `win32job` dependency rather than enabling unsafe project code.
+Host stdout/stderr and launcher errors go to the append-only `logs/startup.log`.
+The host's daily logs still rotate separately. `info-tv.exe` remains a console
+application for CLI output, pipelines, and normal shell waiting. Task registration
+uses hidden PowerShell; the startup action does not. Lock monitoring retains its
+separate hidden PowerShell helper. This does not depend on Windows 11 24H2 console
+allocation settings; Windows 10 runtime qualification is tracked separately.
+
+After upgrading, re-run `autostart install` to replace the old PowerShell task
+action. The obsolete `data/autostart.ps1` is not generated or used by the native
+launcher and can be removed after the new task is verified. Stop the task before
+updating either executable.
+
+Explicit relative paths remain relative to the working directory. `--config`
+selects one YAML file. `serve --state-dir <path>` puts the host database and
+instance lock in that directory and logs in `<path>/logs`, preserving isolated
+deployments. Hook ledgers remain independent and accept `hook <source>
+--state-file <path>`. Normal defaults do not write to AppData or the user profile.
+
+To upgrade an existing per-user installation:
+
+1. Stop the host and pause agent callbacks that can write hook ledgers. Back up
+   the installation, YAML, and old state directory. On Windows the old default
+   is `%LOCALAPPDATA%\info_tv`; otherwise it is `~/.local/state/info_tv`.
+2. Copy `host.sqlite3` and the three `*-hooks.sqlite3` files into `<installation>/data`.
+   Include any matching `-wal` and `-shm` companions for stopped databases. For
+   live backups, use SQLite's backup API instead of copying files. Check database
+   integrity before switching; do not overwrite existing destination databases.
+3. Copy historical logs into `<installation>/logs`, preserving existing files.
+   Keep `info-tv.yaml` beside the executable. Existing explicit `--state-dir`
+   or `--state-file` options continue to select their old paths until changed.
+4. Replace the executable, start the host, and verify restored settings, cards,
+   and hook delivery before resuming producers. Re-register an older built-in
+   autostart task to remove its old fixed data path. Keep the backup for rollback.
+
+There is no automatic migration or fallback to the old state directory. Without
+migration, the new default starts with fresh state.
 
 ## Tasks
 

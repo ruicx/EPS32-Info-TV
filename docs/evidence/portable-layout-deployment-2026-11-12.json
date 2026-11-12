@@ -1,0 +1,58 @@
+{
+  "date": "2026-11-12",
+  "platform": "Windows x86-64",
+  "installation": "C:\\h\\info-tv",
+  "previous_state": "%LOCALAPPDATA%\\info_tv",
+  "state_directory": "C:\\h\\info-tv\\data",
+  "log_directory": "C:\\h\\info-tv\\logs",
+  "backup_directory": ".local/portable-deploy-20261112-092830",
+  "release_archive": "build/host-dist/info-tv-0.1.0-x86_64-pc-windows-msvc.zip",
+  "release_archive_sha256": "3eb0af4117e63bf0ee22ebedd20cf01bf5b013e755a443ad0e18972f1505dc56",
+  "installed_binary_sha256": "35ae2080839c4fa7f18f782476695a4645744dc9477003c99a81856711fa5acd",
+  "config_sha256_before_and_after": "17e3d8885f735170c1a45faa62fe981c2491fbca8bcef41089890b1b605a3cf0",
+  "backup": {
+    "installation_copied": true,
+    "sqlite_backup_api_used": true,
+    "all_four_databases_integrity_ok": true,
+    "source_and_snapshot_logical_hashes_match": true,
+    "installed_database_files_match_snapshots_at_cutover": true,
+    "historical_host_logs_copied": 4,
+    "previous_state_files_unchanged_after_cutover": true,
+    "codex_pending_events_preserved_at_cutover": 47
+  },
+  "runtime": {
+    "checked_at_utc": "2026-11-12T01:32:31.9316329Z",
+    "scheduled_task": "Info TV",
+    "scheduled_task_state": "Running",
+    "scheduled_task_result": 267009,
+    "windows_session_id": 1,
+    "device_state": "online",
+    "brightness_percent": 20,
+    "brightness_applied": true,
+    "lock_action": "deep_sleep",
+    "unlock_poll_seconds": 5,
+    "power_policy_applied": true,
+    "all_four_deployed_databases_integrity_ok": true,
+    "all_hook_outboxes_empty": true,
+    "executable_symlink_uses_actual_installation": true,
+    "new_batch_log_utf8": true,
+    "new_batch_log_contains_ansi": false,
+    "host_log_contains_new_path_record": true
+  },
+  "checks": {
+    "rust_tests_passed": 52,
+    "ignored_subprocess_helper": 1,
+    "new_portable_regression_failed_before_fix": true,
+    "rustfmt": "passed",
+    "clippy_warnings_denied": "passed",
+    "native_protocol_bridge_rebuilt": true,
+    "rust_to_cpp_bridge_test": "passed",
+    "static_msvc_release_archive": "built"
+  },
+  "limitations": [
+    "No actual logout/login cycle or new startup-task registration was tested.",
+    "Firmware was not changed; no visual display or physical lock/unlock check was performed.",
+    "Linux, macOS, and Windows ARM64 were not tested.",
+    "Historical mixed-encoding batch log content was retained."
+  ]
+}

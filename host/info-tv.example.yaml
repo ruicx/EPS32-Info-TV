@@ -1,4 +1,4 @@
-# Rust host configuration. Copy to info-tv.yaml for working-directory discovery.
+# Rust host configuration. Place info-tv.yaml beside the executable for discovery.
 serial_port: auto
 usb_vid: 0x303A
 usb_pid: 0x1001

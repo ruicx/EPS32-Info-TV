@@ -226,15 +226,145 @@ Applied, brightness Applied at 20%, and no device error. User data and weather
 configuration were preserved. See the separate
 [deployment and physical validation record](hardware-validation.md#11-silent-automatic-unlock-probes).
 
+## Portable executable-relative defaults (2026-11-12)
+
+The default configuration is now `info-tv.yaml` beside the actual executable;
+host and hook databases use the adjacent `data` directory, and daily logs use
+the adjacent `logs` directory. Symbolic links resolve to the actual executable.
+Explicit config/state/ledger paths remain supported. An explicit `--state-dir`
+retains its own `logs` child and does not change hook defaults. Built-in startup
+registration preserves the portable default unless a state override is requested.
+
+The new executable regression failed before the change. It now passes when
+launched from an unrelated working directory containing invalid YAML, with an
+unused fake user profile, and after moving the installation directory. It
+checks saved brightness recovery and all three default hook ledgers. Separate
+checks retain explicit relative YAML selection, isolated state/log paths,
+launcher quoting, and startup's use of the portable defaults. All 52 Rust tests
+passed, with one ignored helper exercised by subprocess tests. Rustfmt, Clippy
+with warnings denied, the rebuilt native protocol bridge, and the focused
+Rust-to-C++ bridge test passed. The static MSVC Windows x86-64 archive was built.
+
+The installed Windows host was updated after backing up its installation and
+all four databases with SQLite's backup API. Source/snapshot logical contents
+and copied database hashes matched. All 47 pending Codex events were preserved
+at cutover; the live hook outboxes subsequently drained to zero. Four historical
+host logs were copied, and the previous AppData state files remained unchanged.
+The YAML hash was preserved. The local batch entrypoint now uses its own
+directory to locate the executable, retaining UTF-8 and disabled log colors.
+
+The existing interactive `Info TV` scheduled task was started manually. It
+remained running in session 1; the service recorded the new data and log paths,
+and the device reported online with restored brightness 20%, brightness Applied,
+`deep_sleep`, five-second polling, and power policy Applied. A hook flush through
+the existing executable symlink used the actual installation directory. Newly
+appended batch log text was valid UTF-8 without ANSI escapes; historical mixed
+encoding content was preserved. See the
+[sanitized deployment record](evidence/portable-layout-deployment-2026-11-12.json).
+
+This does not qualify logout/login behavior, new task registration, visual
+appearance, physical lock/unlock behavior, or other operating systems. No
+firmware was changed.
+
+### Built-in startup working directory correction (2026-11-12)
+
+A subsequent user check found that `autostart install` still saved its caller's
+working directory in both the scheduled task action and generated launcher.
+Executable-relative configuration and data paths worked, but the saved startup
+directory did not match the portable layout. The launcher now derives its
+working directory from the canonical executable path, and the task action uses
+the same installation directory. Explicit relative config/state arguments are
+still resolved against the caller's directory before registration.
+
+The launcher regression reproduced the incorrect directory before the fix and
+passed afterward. All 52 Rust tests, Clippy with warnings denied, rustfmt, and
+the static Windows x86-64 release build passed. After backing up the installation,
+four databases, launcher, and task XML, the installed binary was updated.
+Registration was invoked from the repository directory through the existing
+executable symlink. Both saved working directories resolved to the actual
+installation. The built-in task was then started manually and remained running
+with exactly one host process in session 1. The device reported online, retained
+brightness 20%, and confirmed the deep-sleep power policy with polling interval
+five. This verifies built-in registration and manual task launch; actual
+logout/login and window appearance remain unqualified.
+
+### Ordinary Windows paths in startup settings (2026-11-12)
+
+Canonical Windows paths include the `\\?\` namespace prefix. The preceding fix
+saved that form in the task's working directory and PowerShell arguments.
+Startup now prefers short ordinary drive paths when they resolve to the same
+canonical location; long paths and unconverted forms retain their prefix.
+Internal filesystem paths are unchanged. A new regression reproduced the
+prefixed launcher and passed after the change; another verifies that a long
+installation path retains its extended form. All 54 Rust tests, Clippy with
+warnings denied, rustfmt, and the static Windows x86-64 build passed.
+
+The installed binary, launcher, task XML, and four live SQLite databases were
+backed up before the existing task was stopped and the release installed.
+Registration through the executable symlink from the repository directory
+produced exactly `C:\h\info-tv` for the task working directory and launcher
+`Set-Location`. The PowerShell `-File`, executable, and config paths also used
+ordinary drive paths. Manual task restart passed with one host process in
+session 1; the device was online with restored brightness 20% and power policy
+Applied with five-second polling. Actual logout/login, window appearance, and
+physical lock/unlock behavior remain unqualified.
+
+### Native Windows startup and process cleanup (2026-11-12)
+
+The user subsequently observed a persistent terminal when manually starting the
+PowerShell task. Window enumeration reproduced it: PowerShell's own window was
+hidden, but a new visible Windows Terminal window appeared. The startup design
+was revised with approval to ship the console CLI plus a native GUI-subsystem
+`info-tv-startup.exe`. The task now directly invokes the latter; it starts the
+adjacent host with `CREATE_NO_WINDOW`, forwards arguments without a shell,
+captures startup/console diagnostics in `logs/startup.log`, waits, and propagates
+the host's actual exit code. PowerShell remains the registration helper and
+separate lock-state monitor. No Windows 11-specific allocation manifest is used.
+
+Stopping both the old PowerShell task and an initial native prototype left the
+host running. A new regression reproduced that behavior before the fix. The
+final launcher owns a kill-on-close Windows job and assigns itself before
+spawning the host, so task termination also ends the host and its descendants.
+Its job handle stays open until process exit so normal exit-code propagation is
+not interrupted by dropping a self-owning job. The Windows-only `win32job 2.1.0`
+safe wrapper was added; all existing locked package versions and the project's
+unsafe-code prohibition were retained.
+
+All 55 Rust tests passed, with one ignored helper exercised by subprocess tests.
+The new checks inspect both PE subsystem types, run a console probe that observes
+no console handle, verify argument round trips including spaces, apostrophes,
+Unicode and a trailing backslash, preserve exit code 37, retain long-path
+arguments, capture a missing-host diagnostic, and confirm that forced launcher
+termination ends its child. Clippy with warnings denied, rustfmt, the existing
+Rust-to-C++ protocol bridge integration, and the static Windows x86-64 release
+build passed. The archive contains both executables, YAML, and README.
+
+After verified installation and SQLite backups, the installed executables and
+existing task were updated. Two manual starts were checked with 20 Win32 visible
+window samples at 100 ms intervals per start. No new visible terminal window was
+observed. Both runs recovered an online device at brightness 20% with five-second
+unlock polling and power policy Applied. Stopping the first run ended the native
+launcher, host, and lock-monitor processes; restarting succeeded. All three
+processes were in session 1. The CLI continued to return JSON status and exit
+successfully. The unchanged obsolete PowerShell launcher was removed only after
+backup and a check that no task referenced it. The final task was left running.
+See the [sanitized native startup record](evidence/native-startup-validation-2026-11-12.json).
+
+Windows 10 behavior is not qualified by this Windows 11 run. The implementation
+uses established console creation and job APIs rather than requiring Windows 11
+24H2; actual Windows 10 testing remains pending. Logout/login, ARM64, other
+platforms, and remote CI were not executed for this change. Window sampling is
+not frame-by-frame visual evidence. No firmware or physical lock/unlock behavior
+was changed or qualified.
+
 ## Remaining Qualification
 
 - Actual unplug/replug, port changes, powered host restart, and user visual
   confirmation remain unverified for Rust. Opening, handshake, brightness
   application, and actual device display feedback passed in the follow-up above.
   Firmware was not flashed.
-- Startup installation/removal and actual logout/login were not exercised; only
-  read-only status and generated launcher syntax were checked. Startup was not
-  registered on the user's computer.
+- Built-in startup installation and manual task launch passed in the follow-up
+  above. Removal and actual logout/login remain unqualified.
 - A clean Windows machine without developer tools still needs a full install/run
   check. Linux/macOS and Windows ARM64 are not qualified by this record.
 - Live Open-Meteo retrieval passed on 2026-11-07 after restarting Rust with the

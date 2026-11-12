@@ -1,6 +1,6 @@
 //! Explicit per-user login startup; registration never occurs during normal serve.
 
-use std::path::Path;
+use std::{borrow::Cow, path::Path};
 
 use anyhow::Result;
 use clap::Subcommand;
@@ -19,23 +19,59 @@ pub enum AutostartCommand {
 }
 
 /// Quote a literal PowerShell argument; embedded apostrophes remain data.
+#[cfg(windows)]
 fn quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "''"))
 }
 
-/// Build the hidden launcher's fixed paths without shell-interpolating user data.
-pub fn launcher(executable: &Path, cwd: &Path, state: &Path, config: Option<&Path>) -> String {
-    let mut script = format!(
-        "$ErrorActionPreference = 'Stop'\nSet-Location -LiteralPath {}\n& {} 'serve' '--state-dir' {}",
-        quote(&cwd.to_string_lossy()),
-        quote(&executable.to_string_lossy()),
-        quote(&state.to_string_lossy())
-    );
-    if let Some(config) = config {
-        script.push_str(&format!(" '--config' {}", quote(&config.to_string_lossy())));
+/// Prefer ordinary Windows drive paths only when their filesystem meaning is unchanged.
+fn path_text(path: &Path) -> Cow<'_, str> {
+    let text = path.to_string_lossy();
+    #[cfg(windows)]
+    if let Some(ordinary) = text.strip_prefix(r"\\?\")
+        && ordinary.as_bytes().get(1) == Some(&b':')
+        && ordinary.as_bytes().get(2) == Some(&b'\\')
+        && ordinary.encode_utf16().count() < 260
+        && std::fs::canonicalize(ordinary).ok().as_deref() == Some(path)
+    {
+        return Cow::Owned(ordinary.to_owned());
     }
-    script.push_str("\nexit $LASTEXITCODE\n");
-    script
+    text
+}
+
+/// Quote one native Windows argument, including trailing backslashes and quotes.
+fn native_argument(value: &str) -> String {
+    let mut quoted = String::from("\"");
+    let mut backslashes = 0;
+    for character in value.chars() {
+        if character == '\\' {
+            backslashes += 1;
+            continue;
+        }
+        let count = if character == '"' {
+            backslashes * 2 + 1
+        } else {
+            backslashes
+        };
+        quoted.extend(std::iter::repeat_n('\\', count));
+        quoted.push(character);
+        backslashes = 0;
+    }
+    quoted.extend(std::iter::repeat_n('\\', backslashes * 2));
+    quoted.push('"');
+    quoted
+}
+
+/// Encode explicit host overrides for Task Scheduler's native command line.
+pub fn startup_arguments(state: Option<&Path>, config: Option<&Path>) -> String {
+    let mut arguments = Vec::new();
+    for (option, path) in [("--state-dir", state), ("--config", config)] {
+        if let Some(path) = path {
+            arguments.push(option.to_owned());
+            arguments.push(native_argument(&path_text(path)));
+        }
+    }
+    arguments.join(" ")
 }
 
 /// Execute an explicit autostart operation on Windows under the current user.
@@ -46,23 +82,30 @@ pub fn run(command: AutostartCommand) -> Result<()> {
     let script = match command {
         AutostartCommand::Install { config, state_dir } => {
             let cwd = std::env::current_dir()?;
-            let (_, config) = crate::config::Settings::load(config.as_deref(), &cwd)?;
-            let state = state_dir.unwrap_or_else(crate::config::state_directory);
-            let state = if state.is_absolute() { state } else { cwd.join(state) };
-            std::fs::create_dir_all(&state)?;
-            let launcher_path = state.join("autostart.ps1");
-            let text = launcher(&std::env::current_exe()?, &cwd, &state, config.as_deref());
-            // Windows PowerShell reads non-ASCII script paths correctly with a UTF-8 BOM.
-            std::fs::write(&launcher_path, format!("\u{feff}{text}"))?;
+            let installation = crate::config::installation_directory()?;
+            let launcher = installation.join("info-tv-startup.exe");
+            anyhow::ensure!(
+                launcher.is_file(),
+                "Cannot find {}. Extract both Windows executables from the same release.",
+                launcher.display()
+            );
+            let (_, config) = crate::config::Settings::load(config.as_deref(), &cwd, &installation)?;
+            let state = state_dir.map(|path| if path.is_absolute() { path } else { cwd.join(path) });
+            let arguments = startup_arguments(state.as_deref(), config.as_deref());
+            let argument_option = if arguments.is_empty() {
+                String::new()
+            } else {
+                format!(" -Argument {}", quote(&arguments))
+            };
             format!("$ErrorActionPreference = 'Stop'; {identity}
-                $action = New-ScheduledTaskAction -Execute ([IO.Path]::Combine($PSHOME, 'powershell.exe')) -Argument {} -WorkingDirectory {};
+                $action = New-ScheduledTaskAction -Execute {}{} -WorkingDirectory {};
                 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $identity.Name;
                 $principal = New-ScheduledTaskPrincipal -UserId $identity.Name -LogonType Interactive -RunLevel Limited;
                 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1);
                 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null;
                 @{{ installed = $true; task = $taskName; launcher = {} }} | ConvertTo-Json -Compress;",
-                quote(&format!("-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"{}\"", launcher_path.display())),
-                quote(&cwd.to_string_lossy()), quote(&launcher_path.to_string_lossy()))
+                quote(&path_text(&launcher)), argument_option,
+                quote(&path_text(&installation)), quote(&path_text(&launcher)))
         }
         AutostartCommand::Status => format!("$ErrorActionPreference = 'Stop'; {identity}
             $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue;

@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-12",
+  "platform": "Windows x86-64, build 26300",
+  "installation": "C:\\h\\info-tv",
+  "backup_directory": ".local/native-startup-20261112-110237",
+  "final_update_backup": ".local/native-startup-20261112-110237/job-update",
+  "archive": "build/host-dist/info-tv-0.1.0-x86_64-pc-windows-msvc.zip",
+  "archive_sha256": "2f1be0d8b9eaf97ca12e17b38541429d796e72cb2e587a64ea041a4144c5a66d",
+  "host_sha256": "7ac5d5f9ca6116290fca57120ef48e7ae2d55628ba01ac9d4779fe7075480d32",
+  "startup_sha256": "27ee59d1563c3860e25a0b5d00d6f768674a33280e2234775ea99a2d00e059d4",
+  "config_sha256_before_and_after": "17e3d8885f735170c1a45faa62fe981c2491fbca8bcef41089890b1b605a3cf0",
+  "task": {
+    "execute": "C:\\h\\info-tv\\info-tv-startup.exe",
+    "arguments": "--config \"C:\\h\\info-tv\\info-tv.yaml\"",
+    "working_directory": "C:\\h\\info-tv",
+    "interactive_logon": true,
+    "power_shell_startup_action": false
+  },
+  "checks": {
+    "rust_tests_passed": 55,
+    "ignored_subprocess_helper": 1,
+    "clippy_warnings_denied": "passed",
+    "rustfmt": "passed",
+    "protocol_bridge_integration": "passed",
+    "cli_pe_subsystem": 3,
+    "startup_pe_subsystem": 2,
+    "probe_child_console_handle": 0,
+    "probe_exit_code_preserved": 37,
+    "spaces_apostrophes_unicode_and_trailing_backslash_arguments": "passed",
+    "missing_host_diagnostic": "passed",
+    "long_state_path_prefix_retained": "passed",
+    "forced_launcher_exit_regression_failed_without_job": true,
+    "forced_launcher_exit_kills_child_with_job": true,
+    "existing_locked_dependency_versions_preserved": true,
+    "windows_only_dependency_added": "win32job 2.1.0",
+    "project_unsafe_code_prohibition_retained": true,
+    "static_msvc_archive_contains_both_executables": true
+  },
+  "runtime": {
+    "checked_at_utc": "2026-11-12T03:28:24.2302813Z",
+    "task_state": "Running",
+    "manual_starts_verified": 2,
+    "visible_window_samples_per_start": 20,
+    "window_sample_interval_ms": 100,
+    "new_visible_terminal_windows": [],
+    "stop_terminated_launcher_host_and_lock_monitor": true,
+    "restart_succeeded": true,
+    "all_owned_processes_in_session": 1,
+    "device_state_after_each_start": "online",
+    "brightness_percent": 20,
+    "unlock_poll_seconds": 5,
+    "power_policy_applied": true,
+    "cli_status_stdout_and_exit_code_ok": true,
+    "obsolete_generated_script_backed_up_and_removed": true
+  },
+  "limitations": [
+    "Windows 10, Windows ARM64, Linux, and remote CI were not executed for this change.",
+    "Actual logout/login was not exercised; the existing logon task was started manually.",
+    "Window evidence is sampled Win32 visibility metadata, not a recording of every displayed frame.",
+    "No firmware change, physical lock/unlock test, or display photograph was performed."
+  ]
+}

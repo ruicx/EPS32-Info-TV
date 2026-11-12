@@ -141,8 +141,10 @@ CPU-rendered LVGL preview of the recent-question hint, not a device photograph:
 
 ## Durable ordering and retry
 
-Default state file: `%LOCALAPPDATA%/info_tv/codex-hooks.sqlite3` on Windows, or
-`~/.local/state/info_tv/codex-hooks.sqlite3` when `LOCALAPPDATA` is absent.
+Default state file: `data/codex-hooks.sqlite3` beside the actual executable,
+resolving symbolic links independently of the agent's working directory.
+`--state-file` overrides this path. See [migration instructions](host-cli.md#portable-paths-and-migration)
+when upgrading from the previous per-user directory.
 The file records run identities, bounded display labels, and pending event
 bodies. SQLite transactions serialize ordinal/sequence allocation across
 processes. No write transaction is held during HTTP delivery.

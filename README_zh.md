@@ -85,9 +85,16 @@ flowchart LR
 ```text
 解压目录/
   ├── info-tv (Windows 下为 info-tv.exe)  # Host 核心程序（内置后台服务、CLI 工具与 Hook 适配功能）
+  ├── info-tv-startup.exe                   # 仅 Windows：不创建控制台窗口的原生启动器
   ├── info-tv.yaml                         # 示例配置文件（可选，用于配置天气坐标或固定串口等）
+  ├── data/                                # 运行时创建：主机状态与 Agent Hook 数据库
+  ├── logs/                                # 运行时创建：按日轮转的主机日志
   └── firmware.bin                         # 下载的固件镜像（重命名放置于此，便于后续烧录）
 ```
+
+配置、默认数据库和日志均以实际程序所在目录为基准，从其他工作目录或通过符号链接
+启动时也保持一致。该目录需允许当前用户写入；升级时保留 `data/` 和 `logs/`。
+已有的用户目录安装需要[一次性迁移数据](docs/host-cli.md#portable-paths-and-migration)。
 
 > [!TIP]
 > 固件镜像为已打包引导加载程序（Bootloader）、分区表与应用程序的单一合并文件（Merged Binary），从 `0x0` 偏移量一次性烧录即可，无需手动分段刷写。
@@ -143,6 +150,8 @@ flowchart LR
    # 注册登录自启动服务
    info-tv autostart install --config info-tv.yaml
    ```
+   Windows 任务直接使用同目录下的 `info-tv-startup.exe`；升级时一起更新两个 exe。
+   终端命令仍使用 `info-tv.exe`。
 
 ---
 
