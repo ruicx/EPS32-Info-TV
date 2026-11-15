@@ -296,6 +296,248 @@ async fn session_lock_overrides_brightness_without_persisting_zero() {
     host.finish().await;
 }
 
+/// Enable the agreed idle timeout without touching a physical device.
+fn agent_idle_settings() -> Settings {
+    serde_yaml_ng::from_str(
+        "lock_action: deep_sleep\nunlock_poll_seconds: 5\nagent_idle_sleep_seconds: 300\ncompleted_retention_seconds: 86400\n",
+    )
+    .expect("idle settings")
+}
+
+/// Advance coordinator time without sleeping or running storage writes under auto-advance.
+async fn advance_agent_idle(host: &Host, seconds: u64) -> Value {
+    tokio::time::pause();
+    tokio::time::advance(Duration::from_secs(seconds)).await;
+    let settings = host
+        .handle
+        .request(Operation::Settings)
+        .await
+        .expect("settings");
+    tokio::time::resume();
+    settings
+}
+
+#[test]
+fn agent_idle_configuration_requires_deep_sleep_and_automatic_wake() {
+    let directory = TempDir::new().expect("temp");
+    let path = directory.path().join("info-tv.yaml");
+    for valid in [
+        "{}",
+        "agent_idle_sleep_seconds: 0",
+        "lock_action: deep_sleep\nunlock_poll_seconds: 5\nagent_idle_sleep_seconds: 300",
+    ] {
+        std::fs::write(&path, valid).expect("write");
+        Settings::load(None, directory.path(), directory.path()).expect("valid idle config");
+    }
+    for invalid in [
+        "agent_idle_sleep_seconds: 300",
+        "lock_action: screen_off\nunlock_poll_seconds: 5\nagent_idle_sleep_seconds: 300",
+        "lock_action: deep_sleep\nagent_idle_sleep_seconds: 300",
+        "agent_idle_sleep_seconds: -1",
+        "agent_idle_sleep_seconds: true",
+        "agent_idle_sleep_seconds: '300'",
+        "agent_idle_sleep_seconds: null",
+        "agent_idle_sleep_seconds: 4294967296",
+    ] {
+        std::fs::write(&path, invalid).expect("write");
+        assert!(Settings::load(None, directory.path(), directory.path()).is_err());
+    }
+}
+
+#[tokio::test]
+async fn agent_idle_ignores_weather_and_replays_but_wakes_for_new_information() {
+    let directory = TempDir::new().expect("temp");
+    let host = Host::open(directory.path(), agent_idle_settings()).await;
+    assert_eq!(
+        advance_agent_idle(&host, 299).await["agent_idle_sleep"],
+        false
+    );
+    host.handle
+        .request(Operation::SetWeather(None))
+        .await
+        .expect("weather refresh");
+    let asleep = advance_agent_idle(&host, 1).await;
+    assert_eq!(asleep["agent_idle_sleep"], true);
+    assert_eq!(asleep["session_locked"], false);
+    assert_eq!(asleep["sleep_requested"], true);
+    assert_eq!(asleep["brightness_percent"], 100);
+
+    let update = event("finished", 2, "completed");
+    assert_eq!(
+        host.request("POST", "/v1/task-events", Some(update.clone()))
+            .await
+            .0,
+        202
+    );
+    let awake = advance_agent_idle(&host, 0).await;
+    assert_eq!(awake["agent_idle_sleep"], false);
+    assert_eq!(awake["sleep_requested"], false);
+    assert_eq!(
+        advance_agent_idle(&host, 240).await["agent_idle_sleep"],
+        false
+    );
+    assert_eq!(
+        host.request("POST", "/v1/task-events", Some(update))
+            .await
+            .1["outcome"],
+        "duplicate"
+    );
+    assert_eq!(
+        host.request(
+            "POST",
+            "/v1/task-events",
+            Some(event("finished", 1, "completed"))
+        )
+        .await
+        .1["outcome"],
+        "stale"
+    );
+    assert_eq!(
+        host.request(
+            "POST",
+            "/v1/task-events",
+            Some(event("invalid", 0, "running"))
+        )
+        .await
+        .0,
+        422
+    );
+    let asleep = advance_agent_idle(&host, 60).await;
+    assert_eq!(asleep["agent_idle_sleep"], true);
+    assert_eq!(
+        host.request(
+            "POST",
+            "/v1/task-events",
+            Some(event("finished", 3, "closed"))
+        )
+        .await
+        .0,
+        202
+    );
+    assert_eq!(advance_agent_idle(&host, 0).await["agent_idle_sleep"], true);
+    host.handle
+        .request(Operation::Brightness(0))
+        .await
+        .expect("manual zero");
+    host.request("POST", "/v1/task-events", Some(event("new", 1, "running")))
+        .await;
+    let awake = advance_agent_idle(&host, 0).await;
+    assert_eq!(awake["sleep_requested"], false);
+    assert_eq!(awake["effective_brightness_percent"], 0);
+    host.finish().await;
+}
+
+#[tokio::test]
+async fn agent_idle_preserves_running_and_waiting_tasks_and_session_priority() {
+    let directory = TempDir::new().expect("temp");
+    let host = Host::open(directory.path(), agent_idle_settings()).await;
+    for (sequence, state) in [(1, "running"), (2, "waiting_input")] {
+        assert_eq!(
+            host.request(
+                "POST",
+                "/v1/task-events",
+                Some(event("work", sequence, state))
+            )
+            .await
+            .0,
+            202
+        );
+        assert_eq!(
+            advance_agent_idle(&host, 600).await["sleep_requested"],
+            false
+        );
+    }
+    host.request(
+        "POST",
+        "/v1/task-events",
+        Some(event("work", 3, "completed")),
+    )
+    .await;
+    assert_eq!(
+        advance_agent_idle(&host, 299).await["agent_idle_sleep"],
+        false
+    );
+    assert_eq!(advance_agent_idle(&host, 1).await["agent_idle_sleep"], true);
+    for locked in [true, false, true] {
+        let settings = host
+            .handle
+            .request(Operation::SessionLocked(locked))
+            .await
+            .expect("session sample");
+        assert_eq!(settings["agent_idle_sleep"], true);
+        assert_eq!(settings["sleep_requested"], true);
+    }
+    host.request(
+        "POST",
+        "/v1/task-events",
+        Some(event("new work", 1, "running")),
+    )
+    .await;
+    let locked = advance_agent_idle(&host, 0).await;
+    assert_eq!(locked["agent_idle_sleep"], false);
+    assert_eq!(locked["session_locked"], true);
+    assert_eq!(locked["sleep_requested"], true);
+    let unlocked = host
+        .handle
+        .request(Operation::SessionLocked(false))
+        .await
+        .expect("local unlock");
+    assert_eq!(unlocked["sleep_requested"], false);
+    let tasks = host.request("GET", "/v1/tasks", None).await.1;
+    let id = tasks
+        .as_array()
+        .expect("tasks")
+        .iter()
+        .find(|task| task["task_id"] == "new work")
+        .expect("active card")["card_id"]
+        .as_str()
+        .expect("card id");
+    host.request("DELETE", &format!("/v1/tasks/{id}"), None)
+        .await;
+    assert_eq!(
+        advance_agent_idle(&host, 299).await["agent_idle_sleep"],
+        false
+    );
+    assert_eq!(advance_agent_idle(&host, 1).await["agent_idle_sleep"], true);
+    host.finish().await;
+}
+
+#[tokio::test]
+async fn agent_idle_defaults_disabled_and_restarts_with_a_fresh_grace_period() {
+    let directory = TempDir::new().expect("temp");
+    let host = Host::open(directory.path(), Settings::default()).await;
+    assert_eq!(
+        advance_agent_idle(&host, 3600).await["sleep_requested"],
+        false
+    );
+    host.finish().await;
+    let host = Host::open(directory.path(), agent_idle_settings()).await;
+    assert_eq!(
+        advance_agent_idle(&host, 300).await["agent_idle_sleep"],
+        true
+    );
+    host.finish().await;
+    let host = Host::open(directory.path(), agent_idle_settings()).await;
+    assert_eq!(
+        advance_agent_idle(&host, 299).await["agent_idle_sleep"],
+        false
+    );
+    assert_eq!(advance_agent_idle(&host, 1).await["agent_idle_sleep"], true);
+    host.request(
+        "POST",
+        "/v1/task-events",
+        Some(event("restored", 1, "running")),
+    )
+    .await;
+    host.finish().await;
+    let host = Host::open(directory.path(), agent_idle_settings()).await;
+    assert_eq!(
+        advance_agent_idle(&host, 600).await["agent_idle_sleep"],
+        false
+    );
+    host.finish().await;
+}
+
 #[tokio::test]
 async fn session_closure_retires_durably_without_a_notification() {
     let directory = TempDir::new().expect("temp");
@@ -1041,6 +1283,7 @@ async fn rust_http_to_cpp_firmware_core() {
         Settings {
             lock_action: LockAction::DeepSleep,
             unlock_poll_seconds: 5,
+            agent_idle_sleep_seconds: 3,
             ..Settings::default()
         },
     )
@@ -1178,6 +1421,23 @@ async fn rust_http_to_cpp_firmware_core() {
         .expect("unlock policy");
     wait(host.handle.clone(), |v| {
         v["settings"]["power_delivery"]["applied"] == true
+    })
+    .await;
+    // The unchanged native firmware must acknowledge idle sleep and agent-driven wake.
+    wait(host.handle.clone(), |v| {
+        v["settings"]["agent_idle_sleep"] == true
+            && v["settings"]["power_delivery"]["applied"] == true
+    })
+    .await;
+    host.request(
+        "POST",
+        "/v1/task-events",
+        Some(event("after idle", 1, "running")),
+    )
+    .await;
+    wait(host.handle.clone(), |v| {
+        v["settings"]["agent_idle_sleep"] == false
+            && v["settings"]["power_delivery"]["applied"] == true
     })
     .await;
     host.finish().await;

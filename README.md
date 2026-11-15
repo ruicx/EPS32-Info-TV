@@ -368,6 +368,13 @@ Only an active, unlocked session attached to the physical console allows the
 display. RDP connections and disconnected sessions apply the lock policy;
 touch wake retains its 15-second preview.
 
+With deep sleep and timer polling enabled, add `agent_idle_sleep_seconds: 300`
+to sleep after five minutes without running or waiting agent tasks. New agent
+information restores normal operation at the next probe if the local session is
+unlocked; lock/RDP policy still takes priority. Weather updates do not reset the
+timer, and touch retains its 15-second preview. Zero (the default) disables idle
+sleep. This host feature reuses existing polling-capable firmware.
+
 ### ESP32 Firmware Build
 
 Prerequisites:

@@ -1,0 +1,74 @@
+{
+  "date": "2026-11-15",
+  "installation": "C:\\h\\info-tv",
+  "backup_directory": ".local/agent-idle-deploy-20261115",
+  "build": "scripts/host/build_host.ps1 (Release, x86_64-pc-windows-msvc)",
+  "binaries": [
+    {
+      "name": "info-tv.exe",
+      "sha256": "3EB46CAA4D357C17D08A634A0C6C3D18806C576CF35BCAF44CC16F005F6A4900"
+    },
+    {
+      "name": "info-tv-startup.exe",
+      "sha256": "305776E31AAF8CAEE23A7D9EE1D67419F55374463897884A0A9FE53971F48B19"
+    }
+  ],
+  "configuration_sha256_before": "17E3D8885F735170C1A45FAA62FE981C2491FBCA8BCEF41089890B1B605A3CF0",
+  "configuration_sha256_after": "3A22A35F608B46B4B6C3C315F9D980ECE9C2C78030A2A6296742B5DAD55C08AA",
+  "only_configuration_change": "Added agent_idle_sleep_seconds: 300",
+  "startup_task_definition_unchanged": true,
+  "old_process_tree_stopped": true,
+  "sqlite_backup_api_used": true,
+  "database_backups": {
+    "host.sqlite3": {
+      "integrity": "ok",
+      "logical_sha256": "1cd47416fefba9cfa5420df244f6b268ea1feb540efe4342ece813dbef9f82c1",
+      "brightness_percent": 20
+    },
+    "codex-hooks.sqlite3": {
+      "integrity": "ok",
+      "logical_sha256": "c0368aa9938add7513d63d73563ee4e4bcd63548a3d9ff6e8e26896263325093",
+      "pending_events": 0
+    },
+    "agy-hooks.sqlite3": {
+      "integrity": "ok",
+      "logical_sha256": "dc2b08199bde31a460ccb00c69fc123b8229aab275f0c0e92cc895daed3fd27e",
+      "pending_events": 0
+    },
+    "zcode-hooks.sqlite3": {
+      "integrity": "ok",
+      "logical_sha256": "89755d51eb5c0e5fc2512f738f099cf47c0e364e89624e5ac6da39fca6963f63",
+      "pending_events": 0
+    }
+  },
+  "runtime": {
+    "checked_at": "2026-11-15T11:36:45.7267083+08:00",
+    "task_state": "Running",
+    "device_state_at_policy_ack": "configuring",
+    "brightness_percent": 20,
+    "lock_action": "deep_sleep",
+    "agent_idle_sleep_seconds": 300,
+    "agent_idle_sleep": false,
+    "session_locked": true,
+    "sleep_requested": true,
+    "unlock_poll_seconds": 5,
+    "power_policy_applied": true,
+    "applied_brightness_percent": null,
+    "last_error": "Expected one matching USB device, found 0",
+    "note": "Session policy required sleep; fresh power Applied feedback was observed during a timer probe, followed by USB disconnection. Active and waiting tasks remained present."
+  },
+  "validation": {
+    "rust_tests_passed": 63,
+    "ignored_subprocess_helper": 1,
+    "native_power_ctest": "passed",
+    "rust_to_cpp_bridge": "passed",
+    "clippy_warnings_denied": "passed",
+    "rustfmt": "passed",
+    "whitespace_check": "passed"
+  },
+  "limitations": [
+    "Five-minute physical idle sleep and subsequent agent-driven recovery were not exercised because active/waiting tasks were present.",
+    "No visual display confirmation, power measurement, or firmware flash was performed.",
+    "Physical brightness Applied feedback was not expected while the session sleep policy was active."
+  ]
+}

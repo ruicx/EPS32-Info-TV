@@ -67,6 +67,7 @@ pub struct DeviceSession {
     pub alert_notification: &'static str,
     brightness_dirty: bool,
     session_locked: bool,
+    agent_idle_sleep: bool,
     lock_action: LockAction,
     power_supported: bool,
     polling_supported: bool,
@@ -103,6 +104,7 @@ impl Default for DeviceSession {
             alert_notification: "suppressed",
             brightness_dirty: true,
             session_locked: false,
+            agent_idle_sleep: false,
             lock_action: LockAction::None,
             power_supported: false,
             polling_supported: false,
@@ -187,6 +189,25 @@ impl DeviceSession {
             return;
         }
         self.session_locked = locked;
+        self.power_changed();
+    }
+
+    /// Request idle sleep independently of the Windows session state.
+    pub fn set_agent_idle_sleep(&mut self, asleep: bool) {
+        if self.agent_idle_sleep == asleep {
+            return;
+        }
+        self.agent_idle_sleep = asleep;
+        self.power_changed();
+    }
+
+    /// Combine session and agent-idle reasons for the existing firmware policy.
+    fn sleep_requested(&self) -> bool {
+        self.session_locked || self.agent_idle_sleep
+    }
+
+    /// Cancel obsolete retries and require fresh power/brightness application.
+    fn power_changed(&mut self) {
         // A retry of an obsolete brightness must not undo the new lock state.
         if self.pending.as_ref().is_some_and(|pending| {
             matches!(
@@ -482,7 +503,7 @@ impl DeviceSession {
             Some((
                 Body::PowerSettings(pb::PowerSettings {
                     lock_action: self.lock_action.protocol_value(),
-                    session_locked: self.session_locked,
+                    session_locked: self.sleep_requested(),
                     unlock_poll_seconds: self.effective_poll_seconds(),
                 }),
                 None,
@@ -702,6 +723,7 @@ impl DeviceSession {
             "effective_brightness_percent":self.effective_brightness(stored),
             "screen_off_for_lock":self.session_locked && self.lock_action == LockAction::ScreenOff,
             "lock_action":self.lock_action,"session_locked":self.session_locked,
+            "agent_idle_sleep":self.agent_idle_sleep,"sleep_requested":self.sleep_requested(),
             "unlock_poll_seconds":self.effective_poll_seconds(),
             "power_delivery":self.delivery(&self.power_delivery),
             "applied_brightness_percent":self.applied_brightness,"delivery":delivery})

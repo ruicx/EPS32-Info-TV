@@ -390,6 +390,97 @@ fn deep_sleep_rejects_firmware_without_power_control() {
     assert!(device.feedback(hello, &stored, 1).is_err());
 }
 
+/// Preserve both sleep reasons across reconnection and discard obsolete policy replies.
+#[test]
+fn agent_idle_sleep_reuses_polling_and_cannot_override_a_session_lock() {
+    let stored = StoredState::default();
+    let mut device = DeviceSession::default();
+    device.set_lock_action(LockAction::DeepSleep);
+    device.set_unlock_poll_seconds(5);
+    device.set_agent_idle_sleep(true);
+    let asleep = configure_power(&mut device, &stored, 10, true);
+    assert!(matches!(
+        asleep.body,
+        Some(Body::PowerSettings(pb::PowerSettings {
+            lock_action: 2,
+            session_locked: true,
+            unlock_poll_seconds: 5,
+        }))
+    ));
+    assert_eq!(device.settings_status(&stored)["session_locked"], false);
+    assert_eq!(device.settings_status(&stored)["agent_idle_sleep"], true);
+    device.disconnected("idle deep sleep");
+    let probe = configure_power(&mut device, &stored, 20, true);
+    assert!(matches!(probe.body, Some(Body::PowerSettings(ref policy)) if policy.session_locked));
+    // Agent activity must not cancel a simultaneous Windows/RDP sleep reason.
+    device.set_session_locked(true);
+    device.set_agent_idle_sleep(false);
+    let locked = device
+        .poll(&stored, 23)
+        .expect("locked policy")
+        .pop()
+        .expect("command");
+    assert!(matches!(locked.body, Some(Body::PowerSettings(ref policy)) if policy.session_locked));
+    assert_eq!(device.settings_status(&stored)["agent_idle_sleep"], false);
+    device.set_session_locked(false);
+    let awake = device
+        .poll(&stored, 24)
+        .expect("awake policy")
+        .pop()
+        .expect("command");
+    assert!(matches!(awake.body, Some(Body::PowerSettings(ref policy)) if !policy.session_locked));
+    for (command, applied) in [(&probe, false), (&awake, true)] {
+        let Some(Body::PowerSettings(policy)) = &command.body else {
+            panic!("power policy")
+        };
+        device
+            .feedback(
+                feedback(
+                    &device,
+                    Body::Acknowledgment(pb::Acknowledgment {
+                        in_reply_to: command.message_id.clone(),
+                        stage: 3,
+                        lock_action: Some(policy.lock_action),
+                        session_locked: Some(policy.session_locked),
+                        unlock_poll_seconds: Some(policy.unlock_poll_seconds),
+                        ..Default::default()
+                    }),
+                ),
+                &stored,
+                25,
+            )
+            .expect("power feedback");
+        assert_eq!(
+            device.settings_status(&stored)["power_delivery"]["applied"],
+            applied
+        );
+        assert!(
+            !device.online(),
+            "brightness still requires fresh Applied feedback"
+        );
+    }
+    assert_eq!(
+        device.settings_status(&stored)["power_delivery"]["applied"],
+        true
+    );
+    let brightness = device
+        .poll(&stored, 26)
+        .expect("brightness")
+        .pop()
+        .expect("command");
+    assert!(
+        matches!(brightness.body, Some(Body::DeviceSettings(ref settings)) if settings.brightness_percent == Some(100))
+    );
+    device
+        .feedback(
+            ack(&device, &brightness.message_id, 3, Some(100)),
+            &stored,
+            27,
+        )
+        .expect("brightness applied");
+    assert!(device.online());
+}
+
 #[test]
 fn automatic_unlock_configures_power_before_brightness_and_checks_interval_proof() {
     let stored = StoredState::default();

@@ -9,6 +9,9 @@ completed_retention_seconds: 300
 lock_action: none
 # Deep sleep only: seconds asleep between silent unlock checks (0 disables; 1..3600).
 unlock_poll_seconds: 0
+# Idle deep sleep: 0 disables; use 300 for five minutes without running/waiting tasks.
+# Requires lock_action: deep_sleep and nonzero unlock_poll_seconds.
+agent_idle_sleep_seconds: 0
 
 # Uncomment to enable automatic weather. The location is an explicit example.
 # weather:

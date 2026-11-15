@@ -59,6 +59,14 @@ Only an active, unlocked session attached to the physical console allows the
 display. RDP connections and disconnected sessions apply the lock policy;
 touch wake retains its 15-second preview.
 
+With deep sleep and timer polling enabled, set `agent_idle_sleep_seconds: 300`
+to sleep after five minutes without running or waiting tasks. New agent
+information wakes the display at the next probe when the local session is
+unlocked; lock/RDP policy takes priority. Weather updates do not reset idle
+time. Touch retains its 15-second preview, and saved brightness is unchanged.
+Zero (the default) disables idle sleep. The host reuses existing polling-capable
+firmware. See [idle-sleep configuration](../docs/host-configuration.md#sleep-when-agents-are-idle).
+
 The service saves accepted tasks, recent replay/closure protection, target
 brightness, and weather/alert expiry in `data/host.sqlite3` beside the executable.
 Hook ledgers use `data/codex-hooks.sqlite3`, `data/agy-hooks.sqlite3`, and

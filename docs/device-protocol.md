@@ -225,6 +225,12 @@ unknown while disconnected; firmware does not persist user targets in NVS.
 probes and are valid only with `deep_sleep`. It requires the current
 snapshot session. Unknown actions are invalid. Brightness and power are separate
 operations so a temporary preview can use the user target while Windows is locked.
+The wire field `session_locked` is the effective sleep request: the host combines
+its Windows session policy and optional agent-idle timeout with logical OR.
+The host API reports these reasons separately as `session_locked` and
+`agent_idle_sleep`, with their combined value in `sleep_requested`. The existing
+firmware applies the same sleep, timer-probe, and touch-preview behavior to both
+reasons; Applied feedback echoes the combined wire value.
 
 The UI owner checks ULP/touch readiness for deep sleep and configures its local
 policy before replying with Applied. That reply has present, echoed

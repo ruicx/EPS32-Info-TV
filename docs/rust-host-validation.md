@@ -410,6 +410,46 @@ up under `.local/console-lock-deploy-20261115`; SQLite backup API snapshots pass
 integrity and logical-content checks. Firmware was not flashed. See
 [`console-lock-deployment-2026-11-15.json`](evidence/console-lock-deployment-2026-11-15.json).
 
+## Agent-Idle Deep Sleep (2026-11-15)
+
+The host now supports opt-in `agent_idle_sleep_seconds`, with `300` selecting
+the agreed five-minute grace period. It requires deep sleep and timer polling.
+Running and waiting tasks prevent idle sleep; newly accepted visible agent
+information resets the grace period. Session locking and RDP policy retain
+priority. Idle and session reasons are exposed separately in host status and
+combined only for the existing firmware power-policy field. No firmware or
+protocol schema changes were needed.
+
+All 63 Rust tests passed with `--features windows-startup`, including the native
+Rust-to-C++ bridge. One subprocess helper was ignored as a standalone test and
+exercised by integration tests. Idle regressions use controlled time to cover
+the timeout boundary, running/waiting tasks, event-driven wake, replay handling,
+weather independence, session priority, manual zero, card closure, configuration
+validation, and restart behavior. The device-state regression verifies idle
+policy on reconnect, stale feedback rejection, and fresh brightness application.
+The bridge received Applied feedback for idle sleep and subsequent agent-driven
+wake using the unchanged native firmware core. The native `power` CTest passed,
+covering the reused timer-probe and touch-preview behavior. Clippy with warnings
+denied, rustfmt, and whitespace checks passed.
+
+The Release host and launcher were subsequently deployed to `C:\h\info-tv`.
+The only YAML change adds `agent_idle_sleep_seconds: 300`; brightness 20%,
+five-second polling, weather settings, task arguments, and the scheduled task
+definition were preserved. Original installation files and all four SQLite
+databases were backed up under `.local/agent-idle-deploy-20261115`; SQLite backup
+API snapshots passed integrity and logical-content checks. The task restarted
+successfully and the new idle-status fields were available.
+
+The Windows session policy required sleep during verification, while running
+and waiting tasks remained present. A physical timer probe returned fresh power
+Applied feedback with `session_locked: true`, `agent_idle_sleep: false`, and
+`sleep_requested: true`, then USB disconnected as expected for deep sleep.
+Brightness remained saved at 20%; physical brightness Applied feedback was not
+expected while that sleep policy was active. The full five-minute physical idle
+transition, subsequent agent-driven recovery, optical confirmation, and power
+consumption remain unverified. Firmware was not flashed. See
+[`agent-idle-deployment-2026-11-15.json`](evidence/agent-idle-deployment-2026-11-15.json).
+
 ## Remaining Qualification
 
 - Actual unplug/replug, port changes, powered host restart, and user visual

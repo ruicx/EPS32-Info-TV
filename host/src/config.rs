@@ -85,6 +85,8 @@ pub struct Settings {
     #[serde(default)]
     pub unlock_poll_seconds: u32,
     #[serde(default)]
+    pub agent_idle_sleep_seconds: u32,
+    #[serde(default)]
     pub weather: Option<WeatherSettings>,
 }
 
@@ -98,6 +100,7 @@ impl Default for Settings {
             completed_retention_seconds: retention_default(),
             lock_action: LockAction::None,
             unlock_poll_seconds: 0,
+            agent_idle_sleep_seconds: 0,
             weather: None,
         }
     }
@@ -143,6 +146,13 @@ impl Settings {
     pub fn validate(&self) -> Result<()> {
         if self.unlock_poll_seconds > 3600 {
             bail!("unlock_poll_seconds must be between 0 and 3600");
+        }
+        if self.agent_idle_sleep_seconds > 0
+            && (self.lock_action != LockAction::DeepSleep || self.unlock_poll_seconds == 0)
+        {
+            bail!(
+                "agent_idle_sleep_seconds requires lock_action: deep_sleep and nonzero unlock_poll_seconds"
+            );
         }
         if self.serial_port.trim().is_empty()
             || self.http_port == 0

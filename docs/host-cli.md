@@ -206,6 +206,10 @@ effective target, lock override, and device-applied level.
 Use `lock_action: deep_sleep` for ULP touch wake and a 15-second locked preview;
 this requires updated firmware and disconnects USB while asleep. See the same
 configuration guide for wake, offline, and unlock behavior.
+With deep sleep and timer polling enabled, `agent_idle_sleep_seconds: 300`
+adds five-minute idle sleep. Query output separates `agent_idle_sleep` from
+`session_locked`; `sleep_requested` combines both reasons. See
+[idle-sleep configuration](host-configuration.md#sleep-when-agents-are-idle).
 
 To publish an alert, supply its source-selected identity, sequence, severity,
 and remaining validity. This example is synthetic:

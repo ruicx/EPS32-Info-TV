@@ -17,7 +17,7 @@ missing file or an invalid selected file is an error.
 
 ## Complete example
 
-This example enables automatic serial discovery, Windows lock following, and Shanghai weather. Shanghai
+This example enables automatic serial discovery, Windows lock following, five-minute agent-idle sleep, and Shanghai weather. Shanghai
 is an example location, not a built-in default.
 
 ```yaml
@@ -28,6 +28,7 @@ http_port: 8765
 completed_retention_seconds: 300
 lock_action: deep_sleep
 unlock_poll_seconds: 5
+agent_idle_sleep_seconds: 300
 
 weather:
   location: Shanghai
@@ -51,6 +52,7 @@ All top-level fields are optional. Omitting a field uses the default below.
 | `completed_retention_seconds` | Integer | `300` | Seconds to retain a completed or interrupted task before removing its card. Must be at least 1; no configured upper limit. Zero does not disable cleanup. |
 | `lock_action` | String | `none` | Windows only when enabled. `none` leaves the device running; `screen_off` turns off the backlight; `deep_sleep` sleeps the main CPU and USB controller, with ULP touch wake and a 15-second preview while locked. |
 | `unlock_poll_seconds` | Integer | `0` | Seconds asleep between silent unlock probes, from 0 to 3600 inclusive. Zero disables timer wake. Effective only with `lock_action: deep_sleep`; ignored for other actions. Startup and USB reconnection add to this interval. |
+| `agent_idle_sleep_seconds` | Integer | `0` | Seconds without running or waiting tasks before deep sleep. Zero disables idle sleep; positive values up to 4294967295 require `lock_action: deep_sleep` and nonzero `unlock_poll_seconds`. Use `300` for five minutes. |
 | `weather` | Mapping or `null` | `null` | Enables automatic Open-Meteo retrieval when a valid mapping is supplied. Omit it or use `null` to disable automatic retrieval; manual weather API/CLI commands remain available. |
 
 ### Serial selection
@@ -70,6 +72,46 @@ Inspect candidates using the same file, without opening a serial connection:
 ```powershell
 cargo run --manifest-path host/Cargo.toml --locked -- ports --config host/info-tv.example.yaml
 ```
+
+### Sleep when agents are idle
+
+Set the following fields and restart the host:
+
+```yaml
+lock_action: deep_sleep
+unlock_poll_seconds: 5
+agent_idle_sleep_seconds: 300
+```
+
+The idle timer runs only while no task is `running` or `waiting_input`, including
+waiting for approval. A long-running agent with no new events remains awake.
+Completed, failed, and interrupted cards do not prevent idle sleep. A newly
+accepted event for a visible card restarts the timer and clears idle sleep;
+this includes a new completion or failure, so its information gets a full grace
+period. Closing a card does not wake the device. Removing the last running or
+waiting card starts the idle timer.
+
+Duplicate, stale, invalid, or uncommitted events do not restart the timer.
+Weather/alert refreshes, brightness commands, status queries, session samples,
+card expiry, and USB reconnections do not reset it either. The host starts a
+fresh grace period after restart and evaluates restored running/waiting tasks
+before the device handshake. Idle timing is independent of completed-card
+retention and does not delete cards.
+
+The existing timer probes recover new information after each configured sleep
+interval plus startup and USB reconnection. Touch still gives the existing
+15-second preview while idle. Locking, RDP connections, and disconnected
+sessions take priority: agent information can clear idle sleep, but cannot
+allow normal display operation until the host session is active and unlocked
+at the physical console. Local unlock alone does not clear an idle timeout.
+The existing firmware's polling capability is sufficient; no new protocol
+fields or firmware update are needed for this host feature.
+
+Settings and device status expose `agent_idle_sleep` for the idle timeout and
+`session_locked` for the Windows session policy. `sleep_requested` is their
+logical OR, sent in the existing protocol `session_locked` field. These are
+requested policies; they do not prove physical sleep or measured power savings.
+Saved brightness, including manual zero, is preserved.
 
 ### Follow Windows session locking
 

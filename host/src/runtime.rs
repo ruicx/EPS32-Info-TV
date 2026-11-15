@@ -10,7 +10,7 @@ use crate::{
     config::{LockAction, Settings},
     device::DeviceSession,
     storage::{Database, Storage, StoredState, Timed},
-    tasks::{AdmissionError, TaskEvent, TaskStore, normalize_uuid},
+    tasks::{AdmissionError, TaskEvent, TaskState, TaskStore, normalize_uuid},
     transport,
     weather::{self, AlertRequest, WeatherRequest},
 };
@@ -127,9 +127,32 @@ pub struct Coordinator {
     requests: mpsc::Receiver<Request>,
     updater: Value,
     clock: Clock,
+    agent_idle_since_ms: Option<i64>,
 }
 
 impl Coordinator {
+    /// Keep active tasks awake; only newly accepted visible agent information resets idle time.
+    fn update_agent_idle(&mut self, now: i64, activity: bool) {
+        let timeout = self.settings.agent_idle_sleep_seconds;
+        if timeout == 0 {
+            return;
+        }
+        if self.stored.tasks.tasks.iter().any(|record| {
+            matches!(
+                record.event.state,
+                TaskState::Running | TaskState::WaitingInput
+            )
+        }) {
+            self.agent_idle_since_ms = None;
+        } else if activity || self.agent_idle_since_ms.is_none() {
+            self.agent_idle_since_ms = Some(now);
+        }
+        let asleep = self
+            .agent_idle_since_ms
+            .is_some_and(|since| now.saturating_sub(since) >= i64::from(timeout) * 1000);
+        self.device.set_agent_idle_sleep(asleep);
+    }
+
     /// Apply the current session state only when lock following is configured.
     pub fn set_session_locked(&mut self, locked: bool) {
         self.device
@@ -190,6 +213,7 @@ impl Coordinator {
                 requests,
                 updater,
                 clock,
+                agent_idle_since_ms: Some(now),
             },
             Handle { requests: send },
             worker,
@@ -206,6 +230,7 @@ impl Coordinator {
                 AdmissionError::new(503, "State could not be committed; retry the operation")
             })?;
         self.stored = candidate;
+        self.update_agent_idle(self.clock.now(), false);
         Ok(())
     }
 
@@ -227,6 +252,7 @@ impl Coordinator {
     async fn operate(&mut self, operation: Operation) -> Result<Value, AdmissionError> {
         let now = self.clock.now();
         self.expire(now).await?;
+        self.update_agent_idle(now, false);
         match operation {
             Operation::Submit(mut event) => {
                 event.validate()?;
@@ -246,6 +272,7 @@ impl Coordinator {
                         ));
                     }
                     self.save(candidate).await?;
+                    self.update_agent_idle(self.clock.now(), !closed);
                     for id in retired {
                         self.device.remove(&id);
                     }
@@ -426,6 +453,7 @@ impl Coordinator {
         let mut maintenance = tokio::time::interval(Duration::from_secs(1));
         loop {
             let now = self.clock.now();
+            self.update_agent_idle(now, false);
             match self.device.poll(&self.stored, now) {
                 Ok(envelopes) => {
                     for envelope in envelopes {
