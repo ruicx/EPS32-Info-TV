@@ -358,6 +358,8 @@ cargo test --manifest-path host/Cargo.toml --locked
 该配置默认 `0`，表示禁用自动检查；解锁恢复还需加上启动和 USB 重连时间。
 主机与固件需一起更新。锁屏动作默认值为 `none`；`screen_off` 仅关闭背光并保持 USB 连接。
 详见 [YAML 配置说明](docs/host-configuration.md#follow-windows-session-locking)。
+仅当主机服务所在会话连接到本地控制台、处于活动状态且已解锁时，才允许正常亮屏。
+RDP 连接和已断开的会话均应用锁屏策略；触摸唤醒仍保留 15 秒临时预览。
 
 ### ESP32 固件编译
 

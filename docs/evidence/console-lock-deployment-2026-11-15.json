@@ -1,0 +1,58 @@
+{
+  "date": "2026-11-15",
+  "installation": "C:\\h\\info-tv",
+  "backup_directory": ".local/console-lock-deploy-20261115",
+  "build": "scripts/host/build_host.ps1 (Release, x86_64-pc-windows-msvc)",
+  "binaries": [
+    {
+      "name": "info-tv.exe",
+      "sha256": "D437845C6A540ACA5D6DACD9F02C09D6ED9F0E5651BBBCEA901AAEC15E48E948"
+    },
+    {
+      "name": "info-tv-startup.exe",
+      "sha256": "6A61A716CBDF8468E1F9DF56657C4024CE2B07D35919DF75CE68C469B069F9B6"
+    }
+  ],
+  "configuration_sha256_unchanged": "17E3D8885F735170C1A45FAA62FE981C2491FBCA8BCEF41089890B1B605A3CF0",
+  "startup_task_definition_unchanged": true,
+  "old_process_tree_stopped": true,
+  "sqlite_backup_api_used": true,
+  "database_backups": {
+    "host.sqlite3": {
+      "integrity": "ok",
+      "logical_sha256": "b27d8b2ceab1b6c84763fd1bc3cf0605996e34e2702767b229e24650f48b414f",
+      "brightness_percent": 20
+    },
+    "codex-hooks.sqlite3": {
+      "integrity": "ok",
+      "logical_sha256": "7b62a18f8e633626a4e6f143cfb8030653dbc50a88df4bff23b241a82aaab4b2",
+      "pending_events": 0
+    },
+    "agy-hooks.sqlite3": {
+      "integrity": "ok",
+      "logical_sha256": "dc2b08199bde31a460ccb00c69fc123b8229aab275f0c0e92cc895daed3fd27e",
+      "pending_events": 0
+    },
+    "zcode-hooks.sqlite3": {
+      "integrity": "ok",
+      "logical_sha256": "89755d51eb5c0e5fc2512f738f099cf47c0e364e89624e5ac6da39fca6963f63",
+      "pending_events": 0
+    }
+  },
+  "runtime": {
+    "checked_at": "2026-11-15T09:34:28.6380426+08:00",
+    "task_state": "Running",
+    "device_state": "online",
+    "brightness_percent": 20,
+    "brightness_applied": true,
+    "lock_action": "deep_sleep",
+    "session_locked": false,
+    "unlock_poll_seconds": 5,
+    "power_policy_applied": true,
+    "last_error": null
+  },
+  "limitations": [
+    "Actual RDP connect/disconnect and local return were not exercised.",
+    "No visual display confirmation or firmware flash was performed."
+  ]
+}

@@ -55,6 +55,9 @@ Update host and firmware together. The default `none` disables lock following;
 `screen_off` only turns off the backlight and restores brightness on unlock.
 The host samples session state once per second through a hidden Windows
 PowerShell helper, requiring `Add-Type`. Keep the host running to confirm unlock.
+Only an active, unlocked session attached to the physical console allows the
+display. RDP connections and disconnected sessions apply the lock policy;
+touch wake retains its 15-second preview.
 
 The service saves accepted tasks, recent replay/closure protection, target
 brightness, and weather/alert expiry in `data/host.sqlite3` beside the executable.

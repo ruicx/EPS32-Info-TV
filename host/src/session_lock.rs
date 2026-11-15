@@ -1,4 +1,4 @@
-//! Current Windows session lock detection through an embedded, hidden helper.
+//! Current Windows session lock and console-attachment detection through a hidden helper.
 
 #[cfg(windows)]
 use anyhow::{Context, Result, bail};
@@ -14,6 +14,7 @@ use tokio::{
 pub struct Monitor {
     child: Child,
     lines: Lines<BufReader<ChildStdout>>,
+    /// Effective lock policy, including remote or disconnected sessions.
     pub locked: bool,
 }
 

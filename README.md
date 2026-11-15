@@ -364,6 +364,9 @@ remain dark and sleep again if still locked. Zero (the default) disables checks.
 Unlock recovery also includes startup and USB reconnection time. Update host and firmware
 together. The default lock action is `none`; `screen_off` keeps USB connected and only disables
 the backlight. See [YAML configuration](docs/host-configuration.md#follow-windows-session-locking).
+Only an active, unlocked session attached to the physical console allows the
+display. RDP connections and disconnected sessions apply the lock policy;
+touch wake retains its 15-second preview.
 
 ### ESP32 Firmware Build
 

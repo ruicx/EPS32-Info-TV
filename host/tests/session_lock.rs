@@ -11,6 +11,53 @@ use info_tv::{
 };
 use tokio::sync::{mpsc, watch};
 
+/// Check display policy against local, remote, disconnected, and switching sessions.
+#[test]
+fn only_active_unlocked_console_session_allows_display() {
+    use std::os::windows::process::CommandExt;
+
+    // Load the production C# policy without starting the polling loop.
+    let helper = include_str!("../src/session_lock.ps1")
+        .split("$hostProcess =")
+        .next()
+        .expect("helper definitions");
+    let script = format!(
+        "{helper}\n{}",
+        r#"
+$cases = @(
+    @(7, 0, 1, 7, $false), # Local, active, unlocked.
+    @(7, 0, 0, 7, $true),  # Local, active, locked.
+    @(7, 0, 1, 8, $true),  # Unlocked RDP session; console belongs elsewhere.
+    @(7, 4, 1, 8, $true),  # RDP disconnected, unlock flag retained.
+    @(7, 4, 1, 7, $true),  # Disconnected even if console ID still matches.
+    @(7, 1, 1, 7, $true),  # Connecting is not yet active.
+    @(7, 0, 1, [uint32]::MaxValue, $true) # No console during switching.
+)
+foreach ($case in $cases) {
+    $actual = [InfoTvSession]::RequiresLock($case[0], $case[1], $case[2], $case[3])
+    if ($actual -ne $case[4]) { throw "Incorrect display policy: $case" }
+}
+try {
+    [InfoTvSession]::RequiresLock(7, 0, -1, 7)
+    throw 'Unknown lock state was accepted'
+} catch [System.Management.Automation.MethodInvocationException] {
+    if ($_.Exception.InnerException -isnot [InvalidOperationException]) { throw }
+}
+exit 0
+"#
+    );
+    let output = std::process::Command::new("powershell.exe")
+        .creation_flags(0x0800_0000)
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .output()
+        .expect("policy helper");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 /// Exercise the actual embedded helper without locking Windows or opening USB.
 #[tokio::test]
 async fn windows_monitor_reports_current_session_and_stops_cleanly() {

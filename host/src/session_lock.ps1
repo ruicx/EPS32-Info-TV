@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-Report the calling Windows session's lock state once per second.
+Report whether the calling Windows session requires display sleep once per second.
 .DESCRIPTION
-Embedded in the host executable. Reads WTS session flags, including initial
-state, without opening the display device or modifying Windows settings.
+Embedded in the host executable. Requires an active, unlocked physical-console
+session to allow the display, without modifying Windows settings.
 #>
 $ErrorActionPreference = 'Stop'
 Add-Type -TypeDefinition @'
@@ -39,7 +39,20 @@ public static class InfoTvSession {
     [DllImport("wtsapi32.dll")]
     private static extern void WTSFreeMemory(IntPtr buffer);
 
-    /// <summary>Query WTSSessionInfoEx for WTS_CURRENT_SESSION on this machine.</summary>
+    [DllImport("kernel32.dll")]
+    private static extern uint WTSGetActiveConsoleSessionId();
+
+    /// <summary>Apply lock policy unless this is the active, unlocked console session.</summary>
+    public static bool RequiresLock(uint sessionId, int sessionState, int sessionFlags,
+                                    uint consoleSessionId) {
+        if (sessionFlags != 0 && sessionFlags != 1)
+            throw new InvalidOperationException("Unknown WTS session lock state");
+        // WTSActive = 0; no attached console is reported as 0xFFFFFFFF.
+        return sessionFlags == 0 || sessionState != 0 ||
+               consoleSessionId == uint.MaxValue || sessionId != consoleSessionId;
+    }
+
+    /// <summary>Query current-session WTS state and its physical-console attachment.</summary>
     public static bool IsLocked() {
         IntPtr buffer;
         int bytes;
@@ -49,9 +62,10 @@ public static class InfoTvSession {
             if (buffer == IntPtr.Zero || bytes < Marshal.SizeOf(typeof(Info)))
                 throw new InvalidOperationException("Incomplete WTS session information");
             Info info = (Info)Marshal.PtrToStructure(buffer, typeof(Info));
-            if (info.Level != 1 || (info.Data.SessionFlags != 0 && info.Data.SessionFlags != 1))
+            if (info.Level != 1)
                 throw new InvalidOperationException("Unknown WTS session lock state");
-            return info.Data.SessionFlags == 0;
+            return RequiresLock(info.Data.SessionId, info.Data.SessionState,
+                                info.Data.SessionFlags, WTSGetActiveConsoleSessionId());
         } finally {
             WTSFreeMemory(buffer);
         }

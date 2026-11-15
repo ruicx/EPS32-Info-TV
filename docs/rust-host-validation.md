@@ -382,6 +382,34 @@ passed with the feature enabled and with defaults; rustfmt and Bash/PowerShell
 syntax checks passed. Cargo.lock remained unchanged. Linux selection was tested
 through the scripts, but a real Linux build and remote CI were not run.
 
+## Physical-Console Lock Policy (2026-11-15)
+
+An unlocked RDP session could previously allow the physical display because
+the helper checked only WTS lock flags. It now allows normal display operation
+only when the host's session is active, unlocked, and attached to the physical
+console. Remote, disconnected, and switching sessions apply the existing lock
+policy. Firmware and the 15-second touch preview are unchanged.
+
+The production C# policy passed seven simulated session cases covering local
+unlock/lock, remote unlock, remote disconnection, disconnection with a matching
+console ID, connection in progress, and no attached console. An unknown lock
+flag still raises an error. The actual embedded helper also queried WTS,
+forwarded its effective policy to the coordinator, and stopped cleanly.
+
+All 58 Rust tests passed with `--features windows-startup`; one subprocess helper
+was ignored as a standalone test and exercised by integration tests. The native
+`protocol_bridge` target built, and the Rust-to-C++ bridge test passed. Clippy
+with warnings denied and rustfmt passed. Actual RDP connection/disconnection,
+local return, and visual confirmation on the physical display remain unverified.
+The Release build was subsequently deployed to `C:\h\info-tv`, replacing both
+the host and native launcher. The existing scheduled task restarted successfully;
+the device returned online with brightness 20%, five-second unlock polling, and
+fresh brightness/power Applied feedback. Configuration and task definition were
+unchanged. Original installation files and all four SQLite databases were backed
+up under `.local/console-lock-deploy-20261115`; SQLite backup API snapshots passed
+integrity and logical-content checks. Firmware was not flashed. See
+[`console-lock-deployment-2026-11-15.json`](evidence/console-lock-deployment-2026-11-15.json).
+
 ## Remaining Qualification
 
 - Actual unplug/replug, port changes, powered host restart, and user visual

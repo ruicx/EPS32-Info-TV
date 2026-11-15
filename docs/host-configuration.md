@@ -78,7 +78,13 @@ A hidden Windows PowerShell helper queries the calling session once per second
 through `WTSQuerySessionInformationW` (`WTSSessionInfoEx`). It checks the initial
 state before the USB handshake, so starting or reconnecting while locked also
 applies the configured policy. A touch-wake boot retains its firmware preview.
-Only the host's own Windows session is monitored.
+Only the host's own Windows session is monitored. The display is allowed only
+when that session is active, unlocked, and attached to the physical console
+reported by `WTSGetActiveConsoleSessionId`. RDP connections, disconnected
+sessions, and console switching apply the same policy as locking, even if WTS
+still reports the session's lock flag as unlocked. Returning to that session
+locally and unlocking restores normal operation. Touch wake still provides the
+same 15-second preview while this effective lock policy is active.
 This requires an interactive Windows session with Windows PowerShell and
 `Add-Type` available. Enabling it on other platforms fails at service startup.
 
@@ -135,7 +141,8 @@ and `screen_off_for_lock` alongside the saved target and device Applied feedback
 The reported brightness target stays nonzero in deep-sleep mode when that is
 the user's setting; power policy separately controls sleep. `lock_action`,
 `session_locked`, `unlock_poll_seconds`, and `power_delivery` describe the requested policy and its
-configuration acknowledgment. Applied policy is not proof of sleep entry or
+configuration acknowledgment. `session_locked` includes remote or disconnected
+sessions that require the lock policy. Applied policy is not proof of sleep entry or
 physical power consumption. The host continues accepting tasks while the USB
 device sleeps and resynchronizes current state after touch wake.
 
@@ -147,6 +154,8 @@ with the host.
 The Windows API layouts and lock flags are documented in
 [WTSINFOEXW](https://learn.microsoft.com/en-us/windows/win32/api/wtsapi32/ns-wtsapi32-wtsinfoexw)
 and [WTSINFOEX_LEVEL1_W](https://learn.microsoft.com/en-us/windows/win32/api/wtsapi32/ns-wtsapi32-wtsinfoex_level1_w).
+Physical-console attachment is documented in
+[WTSGetActiveConsoleSessionId](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-wtsgetactiveconsolesessionid).
 The ULP integration follows the installed ESP-IDF v6.1
 [`ulp_riscv/touch` example](https://github.com/espressif/esp-idf/tree/v6.1/examples/system/ulp/ulp_riscv/touch).
 The basic lock/touch/15-second-preview/unlock sequence passed on the physical
