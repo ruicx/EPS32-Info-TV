@@ -143,6 +143,27 @@ struct TurnHook {
     last_assistant_message: Option<String>,
 }
 
+/// Collapse ZCode's duplicated camelCase and snake_case spellings to one key.
+///
+/// Native ZCode callbacks repeat identity fields in both spellings, and serde
+/// rejects an aliased field that appears twice in one payload.
+fn collapse_aliases(payload: &mut Value) {
+    let Some(object) = payload.as_object_mut() else {
+        return;
+    };
+    for (native, canonical) in [
+        ("hookEventName", "hook_event_name"),
+        ("sessionId", "session_id"),
+        ("turnId", "turn_id"),
+        ("toolName", "tool_name"),
+        ("responseText", "last_assistant_message"),
+    ] {
+        if let Some(value) = object.remove(native) {
+            object.entry(canonical).or_insert(value);
+        }
+    }
+}
+
 #[derive(Deserialize)]
 struct AgyToolCall {
     #[serde(default)]
@@ -319,9 +340,10 @@ fn capture_with_process(
 fn capture_turn(
     connection: &Connection,
     source: &str,
-    payload: Value,
+    mut payload: Value,
     index: Option<&Path>,
 ) -> Result<Option<TaskEvent>> {
+    collapse_aliases(&mut payload);
     let hook: TurnHook = serde_json::from_value(payload)?;
     let question = source == "codex" && accepted_question(&hook);
     if question && connection.query_row(

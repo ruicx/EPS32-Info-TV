@@ -172,6 +172,49 @@ fn zcode_aliases_and_invalid_capture_preserve_ledger() {
 }
 
 #[test]
+fn zcode_native_payloads_repeat_aliases_and_still_capture() {
+    let directory = TempDir::new().expect("temp");
+    let path = directory.path().join("zcode.sqlite3");
+    let start = hooks::capture(
+        &path,
+        "zcode",
+        None,
+        json!({
+            "cwd": "D:/validation/zcode/workspace", "hookEventName": "UserPromptSubmit",
+            "mode": "build", "prompt": "Reply exactly ZCODE_HOOK_OK. Do not use tools.",
+            "sessionId": "sess-native", "timestamp": "2026-11-07T09:25:43.831Z",
+            "turnId": "turn-native", "hook_event_name": "UserPromptSubmit",
+            "permission_mode": "build", "session_id": "sess-native"
+        }),
+    )
+    .expect("capture")
+    .expect("start");
+    assert_eq!(
+        start.title,
+        "Reply exactly ZCODE_HOOK_OK. Do not use tools."
+    );
+    assert_eq!(start.context, "workspace");
+    let complete = hooks::capture(
+        &path,
+        "zcode",
+        None,
+        json!({
+            "cwd": "D:/validation/zcode/workspace", "hookEventName": "Stop",
+            "mode": "build", "responseText": "ZCODE_HOOK_OK",
+            "sessionId": "sess-native", "stopHookActive": false,
+            "timestamp": "2026-11-07T09:25:46.407Z", "turnId": "turn-native",
+            "hook_event_name": "Stop", "last_assistant_message": "ZCODE_HOOK_OK",
+            "session_id": "sess-native", "stop_hook_active": false
+        }),
+    )
+    .expect("capture")
+    .expect("stop");
+    assert_eq!(complete.task_id, start.task_id);
+    assert_eq!(complete.state, TaskState::Completed);
+    assert_eq!(complete.detail, "ZCODE_HOOK_OK");
+}
+
+#[test]
 fn agy_tool_use_transitions_to_waiting_input_and_back_to_running() {
     let directory = TempDir::new().expect("temp");
     let path = directory.path().join("agy.sqlite3");
