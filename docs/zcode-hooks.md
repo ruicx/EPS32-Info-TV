@@ -81,8 +81,11 @@ leaves a tombstone without allocating a conversation ordinal. Activity without
 a known start is ignored. Callback processes serialize ledger updates through
 SQLite transactions.
 
-Each conversation keeps one display card across turns. The first prompt supplies
-the stable conversation title; each prompt supplies the current task title.
+Each conversation keeps one display card across turns. The generated session
+title from ZCode's CLI database (`~/.zcode/cli/db/db.sqlite`, read-only) supplies
+the conversation title once available, refreshing when ZCode retitles the
+session; until then the first prompt is the fallback, and each prompt supplies
+the current task title.
 The workspace basename supplies context, and the wire icon is `code`.
 Updated firmware uses the `Z` source badge for ZCode, distinguishing it from
 Codex (`C`) and AGY (`A`) in both overview rows and notifications. Titles/context

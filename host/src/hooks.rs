@@ -120,6 +120,38 @@ fn codex_index() -> Option<PathBuf> {
         .map(|home| home.join("session_index.jsonl"))
 }
 
+/// Locate the ZCode CLI database that maintains generated session titles.
+fn zcode_database() -> Option<PathBuf> {
+    std::env::var_os("USERPROFILE")
+        .or_else(|| std::env::var_os("HOME"))
+        .map(|home| {
+            PathBuf::from(home)
+                .join(".zcode")
+                .join("cli")
+                .join("db")
+                .join("db.sqlite")
+        })
+}
+
+/// Read a generated ZCode session title without opening conversation transcripts.
+fn zcode_title(database: &Path, session_id: &str) -> Option<String> {
+    Connection::open_with_flags(database, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+        .ok()
+        .and_then(|connection| {
+            connection.busy_timeout(Duration::from_millis(50)).ok()?;
+            connection
+                .query_row(
+                    "SELECT title FROM session WHERE id=?1",
+                    [session_id],
+                    |row| row.get::<_, Option<String>>(0),
+                )
+                .ok()
+                .flatten()
+        })
+        .map(|title| display_text(&title, 64))
+        .filter(|title| !title.is_empty())
+}
+
 /// Native callback fields shared by Codex and ZCode, with public ZCode aliases.
 #[derive(Deserialize)]
 struct TurnHook {
@@ -331,7 +363,13 @@ fn capture_with_process(
             event_name.is_none(),
             "This source reads its event name from stdin"
         );
-        capture_turn(&transaction, source, payload, codex_index().as_deref())?
+        capture_turn(
+            &transaction,
+            source,
+            payload,
+            codex_index().as_deref(),
+            zcode_database().as_deref(),
+        )?
     };
     transaction.commit()?;
     Ok(submission)
@@ -342,6 +380,7 @@ fn capture_turn(
     source: &str,
     mut payload: Value,
     index: Option<&Path>,
+    zcode_db: Option<&Path>,
 ) -> Result<Option<TaskEvent>> {
     collapse_aliases(&mut payload);
     let hook: TurnHook = serde_json::from_value(payload)?;
@@ -378,10 +417,10 @@ fn capture_turn(
         anyhow::ensure!(closing, "A supported callback requires turn_id");
         return Ok(None);
     };
-    let current_title = if source == "codex" {
-        index.and_then(|path| codex_title(path, &hook.session_id))
-    } else {
-        None
+    let current_title = match source {
+        "codex" => index.and_then(|path| codex_title(path, &hook.session_id)),
+        "zcode" => zcode_db.and_then(|path| zcode_title(path, &hook.session_id)),
+        _ => None,
     };
     let mut run = connection
         .query_row(
@@ -830,6 +869,53 @@ mod tests {
     }
 
     #[test]
+    fn zcode_generated_title_overrides_prompt_and_refreshes_during_unchanged_activity() {
+        let directory = TempDir::new().expect("temp");
+        let database = directory.path().join("db.sqlite");
+        let titles = Connection::open(&database).expect("titles");
+        titles
+            .execute_batch("CREATE TABLE session(id TEXT PRIMARY KEY, title TEXT);")
+            .expect("schema");
+        let connection = open(&directory.path().join("hooks.sqlite3"), "zcode").expect("ledger");
+        let callback = |name: &str, turn: &str| {
+            capture_turn(
+                &connection,
+                "zcode",
+                json!({
+                    "hook_event_name":name,"session_id":"titled-session","turn_id":turn,
+                    "prompt":"This prompt is not the session title",
+                    "cwd":"D:/work/ESP32/info_tv"
+                }),
+                None,
+                Some(&database),
+            )
+            .expect("capture")
+        };
+        let first = callback("UserPromptSubmit", "one").expect("start without a title");
+        assert_eq!(first.conversation_title, first.title);
+        titles
+            .execute(
+                "INSERT INTO session VALUES('titled-session','Display fixes')",
+                [],
+            )
+            .expect("generated title");
+        let named = callback("PreToolUse", "one").expect("title update while running");
+        assert_eq!(named.conversation_title, "Display fixes");
+        assert_eq!(named.title, first.title);
+        assert_eq!(named.sequence, 2);
+        assert!(callback("PostToolUse", "one").is_none());
+        titles
+            .execute("UPDATE session SET title='屏幕 修复'", [])
+            .expect("retitled");
+        let renamed = callback("PermissionRequest", "one").expect("retitled");
+        assert_eq!(renamed.conversation_title, "屏幕 修复");
+        let stop = callback("Stop", "one").expect("stop");
+        assert_eq!(stop.conversation_title, "屏幕 修复");
+        let next = callback("UserPromptSubmit", "two").expect("next turn");
+        assert_eq!(next.conversation_title, "屏幕 修复");
+    }
+
+    #[test]
     fn codex_name_overrides_prompt_and_refreshes_during_unchanged_activity() {
         let directory = TempDir::new().expect("temp");
         let index = directory.path().join("session_index.jsonl");
@@ -843,6 +929,7 @@ mod tests {
                     "prompt":"This prompt is not the conversation title"
                 }),
                 Some(&index),
+                None,
             )
             .expect("capture")
         };
